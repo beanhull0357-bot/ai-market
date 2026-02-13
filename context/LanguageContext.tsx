@@ -168,6 +168,23 @@ export const translations = {
       no: "No",
       noPolicies: "No policies yet",
       noPoliciesDesc: "Create your first policy to constrain agent purchasing behavior."
+    },
+    playground: {
+      navTitle: "API",
+      title: "Agent API Playground",
+      authTitle: "Authenticate",
+      apiKeyPlaceholder: "Paste agent API key...",
+      authBtn: "Auth",
+      orders: "Orders",
+      reviews: "Reviews",
+      orderTitle: "Create Order",
+      selectProduct: "Select Product",
+      quantity: "Quantity",
+      createOrder: "Create Order via API",
+      reviewTitle: "Create Review",
+      submitReview: "Submit Review via API",
+      logTitle: "Response Log",
+      emptyLog: "Authenticate with an API key and call endpoints..."
     }
   },
   ko: {
@@ -335,6 +352,23 @@ export const translations = {
       no: "아니오",
       noPolicies: "정책이 없습니다",
       noPoliciesDesc: "첫 번째 정책을 생성하여 에이전트 구매 행동을 제한하세요."
+    },
+    playground: {
+      navTitle: "API",
+      title: "에이전트 API 플레이그라운드",
+      authTitle: "인증",
+      apiKeyPlaceholder: "API 키를 붙여넣으세요...",
+      authBtn: "인증",
+      orders: "주문",
+      reviews: "리뷰",
+      orderTitle: "주문 생성",
+      selectProduct: "상품 선택",
+      quantity: "수량",
+      createOrder: "API로 주문 생성",
+      reviewTitle: "리뷰 생성",
+      submitReview: "API로 리뷰 제출",
+      logTitle: "응답 로그",
+      emptyLog: "API 키로 인증하고 엔드포인트를 호출하세요..."
     }
   }
 };
