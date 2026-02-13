@@ -7,7 +7,8 @@ import { Receipt } from './pages/Receipt';
 import { Inventory } from './pages/Inventory';
 import { Auth } from './pages/Auth';
 import { AgentManager } from './pages/AgentManager';
-import { Terminal, Shield, Cpu, Globe, Package, LogIn, LogOut, User, Key } from 'lucide-react';
+import { PolicyManager } from './pages/PolicyManager';
+import { Terminal, Shield, Cpu, Globe, Package, LogIn, LogOut, User, Key, FileCheck } from 'lucide-react';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -92,6 +93,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <NavLink to="/agent-console" icon={<Cpu size={16} />} label={t('nav.agentConsole')} />
           <NavLink to="/admin-queue" icon={<Shield size={16} />} label={t('nav.adminQueue')} />
           <NavLink to="/agents" icon={<Key size={16} />} label={t('agents.title')} />
+          <NavLink to="/policies" icon={<FileCheck size={16} />} label={t('policies.title')} />
           <LanguageToggle />
           <UserStatus />
         </div>
@@ -119,6 +121,7 @@ export default function App() {
                   <Route path="/inventory" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
                   <Route path="/receipt" element={<Receipt />} />
                   <Route path="/agents" element={<ProtectedRoute><AgentManager /></ProtectedRoute>} />
+                  <Route path="/policies" element={<ProtectedRoute><PolicyManager /></ProtectedRoute>} />
                 </Routes>
               </Layout>
             } />

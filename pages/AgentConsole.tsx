@@ -3,7 +3,7 @@ import { Play, Loader, CheckCircle, AlertTriangle, FileText, PackageCheck, Star,
 import { CodeBlock } from '../components/CodeBlock';
 import { AgentPolicy, AgentReview } from '../types';
 import { useLanguage } from '../context/LanguageContext';
-import { useProducts, useReviews, useOrders } from '../hooks';
+import { useProducts, useReviews, useOrders, useAgents } from '../hooks';
 
 export const AgentConsole: React.FC = () => {
   const [logs, setLogs] = useState<string[]>([]);
@@ -18,6 +18,8 @@ export const AgentConsole: React.FC = () => {
   const { products } = useProducts();
   const { reviews, addReview } = useReviews();
   const { createOrder } = useOrders();
+  const { agents } = useAgents();
+  const [selectedAgentId, setSelectedAgentId] = useState('THIS-SESSION-AGENT');
 
   const defaultPolicy: AgentPolicy = {
     policyId: "POL-USER-001",
@@ -119,6 +121,7 @@ export const AgentConsole: React.FC = () => {
           risks: { stock: "GREEN", price: "GREEN", policy: "GREEN", consent: "GREEN", timeLeft: "GREEN" },
           thirdPartySharing: true,
           decisionTrace: {
+            agentId: selectedAgentId,
             policyId: policy.policyId,
             candidatesEvaluated: candidates.length,
             selectedSku: candidate.sku,
@@ -182,7 +185,7 @@ export const AgentConsole: React.FC = () => {
     const reviewData: AgentReview = {
       reviewId: "REV-" + Date.now().toString(36).toUpperCase(),
       targetSku: resultOrder.sku,
-      reviewerAgentId: "THIS-SESSION-AGENT",
+      reviewerAgentId: selectedAgentId,
       timestamp: new Date().toISOString(),
       metrics: {
         fulfillmentDelta: simulateDefect ? 48 : 0,
@@ -217,6 +220,21 @@ export const AgentConsole: React.FC = () => {
         <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
           <Terminal size={20} /> {t('console.title')}
         </h2>
+
+        {/* Agent Selector */}
+        <div className="mb-4">
+          <label className="text-xs text-gray-500 uppercase block mb-2">{t('console.selectAgent')}</label>
+          <select
+            value={selectedAgentId}
+            onChange={(e) => setSelectedAgentId(e.target.value)}
+            className="w-full bg-gray-900 border border-gray-700 rounded p-3 text-sm text-white focus:outline-none focus:border-green-500"
+          >
+            <option value="THIS-SESSION-AGENT">THIS-SESSION-AGENT (Default)</option>
+            {agents.filter(a => a.status === 'ACTIVE').map(a => (
+              <option key={a.agentId} value={a.agentId}>{a.name} ({a.agentId})</option>
+            ))}
+          </select>
+        </div>
 
         <div className="mb-4">
           <label className="text-xs text-gray-500 uppercase block mb-2">{t('console.labelPolicy')}</label>

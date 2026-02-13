@@ -77,13 +77,13 @@ const PolicySelector: React.FC<{
                             key={p.policyId}
                             onClick={() => { onLink(p.policyId); setOpen(false); }}
                             className={`w-full text-left px-3 py-2 rounded text-xs transition-colors flex items-center justify-between ${p.policyId === currentPolicyId
-                                    ? 'bg-blue-900/30 text-blue-300 border border-blue-800'
-                                    : 'hover:bg-gray-800 text-gray-400'
+                                ? 'bg-blue-900/30 text-blue-300 border border-blue-800'
+                                : 'hover:bg-gray-800 text-gray-400'
                                 }`}
                         >
                             <span className="font-mono">{p.policyId}</span>
                             <span className="text-gray-600">
-                                {p.autoApprove ? '⚡ Auto' : '👤 Manual'} · {p.currency} {p.budgetMax.toLocaleString()}
+                                ₩{p.maxBudget.toLocaleString()} · {p.maxDeliveryDays}d · Trust≥{p.minSellerTrust}
                             </span>
                         </button>
                     ))}
@@ -311,7 +311,7 @@ export const AgentManager: React.FC = () => {
                                         <option value="">{t('agents.noPolicy')}</option>
                                         {policies.map(p => (
                                             <option key={p.policyId} value={p.policyId}>
-                                                {p.policyId} — {p.currency} {p.budgetMax.toLocaleString()} ({p.autoApprove ? 'Auto' : 'Manual'})
+                                                {p.policyId} — ₩{p.maxBudget.toLocaleString()} (Trust≥{p.minSellerTrust})
                                             </option>
                                         ))}
                                     </select>

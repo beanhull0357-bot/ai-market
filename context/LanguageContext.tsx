@@ -37,6 +37,7 @@ export const translations = {
     console: {
       title: "Agent Controller",
       labelPolicy: "Agent Policy (JSON)",
+      selectAgent: "Select Agent",
       btnRun: "Run Auto-Purchase",
       btnWorking: "Agent Working...",
       capabilityTitle: "Agent Capability",
@@ -147,6 +148,26 @@ export const translations = {
       selectPolicy: "Select Policy",
       noPolicy: "No policy (manual)",
       noPolicies: "No policies available"
+    },
+    policies: {
+      title: "Policy Management",
+      subtitle: "Set budget limits, delivery constraints, and trust thresholds for your AI agents.",
+      btnCreate: "New Policy",
+      createTitle: "Create Policy",
+      policyId: "Policy ID",
+      maxBudget: "Max Budget",
+      maxDelivery: "Max Delivery",
+      minTrust: "Min Trust",
+      categories: "Categories",
+      days: "d",
+      save: "Save",
+      cancel: "Cancel",
+      create: "Create",
+      creating: "Creating...",
+      yes: "Yes",
+      no: "No",
+      noPolicies: "No policies yet",
+      noPoliciesDesc: "Create your first policy to constrain agent purchasing behavior."
     }
   },
   ko: {
@@ -183,6 +204,7 @@ export const translations = {
     console: {
       title: "에이전트 컨트롤러",
       labelPolicy: "에이전트 정책 (JSON)",
+      selectAgent: "에이전트 선택",
       btnRun: "자동 구매 실행",
       btnWorking: "에이전트 작업 중...",
       capabilityTitle: "에이전트 기능",
@@ -293,6 +315,26 @@ export const translations = {
       selectPolicy: "정책 선택",
       noPolicy: "정책 없음 (수동)",
       noPolicies: "사용 가능한 정책이 없습니다"
+    },
+    policies: {
+      title: "정책 관리",
+      subtitle: "AI 에이전트의 예산 한도, 배송 제한, 신뢰도 기준을 설정합니다.",
+      btnCreate: "새 정책",
+      createTitle: "정책 생성",
+      policyId: "정책 ID",
+      maxBudget: "최대 예산",
+      maxDelivery: "최대 배송일",
+      minTrust: "최소 신뢰도",
+      categories: "카테고리",
+      days: "일",
+      save: "저장",
+      cancel: "취소",
+      create: "생성",
+      creating: "생성 중...",
+      yes: "예",
+      no: "아니오",
+      noPolicies: "정책이 없습니다",
+      noPoliciesDesc: "첫 번째 정책을 생성하여 에이전트 구매 행동을 제한하세요."
     }
   }
 };

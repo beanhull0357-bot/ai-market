@@ -419,11 +419,27 @@ export function useAgents(ownerId?: string) {
 // ---- Policies hook ----
 
 export interface AgentPolicy {
+    id: string;
     policyId: string;
-    name: string;
-    budgetMax: number;
-    currency: string;
-    autoApprove: boolean;
+    userId: string | null;
+    maxBudget: number;
+    allowedCategories: string[];
+    maxDeliveryDays: number;
+    minSellerTrust: number;
+    createdAt: string;
+}
+
+function rowToPolicy(row: any): AgentPolicy {
+    return {
+        id: row.id,
+        policyId: row.policy_id,
+        userId: row.user_id,
+        maxBudget: row.max_budget || 0,
+        allowedCategories: row.allowed_categories || ['CONSUMABLES', 'MRO'],
+        maxDeliveryDays: row.max_delivery_days || 5,
+        minSellerTrust: row.min_seller_trust || 70,
+        createdAt: row.created_at,
+    };
 }
 
 export function usePolicies() {
@@ -440,18 +456,79 @@ export function usePolicies() {
         if (error) {
             console.error('Error fetching policies:', error);
         } else {
-            setPolicies((data || []).map((row: any) => ({
-                policyId: row.policy_id,
-                name: row.name || row.policy_id,
-                budgetMax: row.budget_max || 0,
-                currency: row.currency || 'KRW',
-                autoApprove: row.auto_approve || false,
-            })));
+            setPolicies((data || []).map(rowToPolicy));
         }
         setLoading(false);
     }, []);
 
     useEffect(() => { fetchPolicies(); }, [fetchPolicies]);
 
-    return { policies, loading, fetchPolicies };
+    const createPolicy = async (policy: {
+        policyId: string;
+        maxBudget: number;
+        allowedCategories: string[];
+        maxDeliveryDays: number;
+        minSellerTrust: number;
+    }) => {
+        const { data, error } = await supabase
+            .from('agent_policies')
+            .insert({
+                policy_id: policy.policyId,
+                max_budget: policy.maxBudget,
+                allowed_categories: policy.allowedCategories,
+                max_delivery_days: policy.maxDeliveryDays,
+                min_seller_trust: policy.minSellerTrust,
+            })
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Error creating policy:', error);
+            return null;
+        }
+        await fetchPolicies();
+        return rowToPolicy(data);
+    };
+
+    const updatePolicy = async (policyId: string, updates: {
+        maxBudget?: number;
+        allowedCategories?: string[];
+        maxDeliveryDays?: number;
+        minSellerTrust?: number;
+    }) => {
+        const updateData: any = { updated_at: new Date().toISOString() };
+        if (updates.maxBudget !== undefined) updateData.max_budget = updates.maxBudget;
+        if (updates.allowedCategories !== undefined) updateData.allowed_categories = updates.allowedCategories;
+        if (updates.maxDeliveryDays !== undefined) updateData.max_delivery_days = updates.maxDeliveryDays;
+        if (updates.minSellerTrust !== undefined) updateData.min_seller_trust = updates.minSellerTrust;
+
+        const { error } = await supabase
+            .from('agent_policies')
+            .update(updateData)
+            .eq('policy_id', policyId);
+
+        if (error) {
+            console.error('Error updating policy:', error);
+            return false;
+        }
+        await fetchPolicies();
+        return true;
+    };
+
+    const deletePolicy = async (policyId: string) => {
+        const { error } = await supabase
+            .from('agent_policies')
+            .delete()
+            .eq('policy_id', policyId);
+
+        if (error) {
+            console.error('Error deleting policy:', error);
+            return false;
+        }
+        await fetchPolicies();
+        return true;
+    };
+
+    return { policies, loading, fetchPolicies, createPolicy, updatePolicy, deletePolicy };
 }
+
