@@ -97,6 +97,22 @@ export const translations = {
       latency: "Latency",
       compliance: "Spec Match",
       delta: "ETA Delta"
+    },
+    auth: {
+      signIn: "Sign In",
+      signUp: "Create Account",
+      signInSubtitle: "Authenticate to delegate purchasing authority to your agent.",
+      signUpSubtitle: "Register to connect your AI purchasing agent.",
+      email: "Email",
+      password: "Password",
+      processing: "Processing...",
+      signUpSuccess: "Account Created",
+      checkEmail: "Check your email to verify your account, then sign in.",
+      goToSignIn: "← Back to Sign In",
+      hasAccount: "Already have an account? Sign In",
+      noAccount: "No account? Create one",
+      footer: "Your credentials are secured via Supabase Auth.",
+      signOut: "Sign Out"
     }
   },
   ko: {
@@ -193,6 +209,22 @@ export const translations = {
       latency: "응답 지연",
       compliance: "스펙 일치",
       delta: "도착 오차"
+    },
+    auth: {
+      signIn: "로그인",
+      signUp: "회원가입",
+      signInSubtitle: "AI 에이전트에게 구매 권한을 위임하려면 인증하세요.",
+      signUpSubtitle: "AI 구매 에이전트를 연결하려면 계정을 만드세요.",
+      email: "이메일",
+      password: "비밀번호",
+      processing: "처리 중...",
+      signUpSuccess: "계정 생성 완료",
+      checkEmail: "이메일을 확인하여 계정을 인증한 후 로그인하세요.",
+      goToSignIn: "← 로그인으로 돌아가기",
+      hasAccount: "이미 계정이 있으신가요? 로그인",
+      noAccount: "계정이 없으신가요? 생성하기",
+      footer: "자격 증명은 Supabase Auth를 통해 보안됩니다.",
+      signOut: "로그아웃"
     }
   }
 };
