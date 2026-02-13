@@ -3,14 +3,16 @@ import { Terminal, ShieldCheck, Zap, Code2, Lock, Activity } from 'lucide-react'
 import { useNavigate } from 'react-router-dom';
 import { CodeBlock } from '../components/CodeBlock';
 import { AgentReviewList } from '../components/AgentReviewList';
-import { MOCK_PRODUCTS, MOCK_REVIEWS } from '../data';
+import { useProducts, useReviews } from '../hooks';
 import { useLanguage } from '../context/LanguageContext';
 
 export const Landing: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const { products, loading: productsLoading } = useProducts();
+  const { reviews: tissueReviews, loading: reviewsLoading } = useReviews('TISSUE-70x20');
 
-  const tissueReviews = MOCK_REVIEWS.filter(r => r.targetSku === "TISSUE-70x20");
+  const firstProduct = products[0];
 
   return (
     <div className="min-h-screen bg-terminal-bg text-terminal-text font-mono selection:bg-terminal-green selection:text-black">
@@ -20,26 +22,26 @@ export const Landing: React.FC = () => {
           <Terminal size={24} />
           <span className="text-sm font-bold uppercase tracking-widest">{t('landing.systemOnline')}</span>
         </div>
-        
+
         <h1 className="text-4xl md:text-7xl font-bold mb-8 leading-tight">
           <span className="block text-white">{t('landing.heroTitle1')}</span>
           <span className="block text-gray-600">{t('landing.heroTitle2')}</span>
         </h1>
-        
+
         <p className="max-w-2xl text-lg text-gray-400 mb-12">
           {t('landing.heroSubtitle')}
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4">
-          <button 
+          <button
             onClick={() => navigate('/agent-console')}
             className="px-8 py-4 bg-terminal-green text-black font-bold hover:bg-green-400 transition-colors flex items-center justify-center gap-2"
           >
             <Zap size={18} />
             {t('landing.btnConnect')}
           </button>
-          <button 
-            onClick={() => document.getElementById('store-as-code')?.scrollIntoView({ behavior: 'smooth'})}
+          <button
+            onClick={() => document.getElementById('store-as-code')?.scrollIntoView({ behavior: 'smooth' })}
             className="px-8 py-4 border border-gray-700 hover:border-gray-500 transition-colors flex items-center justify-center gap-2"
           >
             <Code2 size={18} />
@@ -99,12 +101,22 @@ export const Landing: React.FC = () => {
                 <h3 className="text-lg font-bold">{t('landing.agentReviews')}</h3>
               </div>
               <p className="text-sm text-gray-500 mb-4">{t('landing.agentReviewsDesc')}</p>
-              <AgentReviewList reviews={tissueReviews} />
+              {reviewsLoading ? (
+                <div className="text-gray-600 text-sm">Loading reviews...</div>
+              ) : (
+                <AgentReviewList reviews={tissueReviews} />
+              )}
             </div>
           </div>
           <div className="flex-1 w-full">
             <div className="mb-2 text-xs text-gray-500">GET /api/v1/catalog/consumables?limit=1</div>
-            <CodeBlock data={MOCK_PRODUCTS[0]} />
+            {productsLoading ? (
+              <div className="text-gray-600 text-sm p-4">Loading catalog...</div>
+            ) : firstProduct ? (
+              <CodeBlock data={firstProduct} />
+            ) : (
+              <div className="text-gray-600 text-sm p-4">No products found</div>
+            )}
           </div>
         </div>
       </div>
