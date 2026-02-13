@@ -399,5 +399,59 @@ export function useAgents(ownerId?: string) {
         return true;
     };
 
-    return { agents, loading, fetchAgents, createAgent, revokeAgent, activateAgent, regenerateKey, deleteAgent };
+    const linkPolicy = async (agentId: string, policyId: string | null) => {
+        const { error } = await supabase
+            .from('agents')
+            .update({ policy_id: policyId, updated_at: new Date().toISOString() })
+            .eq('agent_id', agentId);
+
+        if (error) {
+            console.error('Error linking policy:', error);
+            return false;
+        }
+        await fetchAgents();
+        return true;
+    };
+
+    return { agents, loading, fetchAgents, createAgent, revokeAgent, activateAgent, regenerateKey, deleteAgent, linkPolicy };
+}
+
+// ---- Policies hook ----
+
+export interface AgentPolicy {
+    policyId: string;
+    name: string;
+    budgetMax: number;
+    currency: string;
+    autoApprove: boolean;
+}
+
+export function usePolicies() {
+    const [policies, setPolicies] = useState<AgentPolicy[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    const fetchPolicies = useCallback(async () => {
+        setLoading(true);
+        const { data, error } = await supabase
+            .from('agent_policies')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error('Error fetching policies:', error);
+        } else {
+            setPolicies((data || []).map((row: any) => ({
+                policyId: row.policy_id,
+                name: row.name || row.policy_id,
+                budgetMax: row.budget_max || 0,
+                currency: row.currency || 'KRW',
+                autoApprove: row.auto_approve || false,
+            })));
+        }
+        setLoading(false);
+    }, []);
+
+    useEffect(() => { fetchPolicies(); }, [fetchPolicies]);
+
+    return { policies, loading, fetchPolicies };
 }

@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Bot, Plus, Key, RefreshCcw, Trash2, ShieldOff, ShieldCheck, Copy, Check, Eye, EyeOff, X, Loader } from 'lucide-react';
+import { Bot, Plus, Key, RefreshCcw, Trash2, ShieldOff, ShieldCheck, Copy, Check, Eye, EyeOff, X, Loader, Link2, Unlink } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
-import { useAgents, Agent } from '../hooks';
+import { useAgents, usePolicies, Agent, AgentPolicy } from '../hooks';
 
 const ApiKeyDisplay: React.FC<{ apiKey: string }> = ({ apiKey }) => {
     const [visible, setVisible] = useState(false);
@@ -29,13 +29,79 @@ const ApiKeyDisplay: React.FC<{ apiKey: string }> = ({ apiKey }) => {
     );
 };
 
+const PolicySelector: React.FC<{
+    policies: AgentPolicy[];
+    currentPolicyId: string | null;
+    onLink: (policyId: string | null) => void;
+}> = ({ policies, currentPolicyId, onLink }) => {
+    const { t } = useLanguage();
+    const [open, setOpen] = useState(false);
+
+    if (!open) {
+        return (
+            <div className="mb-4 flex items-center gap-2">
+                {currentPolicyId ? (
+                    <div className="flex-1 flex items-center gap-2 text-xs text-gray-400">
+                        <ShieldCheck size={12} className="text-blue-400" />
+                        <span>{t('agents.linkedPolicy')}: <code className="text-terminal-blue">{currentPolicyId}</code></span>
+                        <button onClick={() => onLink(null)} className="text-red-400 hover:text-red-300 ml-1" title="Unlink">
+                            <Unlink size={12} />
+                        </button>
+                        <button onClick={() => setOpen(true)} className="text-blue-400 hover:text-blue-300" title="Change">
+                            <RefreshCcw size={10} />
+                        </button>
+                    </div>
+                ) : (
+                    <button onClick={() => setOpen(true)} className="flex items-center gap-1 text-xs text-gray-500 hover:text-blue-400 transition-colors">
+                        <Link2 size={12} /> {t('agents.assignPolicy')}
+                    </button>
+                )}
+            </div>
+        );
+    }
+
+    return (
+        <div className="mb-4 bg-black/40 border border-gray-800 rounded p-3">
+            <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-gray-500 uppercase">{t('agents.selectPolicy')}</span>
+                <button onClick={() => setOpen(false)} className="text-gray-500 hover:text-white">
+                    <X size={14} />
+                </button>
+            </div>
+            {policies.length === 0 ? (
+                <p className="text-xs text-gray-600">{t('agents.noPolicies')}</p>
+            ) : (
+                <div className="space-y-1 max-h-32 overflow-y-auto">
+                    {policies.map(p => (
+                        <button
+                            key={p.policyId}
+                            onClick={() => { onLink(p.policyId); setOpen(false); }}
+                            className={`w-full text-left px-3 py-2 rounded text-xs transition-colors flex items-center justify-between ${p.policyId === currentPolicyId
+                                    ? 'bg-blue-900/30 text-blue-300 border border-blue-800'
+                                    : 'hover:bg-gray-800 text-gray-400'
+                                }`}
+                        >
+                            <span className="font-mono">{p.policyId}</span>
+                            <span className="text-gray-600">
+                                {p.autoApprove ? '⚡ Auto' : '👤 Manual'} · {p.currency} {p.budgetMax.toLocaleString()}
+                            </span>
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
 const AgentCard: React.FC<{
     agent: Agent;
+    policies: AgentPolicy[];
     onRevoke: () => void;
     onActivate: () => void;
     onRegenerate: () => void;
     onDelete: () => void;
-}> = ({ agent, onRevoke, onActivate, onRegenerate, onDelete }) => {
+    onLinkPolicy: (policyId: string | null) => void;
+}> = ({ agent, policies, onRevoke, onActivate, onRegenerate, onDelete, onLinkPolicy }) => {
     const { t } = useLanguage();
     const [confirming, setConfirming] = useState<'delete' | 'regen' | null>(null);
     const isActive = agent.status === 'ACTIVE';
@@ -56,8 +122,8 @@ const AgentCard: React.FC<{
                     </div>
                 </div>
                 <span className={`text-xs font-bold px-2 py-1 rounded border ${isActive
-                        ? 'text-green-400 bg-green-900/20 border-green-900'
-                        : 'text-red-400 bg-red-900/20 border-red-900'
+                    ? 'text-green-400 bg-green-900/20 border-green-900'
+                    : 'text-red-400 bg-red-900/20 border-red-900'
                     }`}>
                     {isActive ? t('agents.active') : t('agents.revoked')}
                 </span>
@@ -68,6 +134,13 @@ const AgentCard: React.FC<{
                 <label className="text-xs text-gray-500 uppercase mb-1 block">{t('agents.apiKey')}</label>
                 <ApiKeyDisplay apiKey={agent.apiKey} />
             </div>
+
+            {/* Policy Selector */}
+            <PolicySelector
+                policies={policies}
+                currentPolicyId={agent.policyId}
+                onLink={onLinkPolicy}
+            />
 
             {/* Stats */}
             <div className="grid grid-cols-3 gap-3 mb-4">
@@ -86,13 +159,6 @@ const AgentCard: React.FC<{
                     </div>
                 </div>
             </div>
-
-            {/* Policy link */}
-            {agent.policyId && (
-                <div className="mb-4 text-xs text-gray-500 flex items-center gap-1">
-                    <ShieldCheck size={12} /> {t('agents.linkedPolicy')}: <code className="text-terminal-blue">{agent.policyId}</code>
-                </div>
-            )}
 
             {/* Actions */}
             <div className="flex gap-2 pt-3 border-t border-gray-800">
@@ -145,10 +211,12 @@ const AgentCard: React.FC<{
 export const AgentManager: React.FC = () => {
     const { user } = useAuth();
     const { t } = useLanguage();
-    const { agents, loading, createAgent, revokeAgent, activateAgent, regenerateKey, deleteAgent } = useAgents();
+    const { agents, loading, createAgent, revokeAgent, activateAgent, regenerateKey, deleteAgent, linkPolicy } = useAgents();
+    const { policies } = usePolicies();
 
     const [showCreate, setShowCreate] = useState(false);
     const [newName, setNewName] = useState('');
+    const [selectedPolicy, setSelectedPolicy] = useState('');
     const [creating, setCreating] = useState(false);
     const [createdKey, setCreatedKey] = useState<string | null>(null);
 
@@ -158,11 +226,12 @@ export const AgentManager: React.FC = () => {
         setCreating(true);
 
         const ownerId = user?.id || 'anon-' + Date.now().toString(36);
-        const result = await createAgent(newName.trim(), ownerId);
+        const result = await createAgent(newName.trim(), ownerId, selectedPolicy || undefined);
 
         if (result) {
             setCreatedKey(result.apiKey);
             setNewName('');
+            setSelectedPolicy('');
         }
         setCreating(false);
     };
@@ -231,6 +300,22 @@ export const AgentManager: React.FC = () => {
                                         placeholder="e.g. PROCURE-BOT-v3, OFFICE-SUPPLY-AI"
                                     />
                                 </div>
+                                {/* Policy Selector */}
+                                <div>
+                                    <label className="block text-xs text-gray-500 uppercase mb-2">{t('agents.assignPolicy')}</label>
+                                    <select
+                                        value={selectedPolicy}
+                                        onChange={(e) => setSelectedPolicy(e.target.value)}
+                                        className="w-full bg-black border border-gray-700 rounded p-3 text-white text-sm focus:border-purple-500 outline-none"
+                                    >
+                                        <option value="">{t('agents.noPolicy')}</option>
+                                        {policies.map(p => (
+                                            <option key={p.policyId} value={p.policyId}>
+                                                {p.policyId} — {p.currency} {p.budgetMax.toLocaleString()} ({p.autoApprove ? 'Auto' : 'Manual'})
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
                                 <div className="flex gap-3">
                                     <button
                                         type="button"
@@ -272,10 +357,12 @@ export const AgentManager: React.FC = () => {
                         <AgentCard
                             key={agent.agentId}
                             agent={agent}
+                            policies={policies}
                             onRevoke={() => revokeAgent(agent.agentId)}
                             onActivate={() => activateAgent(agent.agentId)}
                             onRegenerate={() => regenerateKey(agent.agentId)}
                             onDelete={() => deleteAgent(agent.agentId)}
+                            onLinkPolicy={(policyId) => linkPolicy(agent.agentId, policyId)}
                         />
                     ))}
                 </div>

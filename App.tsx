@@ -10,6 +10,7 @@ import { AgentManager } from './pages/AgentManager';
 import { Terminal, Shield, Cpu, Globe, Package, LogIn, LogOut, User, Key } from 'lucide-react';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ProtectedRoute } from './components/ProtectedRoute';
 
 const NavLink: React.FC<{ to: string; icon: React.ReactNode; label: string }> = ({ to, icon, label }) => {
   const location = useLocation();
@@ -114,10 +115,10 @@ export default function App() {
                 <Routes>
                   <Route path="/" element={<Landing />} />
                   <Route path="/agent-console" element={<AgentConsole />} />
-                  <Route path="/admin-queue" element={<AdminQueue />} />
-                  <Route path="/inventory" element={<Inventory />} />
+                  <Route path="/admin-queue" element={<ProtectedRoute><AdminQueue /></ProtectedRoute>} />
+                  <Route path="/inventory" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
                   <Route path="/receipt" element={<Receipt />} />
-                  <Route path="/agents" element={<AgentManager />} />
+                  <Route path="/agents" element={<ProtectedRoute><AgentManager /></ProtectedRoute>} />
                 </Routes>
               </Layout>
             } />

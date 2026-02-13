@@ -142,7 +142,11 @@ export const translations = {
       yes: "Yes",
       no: "No",
       noAgents: "No agents deployed yet",
-      noAgentsDesc: "Create your first AI agent to start automated procurement."
+      noAgentsDesc: "Create your first AI agent to start automated procurement.",
+      assignPolicy: "Link Policy",
+      selectPolicy: "Select Policy",
+      noPolicy: "No policy (manual)",
+      noPolicies: "No policies available"
     }
   },
   ko: {
@@ -284,7 +288,11 @@ export const translations = {
       yes: "예",
       no: "아니오",
       noAgents: "배포된 에이전트가 없습니다",
-      noAgentsDesc: "첫 번째 AI 에이전트를 생성하여 자동 구매를 시작하세요."
+      noAgentsDesc: "첫 번째 AI 에이전트를 생성하여 자동 구매를 시작하세요.",
+      assignPolicy: "정책 연결",
+      selectPolicy: "정책 선택",
+      noPolicy: "정책 없음 (수동)",
+      noPolicies: "사용 가능한 정책이 없습니다"
     }
   }
 };
