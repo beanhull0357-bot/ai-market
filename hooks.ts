@@ -253,3 +253,151 @@ export function useReviews(targetSku?: string) {
 
     return { reviews, loading, fetchReviews, addReview };
 }
+
+// ---- Agent type ----
+
+export interface Agent {
+    id: string;
+    agentId: string;
+    name: string;
+    ownerId: string;
+    apiKey: string;
+    status: 'ACTIVE' | 'REVOKED';
+    policyId: string | null;
+    totalOrders: number;
+    totalReviews: number;
+    lastActiveAt: string | null;
+    createdAt: string;
+}
+
+function generateApiKey(): string {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let key = 'agk_';
+    for (let i = 0; i < 32; i++) {
+        key += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return key;
+}
+
+function rowToAgent(row: any): Agent {
+    return {
+        id: row.id,
+        agentId: row.agent_id,
+        name: row.name,
+        ownerId: row.owner_id,
+        apiKey: row.api_key,
+        status: row.status,
+        policyId: row.policy_id,
+        totalOrders: row.total_orders || 0,
+        totalReviews: row.total_reviews || 0,
+        lastActiveAt: row.last_active_at,
+        createdAt: row.created_at,
+    };
+}
+
+export function useAgents(ownerId?: string) {
+    const [agents, setAgents] = useState<Agent[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    const fetchAgents = useCallback(async () => {
+        setLoading(true);
+        let query = supabase
+            .from('agents')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (ownerId) {
+            query = query.eq('owner_id', ownerId);
+        }
+
+        const { data, error } = await query;
+        if (error) {
+            console.error('Error fetching agents:', error);
+        } else {
+            setAgents((data || []).map(rowToAgent));
+        }
+        setLoading(false);
+    }, [ownerId]);
+
+    useEffect(() => { fetchAgents(); }, [fetchAgents]);
+
+    const createAgent = async (name: string, ownerId: string, policyId?: string) => {
+        const agentId = `AGT-${Date.now().toString(36).toUpperCase()}`;
+        const apiKey = generateApiKey();
+
+        const { error } = await supabase.from('agents').insert({
+            agent_id: agentId,
+            name,
+            owner_id: ownerId,
+            api_key: apiKey,
+            status: 'ACTIVE',
+            policy_id: policyId || null,
+        });
+
+        if (error) {
+            console.error('Error creating agent:', error);
+            return null;
+        }
+        await fetchAgents();
+        return { agentId, apiKey };
+    };
+
+    const revokeAgent = async (agentId: string) => {
+        const { error } = await supabase
+            .from('agents')
+            .update({ status: 'REVOKED', updated_at: new Date().toISOString() })
+            .eq('agent_id', agentId);
+
+        if (error) {
+            console.error('Error revoking agent:', error);
+            return false;
+        }
+        await fetchAgents();
+        return true;
+    };
+
+    const activateAgent = async (agentId: string) => {
+        const { error } = await supabase
+            .from('agents')
+            .update({ status: 'ACTIVE', updated_at: new Date().toISOString() })
+            .eq('agent_id', agentId);
+
+        if (error) {
+            console.error('Error activating agent:', error);
+            return false;
+        }
+        await fetchAgents();
+        return true;
+    };
+
+    const regenerateKey = async (agentId: string) => {
+        const newKey = generateApiKey();
+        const { error } = await supabase
+            .from('agents')
+            .update({ api_key: newKey, updated_at: new Date().toISOString() })
+            .eq('agent_id', agentId);
+
+        if (error) {
+            console.error('Error regenerating key:', error);
+            return null;
+        }
+        await fetchAgents();
+        return newKey;
+    };
+
+    const deleteAgent = async (agentId: string) => {
+        const { error } = await supabase
+            .from('agents')
+            .delete()
+            .eq('agent_id', agentId);
+
+        if (error) {
+            console.error('Error deleting agent:', error);
+            return false;
+        }
+        await fetchAgents();
+        return true;
+    };
+
+    return { agents, loading, fetchAgents, createAgent, revokeAgent, activateAgent, regenerateKey, deleteAgent };
+}

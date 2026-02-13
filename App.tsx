@@ -6,7 +6,8 @@ import { AdminQueue } from './pages/AdminQueue';
 import { Receipt } from './pages/Receipt';
 import { Inventory } from './pages/Inventory';
 import { Auth } from './pages/Auth';
-import { Terminal, Shield, Cpu, Globe, Package, LogIn, LogOut, User } from 'lucide-react';
+import { AgentManager } from './pages/AgentManager';
+import { Terminal, Shield, Cpu, Globe, Package, LogIn, LogOut, User, Key } from 'lucide-react';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
@@ -89,6 +90,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <NavLink to="/inventory" icon={<Package size={16} />} label={t('nav.inventory')} />
           <NavLink to="/agent-console" icon={<Cpu size={16} />} label={t('nav.agentConsole')} />
           <NavLink to="/admin-queue" icon={<Shield size={16} />} label={t('nav.adminQueue')} />
+          <NavLink to="/agents" icon={<Key size={16} />} label={t('agents.title')} />
           <LanguageToggle />
           <UserStatus />
         </div>
@@ -115,6 +117,7 @@ export default function App() {
                   <Route path="/admin-queue" element={<AdminQueue />} />
                   <Route path="/inventory" element={<Inventory />} />
                   <Route path="/receipt" element={<Receipt />} />
+                  <Route path="/agents" element={<AgentManager />} />
                 </Routes>
               </Layout>
             } />
