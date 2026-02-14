@@ -891,6 +891,173 @@ END;
 $$;
 
 -- ============================================
+-- 9c. Webhook Delivery Log (tracking table)
+-- ============================================
+CREATE TABLE IF NOT EXISTS webhook_delivery_log (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    subscription_id UUID REFERENCES agent_webhook_subscriptions(id),
+    event_type TEXT NOT NULL,
+    payload JSONB NOT NULL,
+    response_status INTEGER,
+    response_body TEXT,
+    delivered_at TIMESTAMPTZ DEFAULT now(),
+    success BOOLEAN DEFAULT false
+);
+
+ALTER TABLE webhook_delivery_log ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all for webhook_delivery_log" ON webhook_delivery_log;
+CREATE POLICY "Allow all for webhook_delivery_log" ON webhook_delivery_log FOR ALL USING (true) WITH CHECK (true);
+
+CREATE INDEX IF NOT EXISTS idx_webhook_log_sub ON webhook_delivery_log(subscription_id);
+CREATE INDEX IF NOT EXISTS idx_webhook_log_time ON webhook_delivery_log(delivered_at DESC);
+
+-- ============================================
+-- 9d. Webhook Dispatch Engine (pg_net + pgcrypto)
+-- ============================================
+
+-- Enable required extensions
+CREATE EXTENSION IF NOT EXISTS pg_net;
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- Dispatch webhooks for a given event
+CREATE OR REPLACE FUNCTION dispatch_webhooks(
+    p_event_type TEXT,
+    p_payload JSONB
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_sub RECORD;
+    v_signature TEXT;
+    v_body TEXT;
+    v_dispatched INTEGER := 0;
+    v_timestamp TEXT;
+BEGIN
+    v_timestamp := extract(epoch from now())::bigint::text;
+    v_body := p_payload::text;
+
+    -- Find all active subscriptions matching this event type
+    FOR v_sub IN
+        SELECT * FROM agent_webhook_subscriptions
+        WHERE status = 'ACTIVE'
+        AND p_event_type = ANY(events)
+    LOOP
+        -- Generate HMAC-SHA256 signature
+        v_signature := 'sha256=' || encode(
+            hmac(
+                v_timestamp || '.' || v_body,
+                COALESCE(v_sub.secret, 'no-secret'),
+                'sha256'
+            ),
+            'hex'
+        );
+
+        -- Send HTTP POST via pg_net
+        PERFORM net.http_post(
+            url := v_sub.callback_url,
+            headers := jsonb_build_object(
+                'Content-Type', 'application/json',
+                'X-JSONMart-Signature', v_signature,
+                'X-JSONMart-Timestamp', v_timestamp,
+                'X-JSONMart-Event', p_event_type,
+                'User-Agent', 'JSONMart-Webhook/1.0'
+            ),
+            body := jsonb_build_object(
+                'event', p_event_type,
+                'timestamp', now(),
+                'payload', p_payload,
+                'merchant', 'JSONMart'
+            )
+        );
+
+        -- Log the delivery attempt
+        INSERT INTO webhook_delivery_log (subscription_id, event_type, payload, success)
+        VALUES (v_sub.id, p_event_type, p_payload, true);
+
+        -- Update subscription last_triggered_at
+        UPDATE agent_webhook_subscriptions
+        SET last_triggered_at = now(), failure_count = 0
+        WHERE id = v_sub.id;
+
+        v_dispatched := v_dispatched + 1;
+    END LOOP;
+
+    RETURN json_build_object(
+        'success', true,
+        'event', p_event_type,
+        'dispatched', v_dispatched
+    );
+END;
+$$;
+
+-- ============================================
+-- 9e. Auto-dispatch trigger on order_events INSERT
+-- ============================================
+CREATE OR REPLACE FUNCTION trigger_dispatch_webhooks()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    -- Dispatch webhooks asynchronously for this event
+    PERFORM dispatch_webhooks(NEW.event_type, jsonb_build_object(
+        'event_id', NEW.id,
+        'order_id', NEW.order_id,
+        'event_type', NEW.event_type,
+        'event_payload', NEW.payload,
+        'created_at', NEW.created_at
+    ));
+    RETURN NEW;
+END;
+$$;
+
+-- Create trigger (drop first if exists for idempotent re-runs)
+DROP TRIGGER IF EXISTS trg_webhook_dispatch ON order_events;
+CREATE TRIGGER trg_webhook_dispatch
+    AFTER INSERT ON order_events
+    FOR EACH ROW
+    EXECUTE FUNCTION trigger_dispatch_webhooks();
+
+-- ============================================
+-- 9f. Manual test: fire a test webhook to verify delivery
+-- ============================================
+CREATE OR REPLACE FUNCTION test_webhook_dispatch(
+    p_api_key TEXT
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_agent RECORD;
+    v_result JSON;
+BEGIN
+    SELECT * INTO v_agent FROM agents WHERE api_key = p_api_key AND status = 'ACTIVE';
+    IF NOT FOUND THEN
+        RETURN json_build_object('success', false, 'error', 'AUTH_FAILED');
+    END IF;
+
+    -- Dispatch a test event
+    SELECT dispatch_webhooks(
+        'webhook.test',
+        jsonb_build_object(
+            'agent_id', v_agent.agent_id,
+            'message', 'This is a test webhook from JSONMart',
+            'test', true
+        )
+    ) INTO v_result;
+
+    RETURN json_build_object(
+        'success', true,
+        'agent_id', v_agent.agent_id,
+        'dispatch_result', v_result
+    );
+END;
+$$;
+
+-- ============================================
 -- 10. Order Events Log + Polling API
 -- ============================================
 CREATE TABLE IF NOT EXISTS order_events (
@@ -1081,3 +1248,5 @@ GRANT EXECUTE ON FUNCTION log_order_event(TEXT, TEXT, JSONB) TO anon, authentica
 GRANT EXECUTE ON FUNCTION get_agent_offers(TEXT, TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION restore_session_stock(TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION auto_void_expired_sessions() TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION dispatch_webhooks(TEXT, JSONB) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION test_webhook_dispatch(TEXT) TO anon, authenticated;
