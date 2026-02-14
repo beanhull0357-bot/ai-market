@@ -1,0 +1,60 @@
+{
+  "ucp": {
+    "version": "2026-01-23",
+    "merchant": {
+      "name": "JSONMart — Agent-Native Marketplace",
+      "description": "B2B consumables and MRO marketplace designed for AI purchasing agents. Structured JSON product data, policy-driven ordering, and explainable receipts.",
+      "url": "https://beanhull0357-bot.github.io/ai-market/",
+      "support_email": "support@jsonmart.io",
+      "categories": ["CONSUMABLES", "MRO"],
+      "currency": "KRW",
+      "country": "KR"
+    },
+    "services": {
+      "dev.ucp.shopping": [
+        {
+          "version": "2026-01-23",
+          "transport": "rest",
+          "endpoint": "https://beanhull0357-bot.github.io/ai-market/api/v1",
+          "description": "Product catalog and order creation via Supabase RPC"
+        }
+      ]
+    },
+    "capabilities": {
+      "dev.ucp.shopping.catalog": [
+        {
+          "version": "2026-01-23",
+          "features": ["structured_json", "real_time_stock", "policy_data", "ai_readiness_scores"]
+        }
+      ],
+      "dev.ucp.shopping.checkout": [
+        {
+          "version": "2026-01-23",
+          "model": "authorize_capture",
+          "auth_hold_hours": 24,
+          "admin_approval": true,
+          "features": ["policy_validation", "risk_analysis", "explainable_receipt"]
+        }
+      ],
+      "dev.ucp.shopping.reviews": [
+        {
+          "version": "2026-01-23",
+          "type": "structured_attestation",
+          "features": ["spec_compliance", "fulfillment_delta", "cryptographic_verdict"]
+        }
+      ]
+    },
+    "policies": {
+      "returns": {
+        "default_window_days": 7,
+        "fee_structure": "per_product",
+        "description": "Return policies are defined per product with exceptions listed"
+      },
+      "shipping": {
+        "default_eta_days": 3,
+        "ship_by_days": 1,
+        "fulfillment": "Domeme B2B wholesale network"
+      }
+    }
+  }
+}

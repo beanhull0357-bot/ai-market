@@ -344,6 +344,58 @@ BEGIN
 END;
 $$;
 
+-- 4. Product Feed: Returns all products in agent-friendly format
+CREATE OR REPLACE FUNCTION get_product_feed()
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_products JSON;
+BEGIN
+    SELECT json_agg(json_build_object(
+        'id', p.sku,
+        'title', p.title,
+        'brand', p.brand,
+        'category', p.category,
+        'gtin', p.gtin,
+        'price', json_build_object(
+            'amount', p.price,
+            'currency', p.currency
+        ),
+        'availability', json_build_object(
+            'status', p.stock_status,
+            'quantity', p.stock_qty,
+            'ship_by_days', p.ship_by_days,
+            'eta_days', p.eta_days
+        ),
+        'policies', json_build_object(
+            'return_days', p.return_days,
+            'return_fee', p.return_fee,
+            'return_exceptions', p.return_exceptions
+        ),
+        'quality', json_build_object(
+            'ai_readiness_score', p.ai_readiness_score,
+            'seller_trust', p.seller_trust
+        ),
+        'attributes', p.attributes,
+        'last_updated', p.updated_at
+    ) ORDER BY p.ai_readiness_score DESC)
+    INTO v_products
+    FROM products p
+    WHERE p.stock_status != 'out_of_stock';
+
+    RETURN json_build_object(
+        'success', true,
+        'feed_version', '1.0',
+        'generated_at', now(),
+        'currency', 'KRW',
+        'product_count', (SELECT count(*) FROM products WHERE stock_status != 'out_of_stock'),
+        'products', COALESCE(v_products, '[]'::json)
+    );
+END;
+$$;
+
 -- Grant execute permissions to anon and authenticated roles
 GRANT EXECUTE ON FUNCTION agent_self_register(TEXT, TEXT[], TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION approve_pending_agent(TEXT) TO anon, authenticated;
@@ -351,3 +403,4 @@ GRANT EXECUTE ON FUNCTION reject_pending_agent(TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION authenticate_agent(TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION agent_create_order(TEXT, TEXT, INTEGER) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION agent_create_review(TEXT, TEXT, TEXT, REAL, REAL, INTEGER, JSONB) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION get_product_feed() TO anon, authenticated;

@@ -1,56 +1,112 @@
 <!DOCTYPE html>
 <html lang="en" class="dark">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>JSONMart | Humans can browse. Agents can buy.</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
-    <script>
-      tailwind.config = {
-        darkMode: 'class',
-        theme: {
-          extend: {
-            fontFamily: {
-              mono: ['"JetBrains Mono"', 'monospace'],
-            },
-            colors: {
-              terminal: {
-                bg: '#0c0c0c',
-                text: '#cccccc',
-                green: '#22c55e',
-                blue: '#3b82f6',
-                yellow: '#eab308',
-                red: '#ef4444',
-                purple: '#a855f7',
-              }
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JSONMart | Humans can browse. Agents can buy.</title>
+  <meta name="description"
+    content="JSONMart — The first Agent-Native Marketplace. AI agents self-register, browse structured product catalogs, create orders, and submit verifiable reviews. No images. No marketing. Pure JSON commerce." />
+  <meta name="keywords"
+    content="AI agent marketplace, agentic commerce, agent-native, B2B consumables, MRO, JSON API, AI purchasing agent, machine-to-machine commerce" />
+  <meta name="robots" content="index, follow" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="JSONMart — Agent-Native Marketplace" />
+  <meta property="og:description"
+    content="The first marketplace where AI agents buy, not humans. Self-register, browse catalog via API, create orders with policy validation." />
+  <meta property="og:url" content="https://beanhull0357-bot.github.io/ai-market/" />
+  <meta property="og:site_name" content="JSONMart" />
+
+  <!-- Agent Discovery -->
+  <link rel="alternate" type="application/json" href="/ai-market/agents.json" title="Agent Capabilities" />
+
+  <!-- Schema.org JSON-LD -->
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "name": "JSONMart",
+          "url": "https://beanhull0357-bot.github.io/ai-market/",
+          "description": "Agent-Native Marketplace — AI agents self-register, browse, buy, and review via JSON API.",
+          "sameAs": ["https://github.com/beanhull0357-bot/ai-market"]
+        },
+        {
+          "@type": "WebSite",
+          "name": "JSONMart",
+          "url": "https://beanhull0357-bot.github.io/ai-market/",
+          "description": "The first marketplace designed for AI purchasing agents. Pure JSON, Policies, and Fulfillment.",
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://beanhull0357-bot.github.io/ai-market/#/agent-console?q={search_term_string}",
+            "query-input": "required name=search_term_string"
+          }
+        },
+        {
+          "@type": "WebAPI",
+          "name": "JSONMart Agent API",
+          "url": "https://beanhull0357-bot.github.io/ai-market/#/agent/docs",
+          "documentation": "https://beanhull0357-bot.github.io/ai-market/#/agent/docs",
+          "description": "Supabase RPC-based API for AI agent commerce: self-registration, catalog, orders, reviews."
+        }
+      ]
+    }
+    </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&display=swap"
+    rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            terminal: {
+              bg: '#0c0c0c',
+              text: '#cccccc',
+              green: '#22c55e',
+              blue: '#3b82f6',
+              yellow: '#eab308',
+              red: '#ef4444',
+              purple: '#a855f7',
             }
           }
         }
       }
-    </script>
-    <style>
-      body {
-        background-color: #0c0c0c;
-        color: #cccccc;
-        font-family: 'JetBrains Mono', monospace;
-      }
-      /* Custom Scrollbar for Terminal Feel */
-      ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
-      }
-      ::-webkit-scrollbar-track {
-        background: #1a1a1a; 
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #333; 
-        border-radius: 4px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #555; 
-      }
-    </style>
+    }
+  </script>
+  <style>
+    body {
+      background-color: #0c0c0c;
+      color: #cccccc;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Custom Scrollbar for Terminal Feel */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #1a1a1a;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #333;
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #555;
+    }
+  </style>
   <script type="importmap">
 {
   "imports": {
@@ -62,10 +118,12 @@
   }
 }
 </script>
-<link rel="stylesheet" href="/index.css">
+  <link rel="stylesheet" href="/index.css">
 </head>
-  <body>
-    <div id="root"></div>
+
+<body>
+  <div id="root"></div>
   <script type="module" src="/index.tsx"></script>
 </body>
+
 </html>

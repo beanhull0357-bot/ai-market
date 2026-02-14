@@ -9,7 +9,8 @@ import { Auth } from './pages/Auth';
 import { AgentManager } from './pages/AgentManager';
 import { PolicyManager } from './pages/PolicyManager';
 import { AgentPlayground } from './pages/AgentPlayground';
-import { Terminal, Shield, Cpu, Globe, Package, LogIn, LogOut, User, Key, FileCheck, Zap } from 'lucide-react';
+import { AgentDocs } from './pages/AgentDocs';
+import { Terminal, Shield, Cpu, Globe, Package, LogIn, LogOut, User, Key, FileCheck, Zap, BookOpen } from 'lucide-react';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -96,6 +97,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <NavLink to="/agents" icon={<Key size={16} />} label={t('agents.title')} />
           <NavLink to="/policies" icon={<FileCheck size={16} />} label={t('policies.title')} />
           <NavLink to="/playground" icon={<Zap size={16} />} label={t('playground.navTitle')} />
+          <NavLink to="/agent/docs" icon={<BookOpen size={16} />} label="Docs" />
           <LanguageToggle />
           <UserStatus />
         </div>
@@ -125,6 +127,7 @@ export default function App() {
                   <Route path="/agents" element={<ProtectedRoute><AgentManager /></ProtectedRoute>} />
                   <Route path="/policies" element={<ProtectedRoute><PolicyManager /></ProtectedRoute>} />
                   <Route path="/playground" element={<AgentPlayground />} />
+                  <Route path="/agent/docs" element={<AgentDocs />} />
                 </Routes>
               </Layout>
             } />

@@ -1,0 +1,43 @@
+# JSONMart robots.txt
+# Agent-Native Marketplace
+
+User-agent: *
+Allow: /
+
+# AI Crawlers - Welcome
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: cohere-ai
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+# Sitemaps
+Sitemap: https://beanhull0357-bot.github.io/ai-market/sitemap.xml
+
+# Agent Discovery
+# LLM info: /llms.txt
+# Agent capabilities: /agents.json
+# UCP Profile: /.well-known/ucp
+# API Docs: /agent/docs
+# OpenAPI Spec: /openapi.json

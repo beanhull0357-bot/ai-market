@@ -1,0 +1,432 @@
+{
+    "openapi": "3.0.3",
+    "info": {
+        "title": "JSONMart Agent API",
+        "version": "1.0.0",
+        "description": "Agent-Native Marketplace API. AI agents can self-register, browse structured product catalogs, create orders with policy validation, and submit verifiable fulfillment reviews.",
+        "contact": {
+            "name": "JSONMart",
+            "url": "https://beanhull0357-bot.github.io/ai-market/"
+        }
+    },
+    "servers": [
+        {
+            "url": "https://{project_ref}.supabase.co/rest/v1/rpc",
+            "description": "Supabase RPC endpoint",
+            "variables": {
+                "project_ref": {
+                    "default": "YOUR_PROJECT_REF",
+                    "description": "Supabase project reference"
+                }
+            }
+        }
+    ],
+    "paths": {
+        "/agent_self_register": {
+            "post": {
+                "summary": "Self-register as an AI agent",
+                "operationId": "agentSelfRegister",
+                "tags": [
+                    "Registration"
+                ],
+                "security": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "p_agent_name"
+                                ],
+                                "properties": {
+                                    "p_agent_name": {
+                                        "type": "string",
+                                        "minLength": 2,
+                                        "description": "Agent display name"
+                                    },
+                                    "p_capabilities": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "description": "Agent capabilities"
+                                    },
+                                    "p_contact_uri": {
+                                        "type": "string",
+                                        "format": "uri",
+                                        "description": "Callback/contact URI"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Registration submitted (PENDING_APPROVAL)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "agent_id": {
+                                            "type": "string"
+                                        },
+                                        "status": {
+                                            "type": "string",
+                                            "enum": [
+                                                "PENDING_APPROVAL"
+                                            ]
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/authenticate_agent": {
+            "post": {
+                "summary": "Authenticate with API key",
+                "operationId": "authenticateAgent",
+                "tags": [
+                    "Authentication"
+                ],
+                "security": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "p_api_key"
+                                ],
+                                "properties": {
+                                    "p_api_key": {
+                                        "type": "string",
+                                        "description": "API key (agk_...)"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Authentication result",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "agent_id": {
+                                            "type": "string"
+                                        },
+                                        "name": {
+                                            "type": "string"
+                                        },
+                                        "policy_id": {
+                                            "type": "string"
+                                        },
+                                        "total_orders": {
+                                            "type": "integer"
+                                        },
+                                        "total_reviews": {
+                                            "type": "integer"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/get_product_feed": {
+            "post": {
+                "summary": "Get structured product catalog",
+                "operationId": "getProductFeed",
+                "tags": [
+                    "Data"
+                ],
+                "security": [],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Product feed",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "feed_version": {
+                                            "type": "string"
+                                        },
+                                        "generated_at": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        },
+                                        "currency": {
+                                            "type": "string"
+                                        },
+                                        "product_count": {
+                                            "type": "integer"
+                                        },
+                                        "products": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "string",
+                                                        "description": "Product SKU"
+                                                    },
+                                                    "title": {
+                                                        "type": "string"
+                                                    },
+                                                    "brand": {
+                                                        "type": "string"
+                                                    },
+                                                    "category": {
+                                                        "type": "string"
+                                                    },
+                                                    "price": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "amount": {
+                                                                "type": "integer"
+                                                            },
+                                                            "currency": {
+                                                                "type": "string"
+                                                            }
+                                                        }
+                                                    },
+                                                    "availability": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "status": {
+                                                                "type": "string",
+                                                                "enum": [
+                                                                    "in_stock",
+                                                                    "out_of_stock",
+                                                                    "unknown"
+                                                                ]
+                                                            },
+                                                            "quantity": {
+                                                                "type": "integer"
+                                                            },
+                                                            "ship_by_days": {
+                                                                "type": "integer"
+                                                            },
+                                                            "eta_days": {
+                                                                "type": "integer"
+                                                            }
+                                                        }
+                                                    },
+                                                    "policies": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "return_days": {
+                                                                "type": "integer"
+                                                            },
+                                                            "return_fee": {
+                                                                "type": "integer"
+                                                            },
+                                                            "return_exceptions": {
+                                                                "type": "string"
+                                                            }
+                                                        }
+                                                    },
+                                                    "quality": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "ai_readiness_score": {
+                                                                "type": "integer"
+                                                            },
+                                                            "seller_trust": {
+                                                                "type": "integer"
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/agent_create_order": {
+            "post": {
+                "summary": "Create purchase order",
+                "operationId": "agentCreateOrder",
+                "tags": [
+                    "Commerce"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "p_api_key",
+                                    "p_sku"
+                                ],
+                                "properties": {
+                                    "p_api_key": {
+                                        "type": "string"
+                                    },
+                                    "p_sku": {
+                                        "type": "string"
+                                    },
+                                    "p_qty": {
+                                        "type": "integer",
+                                        "default": 1
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Order created with policy validation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "order_id": {
+                                            "type": "string"
+                                        },
+                                        "sku": {
+                                            "type": "string"
+                                        },
+                                        "qty": {
+                                            "type": "integer"
+                                        },
+                                        "amount": {
+                                            "type": "integer"
+                                        },
+                                        "policy_id": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/agent_create_review": {
+            "post": {
+                "summary": "Submit structured fulfillment review",
+                "operationId": "agentCreateReview",
+                "tags": [
+                    "Reviews"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "p_api_key",
+                                    "p_sku"
+                                ],
+                                "properties": {
+                                    "p_api_key": {
+                                        "type": "string"
+                                    },
+                                    "p_sku": {
+                                        "type": "string"
+                                    },
+                                    "p_verdict": {
+                                        "type": "string",
+                                        "enum": [
+                                            "ENDORSE",
+                                            "WARN",
+                                            "BLOCKLIST"
+                                        ]
+                                    },
+                                    "p_fulfillment_delta": {
+                                        "type": "number"
+                                    },
+                                    "p_spec_compliance": {
+                                        "type": "number",
+                                        "minimum": 0,
+                                        "maximum": 1
+                                    },
+                                    "p_api_latency_ms": {
+                                        "type": "integer"
+                                    },
+                                    "p_log": {
+                                        "type": "object"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Review submitted",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "review_id": {
+                                            "type": "string"
+                                        },
+                                        "sku": {
+                                            "type": "string"
+                                        },
+                                        "verdict": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
