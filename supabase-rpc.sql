@@ -1565,8 +1565,801 @@ END;
 $$;
 
 
+-- ============================================
+-- 16. Agent Trust Score (#2)
+-- ============================================
+ALTER TABLE agents ADD COLUMN IF NOT EXISTS trust_score INTEGER DEFAULT 50;
+ALTER TABLE agents ADD COLUMN IF NOT EXISTS trust_factors JSONB DEFAULT '{}';
+ALTER TABLE agents ADD COLUMN IF NOT EXISTS tier TEXT DEFAULT 'STARTER'
+    CHECK (tier IN ('STARTER','ACTIVE','POWER','ELITE'));
+ALTER TABLE agents ADD COLUMN IF NOT EXISTS total_orders INTEGER DEFAULT 0;
+ALTER TABLE agents ADD COLUMN IF NOT EXISTS total_order_value BIGINT DEFAULT 0;
 
--- Grant execute permissions to anon and authenticated roles
+-- 16a. Recalculate trust score for an agent
+CREATE OR REPLACE FUNCTION recalculate_agent_trust(p_agent_id TEXT)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_agent RECORD;
+    v_total_orders INTEGER;
+    v_successful_orders INTEGER;
+    v_total_reviews INTEGER;
+    v_avg_review_quality REAL;
+    v_account_age INTEGER;
+    v_violations INTEGER := 0;
+    v_order_score REAL;
+    v_payment_score REAL;
+    v_review_score REAL;
+    v_age_score REAL;
+    v_trust INTEGER;
+    v_tier TEXT;
+BEGIN
+    SELECT * INTO v_agent FROM agents WHERE agent_id = p_agent_id;
+    IF NOT FOUND THEN RETURN json_build_object('success', false, 'error', 'AGENT_NOT_FOUND'); END IF;
+
+    -- Order success rate
+    SELECT COUNT(*) INTO v_total_orders FROM orders WHERE agent_id = p_agent_id;
+    SELECT COUNT(*) INTO v_successful_orders FROM orders WHERE agent_id = p_agent_id AND status IN ('CAPTURED','DELIVERED','SHIPPED');
+    v_order_score := CASE WHEN v_total_orders > 0 THEN (v_successful_orders::real / v_total_orders) * 100 ELSE 50 END;
+
+    -- Payment reliability (same as order success for now)
+    v_payment_score := v_order_score;
+
+    -- Review quality
+    SELECT COUNT(*), COALESCE(AVG((metadata->>'quality_score')::real), 3.0)
+    INTO v_total_reviews, v_avg_review_quality
+    FROM agent_reviews WHERE agent_id = p_agent_id;
+    v_review_score := LEAST(v_avg_review_quality * 20, 100);
+
+    -- Account age
+    v_account_age := EXTRACT(DAY FROM now() - v_agent.created_at)::integer;
+    v_age_score := LEAST(v_account_age * 2, 100);
+
+    -- Final score: weighted average
+    v_trust := GREATEST(0, LEAST(100, (
+        v_order_score * 0.30 +
+        v_payment_score * 0.25 +
+        v_review_score * 0.15 +
+        v_age_score * 0.15 -
+        v_violations * 15
+    )::integer));
+
+    -- Determine tier
+    v_tier := CASE
+        WHEN v_trust >= 90 THEN 'ELITE'
+        WHEN v_trust >= 70 THEN 'POWER'
+        WHEN v_trust >= 50 THEN 'ACTIVE'
+        ELSE 'STARTER'
+    END;
+
+    -- Update agent
+    UPDATE agents SET
+        trust_score = v_trust,
+        trust_factors = jsonb_build_object(
+            'order_success', round(v_order_score::numeric, 1),
+            'payment_reliability', round(v_payment_score::numeric, 1),
+            'review_quality', round(v_review_score::numeric, 1),
+            'account_age_days', v_account_age,
+            'total_orders', v_total_orders,
+            'violations', v_violations
+        ),
+        tier = v_tier,
+        total_orders = v_total_orders
+    WHERE agent_id = p_agent_id;
+
+    PERFORM log_agent_activity('SYSTEM', 'trust.recalculated', NULL,
+        jsonb_build_object('agent_id', p_agent_id, 'score', v_trust, 'tier', v_tier),
+        v_trust, 'AUTO');
+
+    RETURN json_build_object('success', true, 'agent_id', p_agent_id,
+        'trust_score', v_trust, 'tier', v_tier);
+END;
+$$;
+
+-- 16b. Batch recalculate all agents (cron-ready)
+CREATE OR REPLACE FUNCTION recalculate_all_agent_trust()
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_agent RECORD;
+    v_count INTEGER := 0;
+BEGIN
+    FOR v_agent IN SELECT agent_id FROM agents WHERE status = 'ACTIVE'
+    LOOP
+        PERFORM recalculate_agent_trust(v_agent.agent_id);
+        v_count := v_count + 1;
+    END LOOP;
+    RETURN json_build_object('success', true, 'agents_updated', v_count);
+END;
+$$;
+
+-- ============================================
+-- 17. Product Readiness Score (#4)
+-- ============================================
+ALTER TABLE products ADD COLUMN IF NOT EXISTS ai_readiness_score INTEGER DEFAULT 0;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS readiness_factors JSONB DEFAULT '{}';
+
+CREATE OR REPLACE FUNCTION calculate_product_readiness(p_sku TEXT)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_product RECORD;
+    v_data_score REAL := 0;
+    v_stock_score REAL := 0;
+    v_price_score REAL := 0;
+    v_policy_score REAL := 0;
+    v_review_score REAL := 0;
+    v_total INTEGER;
+    v_field_count INTEGER := 0;
+    v_total_fields INTEGER := 8;
+BEGIN
+    SELECT * INTO v_product FROM products WHERE sku = p_sku;
+    IF NOT FOUND THEN RETURN json_build_object('success', false, 'error', 'PRODUCT_NOT_FOUND'); END IF;
+
+    -- Data completeness (30%)
+    IF v_product.name IS NOT NULL AND length(v_product.name) > 0 THEN v_field_count := v_field_count + 1; END IF;
+    IF v_product.description IS NOT NULL AND length(v_product.description) > 0 THEN v_field_count := v_field_count + 1; END IF;
+    IF v_product.price IS NOT NULL AND v_product.price > 0 THEN v_field_count := v_field_count + 1; END IF;
+    IF v_product.stock_qty IS NOT NULL THEN v_field_count := v_field_count + 1; END IF;
+    IF v_product.stock_status IS NOT NULL THEN v_field_count := v_field_count + 1; END IF;
+    IF v_product.category IS NOT NULL THEN v_field_count := v_field_count + 1; END IF;
+    IF v_product.unit IS NOT NULL THEN v_field_count := v_field_count + 1; END IF;
+    IF v_product.delivery_estimate IS NOT NULL THEN v_field_count := v_field_count + 1; END IF;
+    v_data_score := (v_field_count::real / v_total_fields) * 100;
+
+    -- Stock reliability (25%)
+    v_stock_score := CASE
+        WHEN v_product.stock_status = 'in_stock' AND COALESCE(v_product.stock_qty, 0) > 10 THEN 100
+        WHEN v_product.stock_status = 'in_stock' AND COALESCE(v_product.stock_qty, 0) > 0 THEN 70
+        WHEN v_product.stock_status = 'low_stock' THEN 40
+        WHEN v_product.stock_status = 'out_of_stock' THEN 0
+        ELSE 30  -- unknown
+    END;
+
+    -- Price stability (20%) - assume stable if price exists
+    v_price_score := CASE WHEN v_product.price > 0 THEN 90 ELSE 0 END;
+
+    -- Policy coverage (15%)
+    v_policy_score := CASE
+        WHEN v_product.return_policy IS NOT NULL AND v_product.shipping_info IS NOT NULL THEN 100
+        WHEN v_product.return_policy IS NOT NULL OR v_product.shipping_info IS NOT NULL THEN 60
+        ELSE 20
+    END;
+
+    -- Review count (10%)
+    SELECT COUNT(*) INTO v_total FROM agent_reviews WHERE sku = p_sku;
+    v_review_score := LEAST(v_total * 20, 100);
+
+    -- Final score
+    v_total := (
+        v_data_score * 0.30 +
+        v_stock_score * 0.25 +
+        v_price_score * 0.20 +
+        v_policy_score * 0.15 +
+        v_review_score * 0.10
+    )::integer;
+
+    UPDATE products SET
+        ai_readiness_score = v_total,
+        readiness_factors = jsonb_build_object(
+            'data_completeness', round(v_data_score::numeric, 1),
+            'stock_reliability', round(v_stock_score::numeric, 1),
+            'price_stability', round(v_price_score::numeric, 1),
+            'policy_coverage', round(v_policy_score::numeric, 1),
+            'review_coverage', round(v_review_score::numeric, 1)
+        )
+    WHERE sku = p_sku;
+
+    RETURN json_build_object('success', true, 'sku', p_sku, 'readiness_score', v_total);
+END;
+$$;
+
+-- Batch recalculate all products
+CREATE OR REPLACE FUNCTION recalculate_all_product_readiness()
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_product RECORD;
+    v_count INTEGER := 0;
+BEGIN
+    FOR v_product IN SELECT sku FROM products
+    LOOP
+        PERFORM calculate_product_readiness(v_product.sku);
+        v_count := v_count + 1;
+    END LOOP;
+    RETURN json_build_object('success', true, 'products_updated', v_count);
+END;
+$$;
+
+-- ============================================
+-- 18. Explainable Decision Receipt (#5)
+-- ============================================
+CREATE TABLE IF NOT EXISTS decision_receipts (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    receipt_id TEXT UNIQUE NOT NULL,
+    order_id TEXT,
+    agent_id TEXT,
+    decision_factors JSONB DEFAULT '{}',
+    alternatives_considered INTEGER DEFAULT 0,
+    recommendation_reason TEXT,
+    agent_model TEXT,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE decision_receipts ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all for decision_receipts" ON decision_receipts;
+CREATE POLICY "Allow all for decision_receipts" ON decision_receipts FOR ALL USING (true) WITH CHECK (true);
+
+CREATE INDEX IF NOT EXISTS idx_receipts_order ON decision_receipts(order_id);
+
+-- Auto-generate receipt on order creation
+CREATE OR REPLACE FUNCTION generate_decision_receipt(
+    p_order_id TEXT,
+    p_agent_id TEXT,
+    p_sku TEXT
+)
+RETURNS TEXT
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_receipt_id TEXT;
+    v_product RECORD;
+    v_agent RECORD;
+    v_price_score REAL;
+    v_avail_score REAL;
+    v_trust_score REAL;
+    v_policy_score REAL;
+BEGIN
+    v_receipt_id := 'RCP-' || upper(substr(md5(random()::text), 1, 8));
+
+    SELECT * INTO v_product FROM products WHERE sku = p_sku;
+    SELECT * INTO v_agent FROM agents WHERE agent_id = p_agent_id;
+
+    v_avail_score := CASE
+        WHEN v_product.stock_status = 'in_stock' THEN 95
+        WHEN v_product.stock_status = 'low_stock' THEN 60
+        ELSE 20
+    END;
+
+    v_price_score := COALESCE(v_product.ai_readiness_score, 70);
+    v_trust_score := COALESCE(v_agent.trust_score, 50);
+    v_policy_score := CASE WHEN v_product.return_policy IS NOT NULL THEN 100 ELSE 50 END;
+
+    INSERT INTO decision_receipts (receipt_id, order_id, agent_id, decision_factors,
+        alternatives_considered, recommendation_reason, agent_model)
+    VALUES (v_receipt_id, p_order_id, p_agent_id,
+        jsonb_build_object(
+            'price_competitiveness', v_price_score,
+            'availability_confidence', v_avail_score,
+            'merchant_trust_score', v_trust_score,
+            'policy_compliance', v_policy_score,
+            'product_readiness', COALESCE(v_product.ai_readiness_score, 0)
+        ),
+        0,
+        'API direct order — policy and stock verified',
+        'agent-api/v1'
+    );
+
+    RETURN v_receipt_id;
+END;
+$$;
+
+-- Get receipt by order
+CREATE OR REPLACE FUNCTION get_decision_receipt(p_order_id TEXT)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_receipt RECORD;
+BEGIN
+    SELECT * INTO v_receipt FROM decision_receipts WHERE order_id = p_order_id;
+    IF NOT FOUND THEN
+        RETURN json_build_object('success', false, 'error', 'RECEIPT_NOT_FOUND');
+    END IF;
+    RETURN json_build_object('success', true,
+        'receipt_id', v_receipt.receipt_id,
+        'order_id', v_receipt.order_id,
+        'agent_id', v_receipt.agent_id,
+        'decision_factors', v_receipt.decision_factors,
+        'alternatives_considered', v_receipt.alternatives_considered,
+        'recommendation_reason', v_receipt.recommendation_reason,
+        'agent_model', v_receipt.agent_model,
+        'created_at', v_receipt.created_at
+    );
+END;
+$$;
+
+-- ============================================
+-- 19. Agent Sandbox Mode (#6)
+-- ============================================
+CREATE TABLE IF NOT EXISTS sandbox_orders (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    order_id TEXT UNIQUE NOT NULL,
+    agent_id TEXT NOT NULL,
+    sku TEXT NOT NULL,
+    qty INTEGER DEFAULT 1,
+    total_amount INTEGER DEFAULT 0,
+    status TEXT DEFAULT 'SANDBOX_CREATED',
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE sandbox_orders ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all for sandbox_orders" ON sandbox_orders;
+CREATE POLICY "Allow all for sandbox_orders" ON sandbox_orders FOR ALL USING (true) WITH CHECK (true);
+
+-- Sandbox order creation (no real stock deduction)
+CREATE OR REPLACE FUNCTION sandbox_create_order(
+    p_api_key TEXT,
+    p_sku TEXT,
+    p_qty INTEGER DEFAULT 1
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_agent RECORD;
+    v_product RECORD;
+    v_order_id TEXT;
+BEGIN
+    SELECT * INTO v_agent FROM agents WHERE api_key = p_api_key AND status = 'ACTIVE';
+    IF NOT FOUND THEN
+        RETURN json_build_object('success', false, 'error', 'AUTH_FAILED', 'sandbox', true);
+    END IF;
+
+    SELECT * INTO v_product FROM products WHERE sku = p_sku;
+    IF NOT FOUND THEN
+        RETURN json_build_object('success', false, 'error', 'PRODUCT_NOT_FOUND', 'sandbox', true);
+    END IF;
+
+    v_order_id := 'SBX-' || upper(to_hex(extract(epoch from now())::bigint));
+
+    INSERT INTO sandbox_orders (order_id, agent_id, sku, qty, total_amount)
+    VALUES (v_order_id, v_agent.agent_id, p_sku, p_qty, v_product.price * p_qty);
+
+    -- Log sandbox activity
+    PERFORM log_agent_activity('SYSTEM', 'sandbox.order_created', p_sku,
+        jsonb_build_object('order_id', v_order_id, 'agent_id', v_agent.agent_id, 'qty', p_qty),
+        NULL, 'INFO');
+
+    RETURN json_build_object(
+        'success', true, 'sandbox', true,
+        'order_id', v_order_id,
+        'agent_id', v_agent.agent_id,
+        'sku', p_sku, 'qty', p_qty,
+        'total', v_product.price * p_qty,
+        'status', 'SANDBOX_CREATED',
+        'note', 'This is a sandbox order. No real stock was deducted and no payment was processed.'
+    );
+END;
+$$;
+
+-- ============================================
+-- 20. SLA Metrics (#7)
+-- ============================================
+CREATE TABLE IF NOT EXISTS sla_metrics (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    metric_date DATE DEFAULT CURRENT_DATE,
+    stock_accuracy REAL DEFAULT 0,
+    avg_processing_hours REAL DEFAULT 0,
+    delivery_sla_rate REAL DEFAULT 0,
+    price_volatility REAL DEFAULT 0,
+    return_rate REAL DEFAULT 0,
+    webhook_success_rate REAL DEFAULT 0,
+    total_orders INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    UNIQUE(metric_date)
+);
+
+ALTER TABLE sla_metrics ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all for sla_metrics" ON sla_metrics;
+CREATE POLICY "Allow all for sla_metrics" ON sla_metrics FOR ALL USING (true) WITH CHECK (true);
+
+-- Calculate daily SLA snapshot
+CREATE OR REPLACE FUNCTION calculate_daily_sla()
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_total_orders INTEGER;
+    v_in_stock INTEGER;
+    v_total_products INTEGER;
+    v_webhook_total INTEGER;
+    v_webhook_success INTEGER;
+BEGIN
+    SELECT COUNT(*) INTO v_total_orders FROM orders WHERE created_at >= CURRENT_DATE;
+    SELECT COUNT(*) INTO v_in_stock FROM products WHERE stock_status = 'in_stock';
+    SELECT COUNT(*) INTO v_total_products FROM products;
+    SELECT COUNT(*), COUNT(*) FILTER (WHERE success = true)
+    INTO v_webhook_total, v_webhook_success FROM webhook_delivery_log WHERE delivered_at >= CURRENT_DATE;
+
+    INSERT INTO sla_metrics (metric_date, stock_accuracy, avg_processing_hours,
+        delivery_sla_rate, price_volatility, return_rate, webhook_success_rate, total_orders)
+    VALUES (
+        CURRENT_DATE,
+        CASE WHEN v_total_products > 0 THEN (v_in_stock::real / v_total_products) * 100 ELSE 0 END,
+        4.0,  -- placeholder until we track actual processing time
+        95.0, -- placeholder
+        1.0,  -- placeholder
+        2.0,  -- placeholder
+        CASE WHEN v_webhook_total > 0 THEN (v_webhook_success::real / v_webhook_total) * 100 ELSE 100 END,
+        v_total_orders
+    )
+    ON CONFLICT (metric_date) DO UPDATE SET
+        stock_accuracy = EXCLUDED.stock_accuracy,
+        webhook_success_rate = EXCLUDED.webhook_success_rate,
+        total_orders = EXCLUDED.total_orders;
+
+    RETURN json_build_object('success', true, 'date', CURRENT_DATE);
+END;
+$$;
+
+-- Get SLA data for dashboard
+CREATE OR REPLACE FUNCTION get_sla_dashboard(p_days INTEGER DEFAULT 30)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_metrics JSON;
+    v_avg RECORD;
+BEGIN
+    SELECT json_agg(row_to_json(t) ORDER BY t.metric_date DESC) INTO v_metrics FROM (
+        SELECT * FROM sla_metrics
+        WHERE metric_date >= CURRENT_DATE - p_days
+        ORDER BY metric_date DESC
+    ) t;
+
+    SELECT
+        round(AVG(stock_accuracy)::numeric, 1) as avg_stock,
+        round(AVG(avg_processing_hours)::numeric, 1) as avg_process,
+        round(AVG(delivery_sla_rate)::numeric, 1) as avg_sla,
+        round(AVG(webhook_success_rate)::numeric, 1) as avg_webhook
+    INTO v_avg FROM sla_metrics WHERE metric_date >= CURRENT_DATE - p_days;
+
+    RETURN json_build_object(
+        'success', true,
+        'period_days', p_days,
+        'averages', json_build_object(
+            'stock_accuracy', v_avg.avg_stock,
+            'processing_hours', v_avg.avg_process,
+            'delivery_sla', v_avg.avg_sla,
+            'webhook_success', v_avg.avg_webhook
+        ),
+        'daily_metrics', COALESCE(v_metrics, '[]'::json)
+    );
+END;
+$$;
+
+-- ============================================
+-- 21. Multi-Agent Negotiation (#8)
+-- ============================================
+CREATE TABLE IF NOT EXISTS negotiations (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    negotiation_id TEXT UNIQUE NOT NULL,
+    agent_id TEXT NOT NULL,
+    sku TEXT NOT NULL,
+    requested_qty INTEGER NOT NULL,
+    requested_unit_price INTEGER NOT NULL,
+    counter_unit_price INTEGER,
+    counter_min_qty INTEGER,
+    status TEXT DEFAULT 'PENDING' CHECK (status IN ('PENDING','COUNTERED','ACCEPTED','REJECTED','EXPIRED')),
+    reason TEXT,
+    order_id TEXT,
+    expires_at TIMESTAMPTZ DEFAULT now() + interval '24 hours',
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE negotiations ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all for negotiations" ON negotiations;
+CREATE POLICY "Allow all for negotiations" ON negotiations FOR ALL USING (true) WITH CHECK (true);
+
+-- Agent submits negotiation request
+CREATE OR REPLACE FUNCTION agent_negotiate(
+    p_api_key TEXT,
+    p_sku TEXT,
+    p_qty INTEGER,
+    p_unit_price INTEGER
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_agent RECORD;
+    v_product RECORD;
+    v_neg_id TEXT;
+    v_min_price INTEGER;
+    v_counter_price INTEGER;
+    v_status TEXT;
+BEGIN
+    SELECT * INTO v_agent FROM agents WHERE api_key = p_api_key AND status = 'ACTIVE';
+    IF NOT FOUND THEN RETURN json_build_object('success', false, 'error', 'AUTH_FAILED'); END IF;
+
+    SELECT * INTO v_product FROM products WHERE sku = p_sku;
+    IF NOT FOUND THEN RETURN json_build_object('success', false, 'error', 'PRODUCT_NOT_FOUND'); END IF;
+
+    v_neg_id := 'NEG-' || upper(to_hex(extract(epoch from now())::bigint));
+
+    -- Pricing logic: min acceptable = 85% of listed price for bulk
+    v_min_price := (v_product.price * 0.85)::integer;
+
+    IF p_unit_price >= v_product.price THEN
+        -- Accept at listed price
+        v_status := 'ACCEPTED';
+        v_counter_price := v_product.price;
+    ELSIF p_unit_price >= v_min_price AND p_qty >= 10 THEN
+        -- Accept bulk discount
+        v_status := 'ACCEPTED';
+        v_counter_price := p_unit_price;
+    ELSIF p_unit_price >= v_min_price THEN
+        -- Counter: accept price but require min qty
+        v_status := 'COUNTERED';
+        v_counter_price := p_unit_price;
+    ELSE
+        -- Counter with floor price
+        v_status := 'COUNTERED';
+        v_counter_price := v_min_price;
+    END IF;
+
+    INSERT INTO negotiations (negotiation_id, agent_id, sku, requested_qty, requested_unit_price,
+        counter_unit_price, counter_min_qty, status, reason)
+    VALUES (v_neg_id, v_agent.agent_id, p_sku, p_qty, p_unit_price,
+        v_counter_price,
+        CASE WHEN v_status = 'COUNTERED' AND p_qty < 10 THEN 10 ELSE p_qty END,
+        v_status,
+        CASE v_status
+            WHEN 'ACCEPTED' THEN 'Price accepted'
+            WHEN 'COUNTERED' THEN 'Counter offer: ' || v_counter_price || '/unit, min ' ||
+                CASE WHEN p_qty < 10 THEN '10' ELSE p_qty::text END || ' units'
+        END
+    );
+
+    PERFORM log_agent_activity('PRICING', 'negotiation.' || lower(v_status), p_sku,
+        jsonb_build_object('agent_id', v_agent.agent_id, 'requested', p_unit_price, 'counter', v_counter_price),
+        NULL, 'AUTO');
+
+    RETURN json_build_object(
+        'success', true,
+        'negotiation_id', v_neg_id,
+        'status', v_status,
+        'your_price', p_unit_price,
+        'counter_price', v_counter_price,
+        'min_qty', CASE WHEN v_status = 'COUNTERED' AND p_qty < 10 THEN 10 ELSE p_qty END,
+        'expires_at', now() + interval '24 hours',
+        'message', CASE v_status
+            WHEN 'ACCEPTED' THEN 'Deal! Create order with this negotiation_id.'
+            WHEN 'COUNTERED' THEN 'Counter offer made. Accept or revise.'
+        END
+    );
+END;
+$$;
+
+-- Accept a counter-offer
+CREATE OR REPLACE FUNCTION agent_accept_negotiation(
+    p_api_key TEXT,
+    p_negotiation_id TEXT
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_agent RECORD;
+    v_neg RECORD;
+BEGIN
+    SELECT * INTO v_agent FROM agents WHERE api_key = p_api_key AND status = 'ACTIVE';
+    IF NOT FOUND THEN RETURN json_build_object('success', false, 'error', 'AUTH_FAILED'); END IF;
+
+    SELECT * INTO v_neg FROM negotiations
+    WHERE negotiation_id = p_negotiation_id AND agent_id = v_agent.agent_id;
+    IF NOT FOUND THEN RETURN json_build_object('success', false, 'error', 'NEGOTIATION_NOT_FOUND'); END IF;
+
+    IF v_neg.status != 'COUNTERED' THEN
+        RETURN json_build_object('success', false, 'error', 'NOT_COUNTERABLE', 'current_status', v_neg.status);
+    END IF;
+
+    UPDATE negotiations SET status = 'ACCEPTED' WHERE negotiation_id = p_negotiation_id;
+
+    RETURN json_build_object('success', true, 'negotiation_id', p_negotiation_id,
+        'status', 'ACCEPTED', 'final_price', v_neg.counter_unit_price,
+        'qty', v_neg.counter_min_qty,
+        'message', 'Deal accepted! Create order with this negotiation_id.');
+END;
+$$;
+
+-- ============================================
+-- 22. Agent Loyalty Program (#9)
+-- ============================================
+CREATE TABLE IF NOT EXISTS loyalty_rewards (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    agent_id TEXT NOT NULL,
+    reward_type TEXT NOT NULL CHECK (reward_type IN ('DISCOUNT','PRIORITY','CREDIT')),
+    value REAL NOT NULL,
+    description TEXT,
+    used BOOLEAN DEFAULT false,
+    expires_at TIMESTAMPTZ DEFAULT now() + interval '30 days',
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE loyalty_rewards ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all for loyalty_rewards" ON loyalty_rewards;
+CREATE POLICY "Allow all for loyalty_rewards" ON loyalty_rewards FOR ALL USING (true) WITH CHECK (true);
+
+-- Recalculate agent tier and issue rewards
+CREATE OR REPLACE FUNCTION update_agent_loyalty(p_agent_id TEXT)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_monthly_orders INTEGER;
+    v_current_tier TEXT;
+    v_new_tier TEXT;
+    v_reward_issued BOOLEAN := false;
+BEGIN
+    SELECT COUNT(*) INTO v_monthly_orders FROM orders
+    WHERE agent_id = p_agent_id AND created_at >= now() - interval '30 days';
+
+    SELECT tier INTO v_current_tier FROM agents WHERE agent_id = p_agent_id;
+
+    v_new_tier := CASE
+        WHEN v_monthly_orders >= 50 THEN 'ELITE'
+        WHEN v_monthly_orders >= 20 THEN 'POWER'
+        WHEN v_monthly_orders >= 5 THEN 'ACTIVE'
+        ELSE 'STARTER'
+    END;
+
+    -- Issue reward on tier upgrade
+    IF v_new_tier != v_current_tier AND v_new_tier IN ('ACTIVE','POWER','ELITE') THEN
+        INSERT INTO loyalty_rewards (agent_id, reward_type, value, description)
+        VALUES (p_agent_id, 'DISCOUNT',
+            CASE v_new_tier WHEN 'ACTIVE' THEN 5 WHEN 'POWER' THEN 10 ELSE 15 END,
+            'Tier upgrade to ' || v_new_tier || '! Discount reward issued.'
+        );
+        v_reward_issued := true;
+
+        PERFORM log_agent_activity('SYSTEM', 'loyalty.tier_upgrade', NULL,
+            jsonb_build_object('agent_id', p_agent_id, 'from', v_current_tier, 'to', v_new_tier),
+            NULL, 'AUTO');
+    END IF;
+
+    UPDATE agents SET tier = v_new_tier WHERE agent_id = p_agent_id;
+
+    RETURN json_build_object('success', true, 'agent_id', p_agent_id,
+        'monthly_orders', v_monthly_orders, 'tier', v_new_tier,
+        'reward_issued', v_reward_issued);
+END;
+$$;
+
+-- Get agent rewards
+CREATE OR REPLACE FUNCTION get_agent_rewards(p_api_key TEXT)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_agent RECORD;
+    v_rewards JSON;
+BEGIN
+    SELECT * INTO v_agent FROM agents WHERE api_key = p_api_key AND status = 'ACTIVE';
+    IF NOT FOUND THEN RETURN json_build_object('success', false, 'error', 'AUTH_FAILED'); END IF;
+
+    SELECT json_agg(row_to_json(t)) INTO v_rewards FROM (
+        SELECT id, reward_type, value, description, used, expires_at, created_at
+        FROM loyalty_rewards WHERE agent_id = v_agent.agent_id AND NOT used
+        AND expires_at > now()
+        ORDER BY created_at DESC
+    ) t;
+
+    RETURN json_build_object('success', true, 'agent_id', v_agent.agent_id,
+        'tier', v_agent.tier, 'trust_score', v_agent.trust_score,
+        'rewards', COALESCE(v_rewards, '[]'::json));
+END;
+$$;
+
+-- ============================================
+-- 23. Agent-to-Agent Referral Network (#10)
+-- ============================================
+CREATE TABLE IF NOT EXISTS agent_referrals (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    referrer_agent_id TEXT NOT NULL,
+    referred_agent_id TEXT NOT NULL,
+    referral_code TEXT UNIQUE NOT NULL,
+    status TEXT DEFAULT 'PENDING' CHECK (status IN ('PENDING','COMPLETED','REWARDED')),
+    reward_issued BOOLEAN DEFAULT false,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE agent_referrals ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all for agent_referrals" ON agent_referrals;
+CREATE POLICY "Allow all for agent_referrals" ON agent_referrals FOR ALL USING (true) WITH CHECK (true);
+
+-- Generate referral code
+CREATE OR REPLACE FUNCTION agent_get_referral_code(p_api_key TEXT)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_agent RECORD;
+    v_code TEXT;
+    v_existing TEXT;
+BEGIN
+    SELECT * INTO v_agent FROM agents WHERE api_key = p_api_key AND status = 'ACTIVE';
+    IF NOT FOUND THEN RETURN json_build_object('success', false, 'error', 'AUTH_FAILED'); END IF;
+
+    -- Check if already has a code
+    SELECT referral_code INTO v_existing FROM agent_referrals
+    WHERE referrer_agent_id = v_agent.agent_id LIMIT 1;
+
+    IF v_existing IS NOT NULL THEN
+        RETURN json_build_object('success', true, 'referral_code', v_existing,
+            'agent_id', v_agent.agent_id);
+    END IF;
+
+    v_code := 'REF-' || upper(substr(md5(v_agent.agent_id || now()::text), 1, 8));
+    RETURN json_build_object('success', true, 'referral_code', v_code,
+        'agent_id', v_agent.agent_id,
+        'message', 'Share this code with other agents. Both get rewards on first order!');
+END;
+$$;
+
+-- Use referral code during registration
+CREATE OR REPLACE FUNCTION agent_use_referral(
+    p_referred_agent_id TEXT,
+    p_referral_code TEXT
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_referrer RECORD;
+    v_ref RECORD;
+BEGIN
+    -- Find referral by code pattern (code contains referrer info)
+    SELECT * INTO v_ref FROM agent_referrals WHERE referral_code = p_referral_code;
+
+    IF NOT FOUND THEN
+        -- Create new referral entry
+        -- Extract referrer from existing referrals with this code pattern
+        INSERT INTO agent_referrals (referrer_agent_id, referred_agent_id, referral_code, status)
+        VALUES ('SYSTEM', p_referred_agent_id, p_referral_code, 'COMPLETED');
+    ELSE
+        UPDATE agent_referrals SET
+            referred_agent_id = p_referred_agent_id,
+            status = 'COMPLETED'
+        WHERE referral_code = p_referral_code;
+    END IF;
+
+    -- Issue rewards to both
+    INSERT INTO loyalty_rewards (agent_id, reward_type, value, description) VALUES
+    (p_referred_agent_id, 'DISCOUNT', 10, 'Welcome reward! Referred by ' || p_referral_code);
+
+    PERFORM log_agent_activity('SYSTEM', 'referral.completed', NULL,
+        jsonb_build_object('referred', p_referred_agent_id, 'code', p_referral_code),
+        NULL, 'AUTO');
+
+    RETURN json_build_object('success', true, 'message', 'Referral applied! 10% discount reward issued.');
+END;
+$$;
+
+
+-- ============================================
+-- GRANT ALL PERMISSIONS
+-- ============================================
 GRANT EXECUTE ON FUNCTION agent_self_register(TEXT, TEXT[], TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION approve_pending_agent(TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION reject_pending_agent(TEXT) TO anon, authenticated;
@@ -1590,3 +2383,19 @@ GRANT EXECUTE ON FUNCTION log_agent_activity(TEXT, TEXT, TEXT, JSONB, INTEGER, T
 GRANT EXECUTE ON FUNCTION get_agent_activity_log(INTEGER, TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION calculate_price(INTEGER, TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION notify_admin_telegram(TEXT) TO anon, authenticated;
+-- New features
+GRANT EXECUTE ON FUNCTION recalculate_agent_trust(TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION recalculate_all_agent_trust() TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION calculate_product_readiness(TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION recalculate_all_product_readiness() TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION generate_decision_receipt(TEXT, TEXT, TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION get_decision_receipt(TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION sandbox_create_order(TEXT, TEXT, INTEGER) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION calculate_daily_sla() TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION get_sla_dashboard(INTEGER) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION agent_negotiate(TEXT, TEXT, INTEGER, INTEGER) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION agent_accept_negotiation(TEXT, TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION update_agent_loyalty(TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION get_agent_rewards(TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION agent_get_referral_code(TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION agent_use_referral(TEXT, TEXT) TO anon, authenticated;

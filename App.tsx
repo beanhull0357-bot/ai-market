@@ -12,7 +12,9 @@ import { AgentPlayground } from './pages/AgentPlayground';
 import { AgentDocs } from './pages/AgentDocs';
 import { MerchantPolicies } from './pages/MerchantPolicies';
 import { AIOps } from './pages/AIOps';
-import { Terminal, Shield, Cpu, Globe, Package, LogIn, LogOut, User, Key, FileCheck, Zap, BookOpen, Bot } from 'lucide-react';
+import { LiveFeed } from './pages/LiveFeed';
+import { SLADashboard } from './pages/SLADashboard';
+import { Terminal, Shield, Cpu, Globe, Package, LogIn, LogOut, User, Key, FileCheck, Zap, BookOpen, Bot, Radio, BarChart3 } from 'lucide-react';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -101,6 +103,8 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <NavLink to="/playground" icon={<Zap size={16} />} label={t('playground.navTitle')} />
           <NavLink to="/agent/docs" icon={<BookOpen size={16} />} label="Docs" />
           <NavLink to="/ai-ops" icon={<Bot size={16} />} label="AI Ops" />
+          <NavLink to="/live" icon={<Radio size={16} />} label="Live" />
+          <NavLink to="/sla" icon={<BarChart3 size={16} />} label="SLA" />
           <LanguageToggle />
           <UserStatus />
         </div>
@@ -134,6 +138,8 @@ export default function App() {
                   <Route path="/policies/returns" element={<MerchantPolicies />} />
                   <Route path="/policies/merchant" element={<MerchantPolicies />} />
                   <Route path="/ai-ops" element={<ProtectedRoute><AIOps /></ProtectedRoute>} />
+                  <Route path="/live" element={<LiveFeed />} />
+                  <Route path="/sla" element={<SLADashboard />} />
                 </Routes>
               </Layout>
             } />

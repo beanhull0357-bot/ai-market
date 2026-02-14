@@ -1,0 +1,259 @@
+{
+    "name": "jsonmart-commerce",
+    "version": "1.0.0",
+    "description": "JSONMart Agent-Native Commerce — MCP Server for AI agents to search products, create orders, check prices, and manage operations.",
+    "server": {
+        "command": "npx",
+        "args": [
+            "-y",
+            "@anthropic-ai/mcp-server-fetch"
+        ],
+        "env": {}
+    },
+    "tools": [
+        {
+            "name": "jsonmart_search_products",
+            "description": "Search the JSONMart product catalog. Returns structured product data including SKU, name, price, stock status, and AI readiness score.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Search term (product name, category, or SKU)"
+                    },
+                    "category": {
+                        "type": "string",
+                        "description": "Filter by category: OFFICE, CONSUMABLES, COFFEE, DRINKS, SNACKS"
+                    }
+                }
+            },
+            "endpoint": "POST /rest/v1/rpc/get_product_feed",
+            "supabase_rpc": "get_product_feed"
+        },
+        {
+            "name": "jsonmart_get_price_quote",
+            "description": "Get an instant price quote for a product. Returns calculated price with margin, rounding, and category-specific pricing rules applied.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "cost": {
+                        "type": "integer",
+                        "description": "Cost price in KRW"
+                    },
+                    "category": {
+                        "type": "string",
+                        "description": "Product category for pricing rules"
+                    }
+                },
+                "required": [
+                    "cost"
+                ]
+            },
+            "supabase_rpc": "calculate_price"
+        },
+        {
+            "name": "jsonmart_create_order",
+            "description": "Create a purchase order for a product. Requires agent API key authentication. Deducts stock automatically and generates a decision receipt.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "api_key": {
+                        "type": "string",
+                        "description": "Agent API key for authentication"
+                    },
+                    "sku": {
+                        "type": "string",
+                        "description": "Product SKU to order"
+                    },
+                    "qty": {
+                        "type": "integer",
+                        "description": "Quantity to order",
+                        "default": 1
+                    }
+                },
+                "required": [
+                    "api_key",
+                    "sku"
+                ]
+            },
+            "supabase_rpc": "agent_create_order"
+        },
+        {
+            "name": "jsonmart_sandbox_order",
+            "description": "Create a TEST order (no real stock deduction, no payment). Use this to test the integration before going live.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "api_key": {
+                        "type": "string",
+                        "description": "Agent API key"
+                    },
+                    "sku": {
+                        "type": "string",
+                        "description": "Product SKU"
+                    },
+                    "qty": {
+                        "type": "integer",
+                        "description": "Quantity",
+                        "default": 1
+                    }
+                },
+                "required": [
+                    "api_key",
+                    "sku"
+                ]
+            },
+            "supabase_rpc": "sandbox_create_order"
+        },
+        {
+            "name": "jsonmart_negotiate_price",
+            "description": "Submit a price negotiation for bulk orders. The system will automatically accept, counter, or reject based on pricing rules.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "api_key": {
+                        "type": "string",
+                        "description": "Agent API key"
+                    },
+                    "sku": {
+                        "type": "string",
+                        "description": "Product SKU to negotiate"
+                    },
+                    "qty": {
+                        "type": "integer",
+                        "description": "Desired quantity"
+                    },
+                    "unit_price": {
+                        "type": "integer",
+                        "description": "Proposed unit price in KRW"
+                    }
+                },
+                "required": [
+                    "api_key",
+                    "sku",
+                    "qty",
+                    "unit_price"
+                ]
+            },
+            "supabase_rpc": "agent_negotiate"
+        },
+        {
+            "name": "jsonmart_get_decision_receipt",
+            "description": "Retrieve the explainable AI decision receipt for an order, showing why the purchase decision was made.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "order_id": {
+                        "type": "string",
+                        "description": "Order ID (e.g., ORD-xxx)"
+                    }
+                },
+                "required": [
+                    "order_id"
+                ]
+            },
+            "supabase_rpc": "get_decision_receipt"
+        },
+        {
+            "name": "jsonmart_get_sla",
+            "description": "Get JSONMart's SLA performance metrics including stock accuracy, delivery rate, webhook reliability, and processing times.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "days": {
+                        "type": "integer",
+                        "description": "Number of days to look back (default: 30)",
+                        "default": 30
+                    }
+                }
+            },
+            "supabase_rpc": "get_sla_dashboard"
+        },
+        {
+            "name": "jsonmart_get_rewards",
+            "description": "Check agent loyalty rewards and tier status. Returns available discounts, credits, and current tier.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "api_key": {
+                        "type": "string",
+                        "description": "Agent API key"
+                    }
+                },
+                "required": [
+                    "api_key"
+                ]
+            },
+            "supabase_rpc": "get_agent_rewards"
+        },
+        {
+            "name": "jsonmart_submit_review",
+            "description": "Submit a structured review for a purchased product. Reviews are KPI-based (delivery, accuracy, packaging).",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "api_key": {
+                        "type": "string",
+                        "description": "Agent API key"
+                    },
+                    "sku": {
+                        "type": "string",
+                        "description": "Product SKU"
+                    },
+                    "review_text": {
+                        "type": "string",
+                        "description": "Review content"
+                    },
+                    "delivery_score": {
+                        "type": "number",
+                        "description": "Delivery rating 0-5"
+                    },
+                    "accuracy_score": {
+                        "type": "number",
+                        "description": "Product accuracy rating 0-5"
+                    }
+                },
+                "required": [
+                    "api_key",
+                    "sku",
+                    "review_text",
+                    "delivery_score",
+                    "accuracy_score"
+                ]
+            },
+            "supabase_rpc": "agent_create_review"
+        }
+    ],
+    "resources": [
+        {
+            "name": "product_catalog",
+            "description": "Full JSONMart product catalog with 50+ B2B office/consumable products",
+            "uri": "jsonmart://catalog",
+            "mimeType": "application/json"
+        },
+        {
+            "name": "agent_activity_log",
+            "description": "Real-time log of all AI agent decisions and operations",
+            "uri": "jsonmart://activity-log",
+            "mimeType": "application/json"
+        },
+        {
+            "name": "sla_metrics",
+            "description": "Service Level Agreement performance data",
+            "uri": "jsonmart://sla",
+            "mimeType": "application/json"
+        }
+    ],
+    "prompts": [
+        {
+            "name": "purchase_workflow",
+            "description": "Guide an agent through the complete purchase workflow on JSONMart",
+            "template": "You are purchasing products from JSONMart. Steps: 1) Search products with jsonmart_search_products, 2) Get price quote with jsonmart_get_price_quote, 3) For bulk orders, negotiate with jsonmart_negotiate_price, 4) Create order with jsonmart_create_order, 5) Submit review with jsonmart_submit_review."
+        },
+        {
+            "name": "sandbox_test",
+            "description": "Test the JSONMart integration without real purchases",
+            "template": "Test the JSONMart API: 1) Search for products, 2) Create a sandbox order with jsonmart_sandbox_order (no real charges), 3) Verify the response. Report any issues."
+        }
+    ]
+}
