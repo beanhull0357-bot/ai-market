@@ -97,7 +97,7 @@ export function LiveFeed() {
         / (activities.filter(a => a.confidence != null).length || 1);
 
     return (
-        <div style={{ minHeight: '100vh', background: '#09090b', color: '#e4e4e7', fontFamily: "'Inter', -apple-system, sans-serif" }}>
+        <div style={{ minHeight: '100vh', background: 'var(--bg-root)', color: 'var(--text-secondary)', fontFamily: 'var(--font-sans)' }}>
 
             {/* ━━━ Hero ━━━ */}
             <div style={{
@@ -131,7 +131,7 @@ export function LiveFeed() {
 
             {/* ━━━ Bento Stats ━━━ */}
             <div style={{ maxWidth: 800, margin: '0 auto', padding: '0 20px 20px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
+                <div className="grid-responsive-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
                     {[
                         { label: 'Total Events', value: activities.length, suffix: '', color: '#22d3ee' },
                         { label: 'Active Roles', value: Object.keys(roleCounts).length, suffix: '', color: '#a78bfa' },
@@ -193,9 +193,16 @@ export function LiveFeed() {
                     </div>
 
                     {loading ? (
-                        <div style={{ padding: 60, textAlign: 'center', color: '#52525b' }}>
-                            <div style={{ width: 24, height: 24, border: '2px solid #27272a', borderTop: '2px solid #22d3ee', borderRadius: '50%', margin: '0 auto', animation: 'spin 0.8s linear infinite' }} />
-                            <p style={{ marginTop: 12, fontSize: 13 }}>Loading...</p>
+                        <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            {[...Array(6)].map((_, i) => (
+                                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                    <div className="skeleton" style={{ width: 32, height: 32, borderRadius: 10, flexShrink: 0 }} />
+                                    <div style={{ flex: 1 }}>
+                                        <div className="skeleton" style={{ height: 10, width: '30%', marginBottom: 6 }} />
+                                        <div className="skeleton" style={{ height: 14, width: '70%' }} />
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     ) : activities.length === 0 ? (
                         <div style={{ padding: 60, textAlign: 'center', color: '#52525b' }}>
@@ -261,7 +268,6 @@ export function LiveFeed() {
             </div>
 
             <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700;800&display=swap');
         @keyframes livePulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
         @keyframes spin { to { transform:rotate(360deg); } }
         @keyframes cardSlideUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }

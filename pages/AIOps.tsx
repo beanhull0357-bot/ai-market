@@ -163,7 +163,7 @@ function StatsCards({ activities }: { activities: ActivityItem[] }) {
     ];
 
     return (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
+        <div className="grid-responsive-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
             {cards.map((c) => (
                 <div key={c.label} style={{
                     background: '#111827', border: '1px solid #1f2937', borderRadius: 8, padding: '16px 20px',

@@ -118,7 +118,7 @@ export function SLADashboard() {
     const overall = ((avg.stock_accuracy || 0) + (avg.delivery_sla || 0) + (avg.webhook_success || 0)) / 3;
 
     return (
-        <div style={{ minHeight: '100vh', background: '#09090b', color: '#e4e4e7', fontFamily: "'Inter', -apple-system, sans-serif" }}>
+        <div style={{ minHeight: '100vh', background: 'var(--bg-root)', color: 'var(--text-secondary)', fontFamily: 'var(--font-sans)' }}>
 
             {/* ━━━ Header ━━━ */}
             <div style={{ position: 'relative', padding: '48px 24px 24px', overflow: 'hidden' }}>
@@ -157,15 +157,18 @@ export function SLADashboard() {
             </div>
 
             {loading ? (
-                <div style={{ padding: 80, textAlign: 'center', color: '#52525b' }}>
-                    <div style={{ width: 28, height: 28, border: '2.5px solid #27272a', borderTop: '2.5px solid #34d399', borderRadius: '50%', margin: '0 auto', animation: 'spin 0.8s linear infinite' }} />
-                    <p style={{ marginTop: 14, fontSize: 13 }}>Calculating metrics...</p>
+                <div style={{ maxWidth: 900, margin: '0 auto', padding: '0 20px 60px' }}>
+                    <div className="grid-responsive-bento" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 32 }}>
+                        <div className="skeleton" style={{ gridColumn: 'span 2', gridRow: 'span 2', height: 260, borderRadius: 20 }} />
+                        {[...Array(4)].map((_, i) => <div key={i} className="skeleton" style={{ height: 120, borderRadius: 16 }} />)}
+                    </div>
+                    <div className="skeleton" style={{ height: 300, borderRadius: 20 }} />
                 </div>
             ) : (
                 <div style={{ maxWidth: 900, margin: '0 auto', padding: '0 20px 60px' }}>
 
                     {/* ━━━ Bento Grid ━━━ */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gridTemplateRows: 'auto auto', gap: 12, marginBottom: 32 }}>
+                    <div className="grid-responsive-bento" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gridTemplateRows: 'auto auto', gap: 12, marginBottom: 32 }}>
 
                         {/* Big overall card — spans 2 */}
                         <div style={{
@@ -241,7 +244,6 @@ export function SLADashboard() {
             )}
 
             <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700;800&display=swap');
         @keyframes spin { to { transform:rotate(360deg); } }
         @keyframes cardSlideUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
       `}</style>

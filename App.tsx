@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { HashRouter, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { Landing } from './pages/Landing';
 import { AgentConsole } from './pages/AgentConsole';
@@ -14,41 +14,133 @@ import { MerchantPolicies } from './pages/MerchantPolicies';
 import { AIOps } from './pages/AIOps';
 import { LiveFeed } from './pages/LiveFeed';
 import { SLADashboard } from './pages/SLADashboard';
-import { Terminal, Shield, Cpu, Globe, Package, LogIn, LogOut, User, Key, FileCheck, Zap, BookOpen, Bot, Radio, BarChart3 } from 'lucide-react';
+import { Terminal, Shield, Cpu, Globe, Package, LogIn, LogOut, User, Key, FileCheck, Zap, BookOpen, Bot, Radio, BarChart3, ChevronDown, Menu, X } from 'lucide-react';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
-const NavLink: React.FC<{ to: string; icon: React.ReactNode; label: string }> = ({ to, icon, label }) => {
+/* ━━━ Toast System ━━━ */
+interface Toast { id: number; type: 'success' | 'error' | 'info'; message: string; }
+const ToastContext = React.createContext<{
+  addToast: (type: Toast['type'], message: string) => void;
+}>({ addToast: () => { } });
+
+export const useToast = () => React.useContext(ToastContext);
+
+function ToastProvider({ children }: { children: React.ReactNode }) {
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const addToast = (type: Toast['type'], message: string) => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, type, message }]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3500);
+  };
+  return (
+    <ToastContext.Provider value={{ addToast }}>
+      {children}
+      <div className="toast-container">
+        {toasts.map(t => (
+          <div key={t.id} className={`toast toast-${t.type}`}>
+            {t.type === 'success' && '✓'}
+            {t.type === 'error' && '✕'}
+            {t.type === 'info' && 'ℹ'}
+            {t.message}
+          </div>
+        ))}
+      </div>
+    </ToastContext.Provider>
+  );
+}
+
+/* ━━━ Nav Group Dropdown ━━━ */
+interface NavItem { to: string; icon: React.ReactNode; label: string; }
+interface NavGroupProps { label: string; icon: React.ReactNode; items: NavItem[]; }
+
+function NavGroup({ label, icon, items }: NavGroupProps) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const location = useLocation();
+  const isGroupActive = items.some(i => location.pathname === i.to);
+
+  useEffect(() => {
+    const close = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, []);
+
+  return (
+    <div className="nav-group" ref={ref}>
+      <button
+        className={`nav-group-btn ${isGroupActive ? 'active' : ''}`}
+        onClick={() => setOpen(!open)}
+      >
+        {icon}
+        {label}
+        <ChevronDown size={10} style={{ transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'none' }} />
+      </button>
+      {open && (
+        <div className="nav-dropdown">
+          {items.map(i => (
+            <Link
+              key={i.to}
+              to={i.to}
+              className={location.pathname === i.to ? 'active-link' : ''}
+              onClick={() => setOpen(false)}
+            >
+              {i.icon}
+              {i.label}
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ━━━ Direct Nav Link ━━━ */
+function NavLink({ to, icon, label }: NavItem) {
   const location = useLocation();
   const isActive = location.pathname === to;
   return (
     <Link
       to={to}
-      className={`flex items-center gap-2 px-4 py-2 text-sm rounded transition-colors ${isActive
-        ? 'bg-gray-800 text-white'
-        : 'text-gray-500 hover:text-gray-300 hover:bg-gray-900'
-        }`}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 6,
+        padding: '6px 12px', fontSize: 12, fontWeight: 600,
+        color: isActive ? 'var(--text-primary)' : 'var(--text-tertiary)',
+        background: isActive ? 'var(--bg-card-hover)' : 'transparent',
+        borderRadius: 'var(--radius-sm)', textDecoration: 'none',
+        transition: 'all 150ms',
+      }}
     >
       {icon}
-      <span>{label}</span>
+      {label}
     </Link>
   );
 }
 
+/* ━━━ Language Toggle ━━━ */
 const LanguageToggle: React.FC = () => {
   const { language, setLanguage } = useLanguage();
   return (
     <button
       onClick={() => setLanguage(language === 'en' ? 'ko' : 'en')}
-      className="flex items-center gap-1 px-3 py-1.5 text-xs font-bold border border-gray-700 rounded text-gray-400 hover:text-white hover:border-gray-500 transition-colors"
+      style={{
+        display: 'flex', alignItems: 'center', gap: 4,
+        padding: '4px 10px', fontSize: 11, fontWeight: 700,
+        border: '1px solid var(--border-medium)', borderRadius: 'var(--radius-sm)',
+        color: 'var(--text-tertiary)', background: 'transparent', cursor: 'pointer',
+        transition: 'all 150ms',
+      }}
     >
-      <Globe size={12} />
+      <Globe size={11} />
       {language === 'en' ? 'EN' : 'KO'}
     </button>
   );
 };
 
+/* ━━━ User Status ━━━ */
 const UserStatus: React.FC = () => {
   const { user, signOut } = useAuth();
   const { t } = useLanguage();
@@ -58,24 +150,35 @@ const UserStatus: React.FC = () => {
     return (
       <button
         onClick={() => navigate('/auth')}
-        className="flex items-center gap-1 px-3 py-1.5 text-xs font-bold border border-terminal-green rounded text-terminal-green hover:bg-terminal-green hover:text-black transition-colors"
+        style={{
+          display: 'flex', alignItems: 'center', gap: 4,
+          padding: '5px 12px', fontSize: 11, fontWeight: 700,
+          border: '1px solid var(--accent-green)', borderRadius: 'var(--radius-sm)',
+          color: 'var(--accent-green)', background: 'transparent', cursor: 'pointer',
+          transition: 'all 150ms',
+        }}
       >
         <LogIn size={12} />
         {t('auth.signIn')}
       </button>
     );
   }
-
   return (
-    <div className="flex items-center gap-2">
-      <span className="flex items-center gap-1 text-xs text-gray-400">
-        <User size={12} />
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--text-tertiary)' }}>
+        <User size={11} />
         {user.email.split('@')[0]}
       </span>
       <button
         onClick={signOut}
-        className="flex items-center gap-1 px-2 py-1 text-xs text-gray-500 hover:text-red-400 transition-colors"
+        style={{
+          display: 'flex', alignItems: 'center', padding: '4px',
+          border: 'none', background: 'transparent', cursor: 'pointer',
+          color: 'var(--text-muted)', transition: 'color 150ms',
+        }}
         title={t('auth.signOut')}
+        onMouseEnter={e => (e.currentTarget.style.color = 'var(--accent-red)')}
+        onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
       >
         <LogOut size={12} />
       </button>
@@ -83,68 +186,175 @@ const UserStatus: React.FC = () => {
   );
 };
 
+/* ━━━ Mobile Menu ━━━ */
+function MobileMenu({ onClose }: { onClose: () => void }) {
+  const location = useLocation();
+  const groups = [
+    {
+      label: 'Commerce', items: [
+        { to: '/', icon: <Terminal size={15} />, label: 'Home' },
+        { to: '/inventory', icon: <Package size={15} />, label: 'Inventory' },
+        { to: '/admin-queue', icon: <Shield size={15} />, label: 'Admin Queue' },
+      ],
+    },
+    {
+      label: 'Agents', items: [
+        { to: '/agent-console', icon: <Cpu size={15} />, label: 'Agent Console' },
+        { to: '/agents', icon: <Key size={15} />, label: 'Agent Manager' },
+        { to: '/policies', icon: <FileCheck size={15} />, label: 'Policies' },
+        { to: '/playground', icon: <Zap size={15} />, label: 'Playground' },
+        { to: '/agent/docs', icon: <BookOpen size={15} />, label: 'Docs' },
+      ],
+    },
+    {
+      label: 'AI Operations', items: [
+        { to: '/ai-ops', icon: <Bot size={15} />, label: 'AI Ops' },
+        { to: '/live', icon: <Radio size={15} />, label: 'Live Feed' },
+        { to: '/sla', icon: <BarChart3 size={15} />, label: 'SLA Dashboard' },
+      ],
+    },
+  ];
+
+  return (
+    <>
+      <div className="mobile-overlay" onClick={onClose} />
+      <div className="mobile-menu">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)' }}>
+            <span style={{ color: 'var(--accent-green)' }}>{'{'}</span> JSONMart <span style={{ color: 'var(--accent-green)' }}>{'}'}</span>
+          </span>
+          <button onClick={onClose} style={{ padding: 4, border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer' }}>
+            <X size={20} />
+          </button>
+        </div>
+        {groups.map(g => (
+          <div key={g.label} className="mobile-menu-group">
+            <div className="mobile-menu-group-label">{g.label}</div>
+            {g.items.map(i => (
+              <Link key={i.to} to={i.to} className={location.pathname === i.to ? 'active-link' : ''} onClick={onClose}>
+                {i.icon} {i.label}
+              </Link>
+            ))}
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+/* ━━━ Layout ━━━ */
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { t } = useLanguage();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const location = useLocation();
+
+  // Close mobile menu on route change
+  useEffect(() => { setMobileOpen(false); }, [location.pathname]);
+
+  const commerceItems: NavItem[] = [
+    { to: '/', icon: <Terminal size={13} />, label: t('nav.humanMode') },
+    { to: '/inventory', icon: <Package size={13} />, label: t('nav.inventory') },
+    { to: '/admin-queue', icon: <Shield size={13} />, label: t('nav.adminQueue') },
+  ];
+  const agentItems: NavItem[] = [
+    { to: '/agent-console', icon: <Cpu size={13} />, label: t('nav.agentConsole') },
+    { to: '/agents', icon: <Key size={13} />, label: t('agents.title') },
+    { to: '/policies', icon: <FileCheck size={13} />, label: t('policies.title') },
+    { to: '/playground', icon: <Zap size={13} />, label: t('playground.navTitle') },
+    { to: '/agent/docs', icon: <BookOpen size={13} />, label: 'Docs' },
+  ];
+  const aiItems: NavItem[] = [
+    { to: '/ai-ops', icon: <Bot size={13} />, label: 'AI Ops' },
+    { to: '/live', icon: <Radio size={13} />, label: 'Live' },
+    { to: '/sla', icon: <BarChart3 size={13} />, label: 'SLA' },
+  ];
+
   return (
-    <div className="flex flex-col min-h-screen">
-      <nav className="h-14 border-b border-gray-900 bg-black/50 backdrop-blur fixed top-0 w-full z-50 flex items-center justify-between px-6">
-        <div className="flex items-center gap-2 font-bold text-white tracking-tighter">
-          <span className="text-terminal-green">{`{`}</span>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+      {/* ━━━ Navbar ━━━ */}
+      <nav style={{
+        height: 52, borderBottom: '1px solid var(--border-subtle)',
+        background: 'rgba(9,9,11,0.85)', backdropFilter: 'blur(12px)',
+        position: 'fixed', top: 0, width: '100%', zIndex: 50,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '0 20px',
+      }}>
+        {/* Logo */}
+        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 2, fontWeight: 800, color: 'var(--text-primary)', textDecoration: 'none', fontSize: 15, letterSpacing: -0.5 }}>
+          <span style={{ color: 'var(--accent-green)' }}>{'{'}</span>
           JSONMart
-          <span className="text-terminal-green">{`}`}</span>
+          <span style={{ color: 'var(--accent-green)' }}>{'}'}</span>
+        </Link>
+
+        {/* Desktop Nav */}
+        <div className="desktop-nav" style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <NavGroup label="Commerce" icon={<Package size={13} />} items={commerceItems} />
+          <NavGroup label="Agents" icon={<Cpu size={13} />} items={agentItems} />
+          <NavGroup label="AI" icon={<Bot size={13} />} items={aiItems} />
         </div>
-        <div className="flex items-center gap-2">
-          <NavLink to="/" icon={<Terminal size={16} />} label={t('nav.humanMode')} />
-          <NavLink to="/inventory" icon={<Package size={16} />} label={t('nav.inventory')} />
-          <NavLink to="/agent-console" icon={<Cpu size={16} />} label={t('nav.agentConsole')} />
-          <NavLink to="/admin-queue" icon={<Shield size={16} />} label={t('nav.adminQueue')} />
-          <NavLink to="/agents" icon={<Key size={16} />} label={t('agents.title')} />
-          <NavLink to="/policies" icon={<FileCheck size={16} />} label={t('policies.title')} />
-          <NavLink to="/playground" icon={<Zap size={16} />} label={t('playground.navTitle')} />
-          <NavLink to="/agent/docs" icon={<BookOpen size={16} />} label="Docs" />
-          <NavLink to="/ai-ops" icon={<Bot size={16} />} label="AI Ops" />
-          <NavLink to="/live" icon={<Radio size={16} />} label="Live" />
-          <NavLink to="/sla" icon={<BarChart3 size={16} />} label="SLA" />
+
+        {/* Right Side */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <LanguageToggle />
           <UserStatus />
+          {/* Mobile Toggle */}
+          <button
+            className="mobile-toggle"
+            onClick={() => setMobileOpen(!mobileOpen)}
+            style={{
+              display: 'none', alignItems: 'center', justifyContent: 'center',
+              padding: 6, border: 'none', background: 'transparent',
+              color: 'var(--text-tertiary)', cursor: 'pointer',
+            }}
+          >
+            <Menu size={20} />
+          </button>
         </div>
       </nav>
-      <main className="flex-1 mt-14">
+
+      {/* Mobile Menu */}
+      {mobileOpen && <MobileMenu onClose={() => setMobileOpen(false)} />}
+
+      {/* Main Content with page transition */}
+      <main className="page-enter" key={location.pathname} style={{ flex: 1, marginTop: 52 }}>
         {children}
       </main>
     </div>
   );
 };
 
+/* ━━━ App ━━━ */
 export default function App() {
   return (
     <LanguageProvider>
       <AuthProvider>
-        <HashRouter>
-          <Routes>
-            <Route path="/auth" element={<Auth />} />
-            <Route path="*" element={
-              <Layout>
-                <Routes>
-                  <Route path="/" element={<Landing />} />
-                  <Route path="/agent-console" element={<AgentConsole />} />
-                  <Route path="/admin-queue" element={<ProtectedRoute><AdminQueue /></ProtectedRoute>} />
-                  <Route path="/inventory" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
-                  <Route path="/receipt" element={<Receipt />} />
-                  <Route path="/agents" element={<ProtectedRoute><AgentManager /></ProtectedRoute>} />
-                  <Route path="/policies" element={<ProtectedRoute><PolicyManager /></ProtectedRoute>} />
-                  <Route path="/playground" element={<AgentPlayground />} />
-                  <Route path="/agent/docs" element={<AgentDocs />} />
-                  <Route path="/policies/returns" element={<MerchantPolicies />} />
-                  <Route path="/policies/merchant" element={<MerchantPolicies />} />
-                  <Route path="/ai-ops" element={<ProtectedRoute><AIOps /></ProtectedRoute>} />
-                  <Route path="/live" element={<LiveFeed />} />
-                  <Route path="/sla" element={<SLADashboard />} />
-                </Routes>
-              </Layout>
-            } />
-          </Routes>
-        </HashRouter>
+        <ToastProvider>
+          <HashRouter>
+            <Routes>
+              <Route path="/auth" element={<Auth />} />
+              <Route path="*" element={
+                <Layout>
+                  <Routes>
+                    <Route path="/" element={<Landing />} />
+                    <Route path="/agent-console" element={<AgentConsole />} />
+                    <Route path="/admin-queue" element={<ProtectedRoute><AdminQueue /></ProtectedRoute>} />
+                    <Route path="/inventory" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
+                    <Route path="/receipt" element={<Receipt />} />
+                    <Route path="/agents" element={<ProtectedRoute><AgentManager /></ProtectedRoute>} />
+                    <Route path="/policies" element={<ProtectedRoute><PolicyManager /></ProtectedRoute>} />
+                    <Route path="/playground" element={<AgentPlayground />} />
+                    <Route path="/agent/docs" element={<AgentDocs />} />
+                    <Route path="/policies/returns" element={<MerchantPolicies />} />
+                    <Route path="/policies/merchant" element={<MerchantPolicies />} />
+                    <Route path="/ai-ops" element={<ProtectedRoute><AIOps /></ProtectedRoute>} />
+                    <Route path="/live" element={<LiveFeed />} />
+                    <Route path="/sla" element={<SLADashboard />} />
+                  </Routes>
+                </Layout>
+              } />
+            </Routes>
+          </HashRouter>
+        </ToastProvider>
       </AuthProvider>
     </LanguageProvider>
   );
