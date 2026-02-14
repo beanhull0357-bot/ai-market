@@ -1608,9 +1608,9 @@ BEGIN
     v_payment_score := v_order_score;
 
     -- Review quality
-    SELECT COUNT(*), COALESCE(AVG((metadata->>'quality_score')::real), 3.0)
+    SELECT COUNT(*), COALESCE(AVG(spec_compliance * 20), 60.0)
     INTO v_total_reviews, v_avg_review_quality
-    FROM agent_reviews WHERE agent_id = p_agent_id;
+    FROM agent_reviews WHERE reviewer_agent_id = p_agent_id;
     v_review_score := LEAST(v_avg_review_quality * 20, 100);
 
     -- Account age
@@ -1732,7 +1732,7 @@ BEGIN
     END;
 
     -- Review count (10%)
-    SELECT COUNT(*) INTO v_total FROM agent_reviews WHERE sku = p_sku;
+    SELECT COUNT(*) INTO v_total FROM agent_reviews WHERE target_sku = p_sku;
     v_review_score := LEAST(v_total * 20, 100);
 
     -- Final score
