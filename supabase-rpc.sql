@@ -187,6 +187,12 @@ BEGIN
         RETURN json_build_object('success', false, 'error', 'OUT_OF_STOCK');
     END IF;
 
+    -- Stock quantity check
+    IF v_product.stock_qty IS NOT NULL AND v_product.stock_qty < p_qty THEN
+        RETURN json_build_object('success', false, 'error', 'INSUFFICIENT_STOCK',
+            'available', v_product.stock_qty, 'requested', p_qty);
+    END IF;
+
     -- 3. Check policy constraints (if agent has a policy)
     IF v_agent.policy_id IS NOT NULL THEN
         SELECT * INTO v_policy FROM agent_policies WHERE policy_id = v_agent.policy_id;
@@ -253,11 +259,27 @@ BEGIN
         )::jsonb
     );
 
-    -- 5. Update agent stats
+    -- 5. Deduct stock
+    UPDATE products SET
+        stock_qty = GREATEST(0, COALESCE(stock_qty, 0) - p_qty),
+        stock_status = CASE
+            WHEN COALESCE(stock_qty, 0) - p_qty <= 0 THEN 'out_of_stock'
+            ELSE stock_status
+        END,
+        updated_at = now()
+    WHERE sku = p_sku;
+
+    -- 6. Update agent stats
     UPDATE agents SET
         total_orders = total_orders + 1,
         last_active_at = now()
     WHERE api_key = p_api_key;
+
+    -- 7. Log order event
+    PERFORM log_order_event(v_order_id, 'order.created', json_build_object(
+        'agent_id', v_agent.agent_id, 'sku', p_sku, 'qty', p_qty,
+        'amount', v_product.price * p_qty, 'stock_deducted', p_qty
+    )::jsonb);
 
     RETURN json_build_object(
         'success', true,
@@ -266,7 +288,8 @@ BEGIN
         'qty', p_qty,
         'amount', v_product.price * p_qty,
         'agent_id', v_agent.agent_id,
-        'policy_id', v_agent.policy_id
+        'policy_id', v_agent.policy_id,
+        'stock_remaining', GREATEST(0, COALESCE(v_product.stock_qty, 0) - p_qty)
     );
 END;
 $$;
@@ -577,6 +600,16 @@ BEGIN
         
         v_subtotal := v_subtotal + (v_product.price * COALESCE((v_item.elem->>'qty')::int, 1));
         
+        -- Deduct stock immediately on authorization
+        UPDATE products SET
+            stock_qty = GREATEST(0, COALESCE(stock_qty, 0) - COALESCE((v_item.elem->>'qty')::int, 1)),
+            stock_status = CASE
+                WHEN COALESCE(stock_qty, 0) - COALESCE((v_item.elem->>'qty')::int, 1) <= 0 THEN 'out_of_stock'
+                ELSE stock_status
+            END,
+            updated_at = now()
+        WHERE sku = v_product.sku;
+        
         v_validated_items := v_validated_items || jsonb_build_object(
             'sku', v_product.sku,
             'title', v_product.title,
@@ -656,8 +689,10 @@ BEGIN
     END IF;
     
     IF p_action = 'void' THEN
+        -- Restore stock for each item
+        PERFORM restore_session_stock(p_session_id);
         UPDATE checkout_sessions SET status = 'VOIDED', updated_at = now() WHERE session_id = p_session_id;
-        RETURN json_build_object('success', true, 'session_id', p_session_id, 'status', 'VOIDED');
+        RETURN json_build_object('success', true, 'session_id', p_session_id, 'status', 'VOIDED', 'stock_restored', true);
     END IF;
     
     -- Capture: create order from session
@@ -686,6 +721,81 @@ BEGIN
     );
 END;
 $$;
+
+-- ============================================
+-- 8b. Helper: Restore stock from a voided/expired session
+-- ============================================
+CREATE OR REPLACE FUNCTION restore_session_stock(p_session_id TEXT)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_session RECORD;
+    v_item RECORD;
+BEGIN
+    SELECT * INTO v_session FROM checkout_sessions WHERE session_id = p_session_id;
+    IF NOT FOUND THEN RETURN; END IF;
+
+    FOR v_item IN SELECT * FROM jsonb_array_elements(v_session.items) AS elem
+    LOOP
+        UPDATE products SET
+            stock_qty = COALESCE(stock_qty, 0) + COALESCE((v_item.elem->>'qty')::int, 1),
+            stock_status = 'in_stock',
+            updated_at = now()
+        WHERE sku = (v_item.elem->>'sku');
+    END LOOP;
+END;
+$$;
+
+-- ============================================
+-- 8c. Auto-void expired authorizations (cron job)
+-- ============================================
+CREATE OR REPLACE FUNCTION auto_void_expired_sessions()
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_session RECORD;
+    v_expired_sessions INTEGER := 0;
+    v_expired_orders INTEGER := 0;
+BEGIN
+    -- 1. Expired checkout sessions → restore stock
+    FOR v_session IN
+        SELECT session_id FROM checkout_sessions
+        WHERE status = 'AUTHORIZED'
+        AND auth_expires_at < now()
+    LOOP
+        PERFORM restore_session_stock(v_session.session_id);
+        UPDATE checkout_sessions SET status = 'EXPIRED', updated_at = now()
+        WHERE session_id = v_session.session_id;
+        v_expired_sessions := v_expired_sessions + 1;
+    END LOOP;
+
+    -- 2. Expired orders (PROCUREMENT_PENDING past deadline)
+    -- Note: order stock was already deducted, need to restore
+    UPDATE orders SET
+        status = 'VOIDED',
+        payment_status = 'VOIDED',
+        updated_at = now()
+    WHERE status = 'PROCUREMENT_PENDING'
+    AND capture_deadline < now();
+
+    GET DIAGNOSTICS v_expired_orders = ROW_COUNT;
+
+    RETURN json_build_object(
+        'success', true,
+        'expired_sessions', v_expired_sessions,
+        'expired_orders', v_expired_orders,
+        'run_at', now()
+    );
+END;
+$$;
+
+-- To enable hourly auto-void (run once in Supabase SQL Editor):
+-- 1. Enable pg_cron extension: CREATE EXTENSION IF NOT EXISTS pg_cron;
+-- 2. Schedule: SELECT cron.schedule('auto-void-expired', '0 * * * *', 'SELECT auto_void_expired_sessions()');
 
 -- ============================================
 -- 9. Agent Webhook Subscriptions
@@ -965,4 +1075,5 @@ GRANT EXECUTE ON FUNCTION agent_unregister_webhook(TEXT, UUID) TO anon, authenti
 GRANT EXECUTE ON FUNCTION get_order_events(TIMESTAMPTZ, TEXT, INTEGER) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION log_order_event(TEXT, TEXT, JSONB) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION get_agent_offers(TEXT, TEXT) TO anon, authenticated;
-
+GRANT EXECUTE ON FUNCTION restore_session_stock(TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION auto_void_expired_sessions() TO anon, authenticated;
