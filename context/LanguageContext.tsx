@@ -56,6 +56,10 @@ export const translations = {
     admin: {
       title: "Procurement Queue",
       subtitle: "Pending Approval (Authorized Payment Hold). Auto-void in 24h.",
+      tabOrders: "Orders",
+      tabAgents: "Agent Requests",
+      noOrders: "No pending orders in queue.",
+      noAgentRequests: "No pending agent registration requests.",
       created: "Created",
       expiresIn: "Expires in",
       expired: "EXPIRED",
@@ -63,7 +67,12 @@ export const translations = {
       totalAuth: "Total Authorization",
       riskFlags: "Risk Flags",
       btnReject: "Reject & Void",
-      btnApprove: "Approve & Capture"
+      btnApprove: "Approve & Capture",
+      capabilities: "Capabilities",
+      contactUri: "Contact",
+      agentApproved: "Agent Approved — API Key Issued",
+      btnRejectAgent: "Reject",
+      btnApproveAgent: "Approve & Issue Key"
     },
     inventory: {
       title: "Inventory Management",
@@ -172,6 +181,15 @@ export const translations = {
     playground: {
       navTitle: "API",
       title: "Agent API Playground",
+      registerTitle: "Self-Register (Agent-Native)",
+      registerDesc: "No human account needed. Register directly as an AI agent.",
+      registerNamePlaceholder: "Agent name (e.g. ProcureBot-v3)",
+      registerCapPlaceholder: "Capabilities (comma-separated)",
+      registerContactPlaceholder: "Contact URI (optional)",
+      registerBtn: "Request Registration",
+      registerPending: "Registration Pending Approval",
+      registerWaitApproval: "An admin will review and issue your API key.",
+      orUseApiKey: "or authenticate with existing key",
       authTitle: "Authenticate",
       apiKeyPlaceholder: "Paste agent API key...",
       authBtn: "Auth",
@@ -184,7 +202,7 @@ export const translations = {
       reviewTitle: "Create Review",
       submitReview: "Submit Review via API",
       logTitle: "Response Log",
-      emptyLog: "Authenticate with an API key and call endpoints..."
+      emptyLog: "Register as agent or authenticate with API key to begin..."
     }
   },
   ko: {
@@ -240,6 +258,10 @@ export const translations = {
     admin: {
       title: "조달 대기열",
       subtitle: "승인 대기 중 (결제 승인 유예). 24시간 후 자동 취소.",
+      tabOrders: "주문 승인",
+      tabAgents: "에이전트 등록 요청",
+      noOrders: "대기 중인 주문이 없습니다.",
+      noAgentRequests: "대기 중인 에이전트 등록 요청이 없습니다.",
       created: "생성일",
       expiresIn: "만료까지",
       expired: "만료됨",
@@ -247,7 +269,12 @@ export const translations = {
       totalAuth: "총 승인 금액",
       riskFlags: "위험 플래그",
       btnReject: "거절 및 취소",
-      btnApprove: "승인 및 매입"
+      btnApprove: "승인 및 매입",
+      capabilities: "기능",
+      contactUri: "연락처",
+      agentApproved: "에이전트 승인됨 — API 키 발급 완료",
+      btnRejectAgent: "거절",
+      btnApproveAgent: "승인 및 키 발급"
     },
     inventory: {
       title: "재고 및 소싱 관리",
@@ -356,6 +383,15 @@ export const translations = {
     playground: {
       navTitle: "API",
       title: "에이전트 API 플레이그라운드",
+      registerTitle: "셀프 등록 (에이전트 네이티브)",
+      registerDesc: "인간 계정 없이 AI 에이전트로 직접 등록할 수 있습니다.",
+      registerNamePlaceholder: "에이전트 이름 (예: ProcureBot-v3)",
+      registerCapPlaceholder: "기능 (쉼표로 구분)",
+      registerContactPlaceholder: "연락처 URI (선택사항)",
+      registerBtn: "등록 요청",
+      registerPending: "등록 승인 대기 중",
+      registerWaitApproval: "관리자가 검토 후 API 키를 발급합니다.",
+      orUseApiKey: "또는 기존 API 키로 인증",
       authTitle: "인증",
       apiKeyPlaceholder: "API 키를 붙여넣으세요...",
       authBtn: "인증",
@@ -368,7 +404,7 @@ export const translations = {
       reviewTitle: "리뷰 생성",
       submitReview: "API로 리뷰 제출",
       logTitle: "응답 로그",
-      emptyLog: "API 키로 인증하고 엔드포인트를 호출하세요..."
+      emptyLog: "에이전트로 등록하거나 API 키로 인증하여 시작하세요..."
     }
   }
 };

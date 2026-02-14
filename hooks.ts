@@ -260,10 +260,12 @@ export interface Agent {
     id: string;
     agentId: string;
     name: string;
-    ownerId: string;
-    apiKey: string;
-    status: 'ACTIVE' | 'REVOKED';
+    ownerId: string | null;
+    apiKey: string | null;
+    status: 'ACTIVE' | 'REVOKED' | 'PENDING_APPROVAL';
     policyId: string | null;
+    capabilities: string[];
+    contactUri: string | null;
     totalOrders: number;
     totalReviews: number;
     lastActiveAt: string | null;
@@ -284,10 +286,12 @@ function rowToAgent(row: any): Agent {
         id: row.id,
         agentId: row.agent_id,
         name: row.name,
-        ownerId: row.owner_id,
-        apiKey: row.api_key,
+        ownerId: row.owner_id || null,
+        apiKey: row.api_key || null,
         status: row.status,
         policyId: row.policy_id,
+        capabilities: row.capabilities || [],
+        contactUri: row.contact_uri || null,
         totalOrders: row.total_orders || 0,
         totalReviews: row.total_reviews || 0,
         lastActiveAt: row.last_active_at,
@@ -297,6 +301,7 @@ function rowToAgent(row: any): Agent {
 
 export function useAgents(ownerId?: string) {
     const [agents, setAgents] = useState<Agent[]>([]);
+    const [pendingAgents, setPendingAgents] = useState<Agent[]>([]);
     const [loading, setLoading] = useState(true);
 
     const fetchAgents = useCallback(async () => {
@@ -320,6 +325,42 @@ export function useAgents(ownerId?: string) {
     }, [ownerId]);
 
     useEffect(() => { fetchAgents(); }, [fetchAgents]);
+
+    const fetchPendingAgents = useCallback(async () => {
+        const { data, error } = await supabase
+            .from('agents')
+            .select('*')
+            .eq('status', 'PENDING_APPROVAL')
+            .order('created_at', { ascending: false });
+        if (error) {
+            console.error('Error fetching pending agents:', error);
+        } else {
+            setPendingAgents((data || []).map(rowToAgent));
+        }
+    }, []);
+
+    useEffect(() => { fetchPendingAgents(); }, [fetchPendingAgents]);
+
+    const approveAgent = async (agentId: string) => {
+        const { data, error } = await supabase.rpc('approve_pending_agent', { p_agent_id: agentId });
+        if (error) {
+            console.error('Error approving agent:', error);
+            return null;
+        }
+        await fetchPendingAgents();
+        await fetchAgents();
+        return data;
+    };
+
+    const rejectAgent = async (agentId: string) => {
+        const { data, error } = await supabase.rpc('reject_pending_agent', { p_agent_id: agentId });
+        if (error) {
+            console.error('Error rejecting agent:', error);
+            return null;
+        }
+        await fetchPendingAgents();
+        return data;
+    };
 
     const createAgent = async (name: string, ownerId: string, policyId?: string) => {
         const agentId = `AGT-${Date.now().toString(36).toUpperCase()}`;
@@ -413,7 +454,7 @@ export function useAgents(ownerId?: string) {
         return true;
     };
 
-    return { agents, loading, fetchAgents, createAgent, revokeAgent, activateAgent, regenerateKey, deleteAgent, linkPolicy };
+    return { agents, pendingAgents, loading, fetchAgents, fetchPendingAgents, createAgent, revokeAgent, activateAgent, regenerateKey, deleteAgent, linkPolicy, approveAgent, rejectAgent };
 }
 
 // ---- Policies hook ----

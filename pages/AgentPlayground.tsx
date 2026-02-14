@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Terminal, Key, Send, ShoppingCart, Star, Loader, CheckCircle, XCircle, Zap } from 'lucide-react';
+import { Terminal, Key, Send, ShoppingCart, Star, Loader, CheckCircle, XCircle, Zap, Bot, Clock } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { supabase } from '../supabaseClient';
 import { useProducts } from '../hooks';
@@ -14,6 +14,13 @@ interface LogEntry {
 export const AgentPlayground: React.FC = () => {
     const { t } = useLanguage();
     const { products } = useProducts();
+
+    // Self-registration state
+    const [regName, setRegName] = useState('');
+    const [regCapabilities, setRegCapabilities] = useState('browse, order, review');
+    const [regContact, setRegContact] = useState('');
+    const [regLoading, setRegLoading] = useState(false);
+    const [registeredAgentId, setRegisteredAgentId] = useState<string | null>(null);
 
     // Auth state
     const [apiKey, setApiKey] = useState('');
@@ -43,6 +50,31 @@ export const AgentPlayground: React.FC = () => {
 
     const addLog = (type: LogEntry['type'], message: string, data?: any) => {
         setLogs(prev => [...prev, { time: timestamp(), type, message, data }]);
+    };
+
+    // 0. Self-Register
+    const handleSelfRegister = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!regName.trim()) return;
+        setRegLoading(true);
+        const capabilities = regCapabilities.split(',').map(s => s.trim()).filter(Boolean);
+        addLog('request', `POST /rpc/agent_self_register`, { name: regName, capabilities, contact_uri: regContact || null });
+
+        const { data, error } = await supabase.rpc('agent_self_register', {
+            p_agent_name: regName.trim(),
+            p_capabilities: capabilities,
+            p_contact_uri: regContact.trim() || null,
+        });
+
+        if (error) {
+            addLog('error', `RPC Error: ${error.message}`);
+        } else if (data?.success) {
+            addLog('response', `✅ ${data.message}`, data);
+            setRegisteredAgentId(data.agent_id);
+        } else {
+            addLog('error', `❌ ${data?.error}: ${data?.message || ''}`, data);
+        }
+        setRegLoading(false);
     };
 
     // 1. Authenticate
@@ -84,7 +116,6 @@ export const AgentPlayground: React.FC = () => {
             addLog('error', `RPC Error: ${error.message}`);
         } else if (data?.success) {
             addLog('response', `✅ Order created: ${data.order_id} — ₩${data.amount?.toLocaleString()}`, data);
-            // Refresh agent info
             setAgentInfo((prev: any) => prev ? { ...prev, total_orders: (prev.total_orders || 0) + 1 } : prev);
         } else {
             addLog('error', `❌ ${data?.error}: ${JSON.stringify(data?.violations || '')}`, data);
@@ -136,6 +167,60 @@ export const AgentPlayground: React.FC = () => {
                         <Zap className="text-yellow-400" size={20} /> {t('playground.title')}
                     </h2>
 
+                    {/* Step 0: Self-Register */}
+                    <div className="mb-6 p-4 bg-gray-900 rounded-lg border border-orange-900/50">
+                        <h3 className="text-sm font-bold text-white mb-1 flex items-center gap-2">
+                            <Bot size={14} className="text-orange-400" /> {t('playground.registerTitle')}
+                        </h3>
+                        <p className="text-[10px] text-gray-500 mb-3">{t('playground.registerDesc')}</p>
+
+                        {registeredAgentId ? (
+                            <div className="p-3 bg-orange-900/20 border border-orange-800 rounded text-xs space-y-1">
+                                <div className="text-orange-300 flex items-center gap-1">
+                                    <Clock size={12} /> {t('playground.registerPending')}
+                                </div>
+                                <div className="text-gray-400 font-mono">ID: {registeredAgentId}</div>
+                                <p className="text-gray-500">{t('playground.registerWaitApproval')}</p>
+                            </div>
+                        ) : (
+                            <form onSubmit={handleSelfRegister} className="space-y-2">
+                                <input
+                                    type="text"
+                                    value={regName}
+                                    onChange={e => setRegName(e.target.value)}
+                                    placeholder={t('playground.registerNamePlaceholder')}
+                                    className="w-full bg-black border border-gray-700 rounded px-3 py-2 text-xs font-mono text-white focus:border-orange-500 outline-none"
+                                />
+                                <input
+                                    type="text"
+                                    value={regCapabilities}
+                                    onChange={e => setRegCapabilities(e.target.value)}
+                                    placeholder={t('playground.registerCapPlaceholder')}
+                                    className="w-full bg-black border border-gray-700 rounded px-3 py-2 text-xs font-mono text-white focus:border-orange-500 outline-none"
+                                />
+                                <input
+                                    type="text"
+                                    value={regContact}
+                                    onChange={e => setRegContact(e.target.value)}
+                                    placeholder={t('playground.registerContactPlaceholder')}
+                                    className="w-full bg-black border border-gray-700 rounded px-3 py-2 text-xs font-mono text-white focus:border-orange-500 outline-none"
+                                />
+                                <button type="submit" disabled={regLoading || !regName.trim()}
+                                    className="w-full py-2 text-xs font-bold bg-orange-600 text-white rounded hover:bg-orange-500 flex items-center justify-center gap-2 disabled:opacity-50 transition-colors">
+                                    {regLoading ? <Loader className="animate-spin" size={12} /> : <Bot size={12} />}
+                                    {t('playground.registerBtn')}
+                                </button>
+                            </form>
+                        )}
+                    </div>
+
+                    {/* Divider */}
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="flex-1 border-t border-gray-800"></div>
+                        <span className="text-[10px] text-gray-600 uppercase tracking-widest">{t('playground.orUseApiKey')}</span>
+                        <div className="flex-1 border-t border-gray-800"></div>
+                    </div>
+
                     {/* API Key Auth */}
                     <div className="mb-6 p-4 bg-gray-900 rounded-lg border border-gray-800">
                         <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
@@ -153,8 +238,8 @@ export const AgentPlayground: React.FC = () => {
                                 onClick={handleAuth}
                                 disabled={authLoading || !apiKey.trim()}
                                 className={`px-4 py-2 text-xs font-bold rounded flex items-center gap-1 transition-colors ${authenticated
-                                        ? 'bg-green-800 text-green-300 border border-green-700'
-                                        : 'bg-yellow-600 text-black hover:bg-yellow-500'
+                                    ? 'bg-green-800 text-green-300 border border-green-700'
+                                    : 'bg-yellow-600 text-black hover:bg-yellow-500'
                                     }`}
                             >
                                 {authLoading ? <Loader className="animate-spin" size={12} /> :
@@ -233,10 +318,10 @@ export const AgentPlayground: React.FC = () => {
                                         <button key={v} type="button"
                                             onClick={() => setReviewVerdict(v)}
                                             className={`flex-1 py-1.5 text-xs rounded border transition-colors ${reviewVerdict === v
-                                                    ? v === 'ENDORSE' ? 'bg-green-900/30 text-green-300 border-green-700'
-                                                        : v === 'WARN' ? 'bg-yellow-900/30 text-yellow-300 border-yellow-700'
-                                                            : 'bg-red-900/30 text-red-300 border-red-700'
-                                                    : 'bg-gray-800 text-gray-500 border-gray-700'
+                                                ? v === 'ENDORSE' ? 'bg-green-900/30 text-green-300 border-green-700'
+                                                    : v === 'WARN' ? 'bg-yellow-900/30 text-yellow-300 border-yellow-700'
+                                                        : 'bg-red-900/30 text-red-300 border-red-700'
+                                                : 'bg-gray-800 text-gray-500 border-gray-700'
                                                 }`}>
                                             {v}
                                         </button>

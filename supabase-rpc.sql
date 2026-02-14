@@ -3,6 +3,108 @@
 -- Run this in Supabase SQL Editor
 -- ============================================
 
+-- 0. Agent Self-Register: Allows an agent to register itself without human account
+CREATE OR REPLACE FUNCTION agent_self_register(
+    p_agent_name TEXT,
+    p_capabilities TEXT[] DEFAULT '{}',
+    p_contact_uri TEXT DEFAULT NULL
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_agent_id TEXT;
+BEGIN
+    -- Validate name
+    IF length(trim(p_agent_name)) < 2 THEN
+        RETURN json_build_object('success', false, 'error', 'INVALID_NAME', 'message', 'Agent name must be at least 2 characters');
+    END IF;
+
+    -- Generate agent ID
+    v_agent_id := 'AGT-' || upper(to_hex(extract(epoch from now())::bigint));
+
+    -- Insert as PENDING_APPROVAL (no owner, no API key yet)
+    INSERT INTO agents (agent_id, name, owner_id, api_key, status, capabilities, contact_uri)
+    VALUES (v_agent_id, trim(p_agent_name), NULL, NULL, 'PENDING_APPROVAL', p_capabilities, p_contact_uri);
+
+    RETURN json_build_object(
+        'success', true,
+        'agent_id', v_agent_id,
+        'name', trim(p_agent_name),
+        'status', 'PENDING_APPROVAL',
+        'message', 'Registration submitted. Awaiting admin approval. API key will be issued upon approval.'
+    );
+END;
+$$;
+
+-- 0b. Approve Pending Agent: Admin approves a self-registered agent
+CREATE OR REPLACE FUNCTION approve_pending_agent(p_agent_id TEXT)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_agent RECORD;
+    v_api_key TEXT;
+    v_chars TEXT := 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    v_key TEXT := 'agk_';
+    i INTEGER;
+BEGIN
+    -- Find pending agent
+    SELECT * INTO v_agent FROM agents WHERE agent_id = p_agent_id AND status = 'PENDING_APPROVAL';
+
+    IF NOT FOUND THEN
+        RETURN json_build_object('success', false, 'error', 'NOT_FOUND', 'message', 'No pending agent with this ID');
+    END IF;
+
+    -- Generate API key
+    FOR i IN 1..32 LOOP
+        v_key := v_key || substr(v_chars, floor(random() * length(v_chars) + 1)::int, 1);
+    END LOOP;
+    v_api_key := v_key;
+
+    -- Activate agent
+    UPDATE agents
+    SET status = 'ACTIVE', api_key = v_api_key, updated_at = now()
+    WHERE agent_id = p_agent_id;
+
+    RETURN json_build_object(
+        'success', true,
+        'agent_id', p_agent_id,
+        'name', v_agent.name,
+        'api_key', v_api_key,
+        'status', 'ACTIVE'
+    );
+END;
+$$;
+
+-- 0c. Reject Pending Agent: Admin rejects a self-registered agent
+CREATE OR REPLACE FUNCTION reject_pending_agent(p_agent_id TEXT)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_agent RECORD;
+BEGIN
+    SELECT * INTO v_agent FROM agents WHERE agent_id = p_agent_id AND status = 'PENDING_APPROVAL';
+
+    IF NOT FOUND THEN
+        RETURN json_build_object('success', false, 'error', 'NOT_FOUND', 'message', 'No pending agent with this ID');
+    END IF;
+
+    DELETE FROM agents WHERE agent_id = p_agent_id;
+
+    RETURN json_build_object(
+        'success', true,
+        'agent_id', p_agent_id,
+        'name', v_agent.name,
+        'message', 'Agent registration rejected and removed.'
+    );
+END;
+$$;
+
 -- 1. Authenticate Agent: Validates API key and returns agent info
 CREATE OR REPLACE FUNCTION authenticate_agent(p_api_key TEXT)
 RETURNS JSON
@@ -19,6 +121,10 @@ BEGIN
 
     IF NOT FOUND THEN
         RETURN json_build_object('success', false, 'error', 'INVALID_API_KEY');
+    END IF;
+
+    IF v_agent.status = 'PENDING_APPROVAL' THEN
+        RETURN json_build_object('success', false, 'error', 'PENDING_APPROVAL', 'message', 'Agent is awaiting admin approval.');
     END IF;
 
     IF v_agent.status != 'ACTIVE' THEN
@@ -239,6 +345,9 @@ END;
 $$;
 
 -- Grant execute permissions to anon and authenticated roles
+GRANT EXECUTE ON FUNCTION agent_self_register(TEXT, TEXT[], TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION approve_pending_agent(TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION reject_pending_agent(TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION authenticate_agent(TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION agent_create_order(TEXT, TEXT, INTEGER) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION agent_create_review(TEXT, TEXT, TEXT, REAL, REAL, INTEGER, JSONB) TO anon, authenticated;
