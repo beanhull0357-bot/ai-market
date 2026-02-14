@@ -549,6 +549,7 @@ CREATE TABLE IF NOT EXISTS checkout_sessions (
 );
 
 ALTER TABLE checkout_sessions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all for checkout_sessions" ON checkout_sessions;
 CREATE POLICY "Allow all for checkout_sessions" ON checkout_sessions FOR ALL USING (true) WITH CHECK (true);
 
 -- ============================================
@@ -813,6 +814,7 @@ CREATE TABLE IF NOT EXISTS agent_webhook_subscriptions (
 );
 
 ALTER TABLE agent_webhook_subscriptions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all for agent_webhook_subscriptions" ON agent_webhook_subscriptions;
 CREATE POLICY "Allow all for agent_webhook_subscriptions" ON agent_webhook_subscriptions FOR ALL USING (true) WITH CHECK (true);
 
 -- 9a. Register webhook subscription
@@ -903,6 +905,7 @@ CREATE TABLE IF NOT EXISTS order_events (
 );
 
 ALTER TABLE order_events ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all for order_events" ON order_events;
 CREATE POLICY "Allow all for order_events" ON order_events FOR ALL USING (true) WITH CHECK (true);
 
 CREATE INDEX IF NOT EXISTS idx_order_events_created ON order_events(created_at DESC);
@@ -994,6 +997,7 @@ CREATE TABLE IF NOT EXISTS agent_offers (
 );
 
 ALTER TABLE agent_offers ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all for agent_offers" ON agent_offers;
 CREATE POLICY "Allow all for agent_offers" ON agent_offers FOR ALL USING (true) WITH CHECK (true);
 
 -- 11a. Get active offers feed
