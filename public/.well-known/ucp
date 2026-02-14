@@ -1,59 +1,118 @@
 {
   "ucp": {
-    "version": "2026-01-23",
+    "version": "2026-02-14",
     "merchant": {
       "name": "JSONMart — Agent-Native Marketplace",
-      "description": "B2B consumables and MRO marketplace designed for AI purchasing agents. Structured JSON product data, policy-driven ordering, and explainable receipts.",
+      "description": "B2B consumables and MRO marketplace designed for AI purchasing agents. 50+ products with structured JSON data, trust scores, policy-driven ordering, and explainable receipts.",
       "url": "https://beanhull0357-bot.github.io/ai-market/",
       "support_email": "support@jsonmart.io",
       "categories": ["CONSUMABLES", "MRO"],
       "currency": "KRW",
-      "country": "KR"
+      "country": "KR",
+      "total_products": 50,
+      "policies_url": "https://beanhull0357-bot.github.io/ai-market/#/policies/merchant"
     },
     "services": {
       "dev.ucp.shopping": [
         {
-          "version": "2026-01-23",
+          "version": "2026-02-14",
           "transport": "rest",
           "endpoint": "https://beanhull0357-bot.github.io/ai-market/api/v1",
-          "description": "Product catalog and order creation via Supabase RPC"
+          "description": "Product catalog, checkout sessions, and order management via Supabase RPC"
         }
       ]
     },
     "capabilities": {
       "dev.ucp.shopping.catalog": [
         {
-          "version": "2026-01-23",
-          "features": ["structured_json", "real_time_stock", "policy_data", "ai_readiness_scores"]
+          "version": "2026-02-14",
+          "features": ["structured_json", "real_time_stock", "policy_data", "ai_readiness_scores", "trust_scores", "acp_feed"],
+          "endpoints": {
+            "product_feed": "get_product_feed",
+            "acp_feed": "get_acp_feed"
+          }
         }
       ],
       "dev.ucp.shopping.checkout": [
         {
-          "version": "2026-01-23",
+          "version": "2026-02-14",
           "model": "authorize_capture",
           "auth_hold_hours": 24,
           "admin_approval": true,
-          "features": ["policy_validation", "risk_analysis", "explainable_receipt"]
+          "features": ["session_management", "stock_validation", "policy_validation", "risk_analysis", "explainable_receipt"],
+          "endpoints": {
+            "create_session": "ucp_create_session",
+            "complete_session": "ucp_complete_session"
+          },
+          "flow": [
+            "1. POST ucp_create_session({items, agent_id}) → session_id, status: AUTHORIZED",
+            "2. Admin reviews within 24h",
+            "3. POST ucp_complete_session({session_id, action: 'capture'}) → order_id",
+            "4. Or: auto-void after 24h expiry"
+          ]
         }
       ],
       "dev.ucp.shopping.reviews": [
         {
-          "version": "2026-01-23",
+          "version": "2026-02-14",
           "type": "structured_attestation",
-          "features": ["spec_compliance", "fulfillment_delta", "cryptographic_verdict"]
+          "features": ["spec_compliance", "fulfillment_delta", "cryptographic_verdict", "trust_score_computation"]
+        }
+      ],
+      "dev.ucp.shopping.agent_registration": [
+        {
+          "version": "2026-02-14",
+          "features": ["self_register", "api_key_auth", "admin_approval"],
+          "endpoint": "agent_self_register"
         }
       ]
+    },
+    "feeds": {
+      "product_feed": {
+        "rpc": "get_product_feed",
+        "format": "jsonmart_v1.1",
+        "includes_trust_scores": true
+      },
+      "acp_feed": {
+        "rpc": "get_acp_feed",
+        "format": "acp_product_feed",
+        "chatgpt_compatible": true
+      },
+      "google_merchant": {
+        "url": "https://beanhull0357-bot.github.io/ai-market/feeds/google-merchant.xml",
+        "format": "google_rss_2.0"
+      }
     },
     "policies": {
       "returns": {
         "default_window_days": 7,
+        "max_window_days": 30,
+        "fee_range_krw": [0, 10000],
         "fee_structure": "per_product",
-        "description": "Return policies are defined per product with exceptions listed"
+        "exceptions": ["opened", "no_return", "installed", "used", "hygiene", "box_damaged", "defective_only"],
+        "policy_page": "https://beanhull0357-bot.github.io/ai-market/#/policies/returns"
       },
       "shipping": {
-        "default_eta_days": 3,
-        "ship_by_days": 1,
-        "fulfillment": "Domeme B2B wholesale network"
+        "coverage": "KR",
+        "free_shipping": true,
+        "handling_days": [1, 2],
+        "delivery_days": [2, 5],
+        "carrier": "CJ Logistics / Hanjin Express"
+      },
+      "payment": {
+        "model": "authorize_capture",
+        "auth_hold_hours": 24,
+        "auto_void_on_expiry": true
+      }
+    },
+    "integrations": {
+      "chatgpt_instant_checkout": {
+        "acp_manifest": "https://beanhull0357-bot.github.io/ai-market/.well-known/acp-manifest.json",
+        "status": "ready"
+      },
+      "google_merchant_center": {
+        "feed_url": "https://beanhull0357-bot.github.io/ai-market/feeds/google-merchant.xml",
+        "status": "ready"
       }
     }
   }

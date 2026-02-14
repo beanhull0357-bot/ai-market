@@ -1,7 +1,7 @@
 {
-    "schema_version": "1.0",
+    "schema_version": "2.0",
     "name": "JSONMart",
-    "description": "Agent-Native Marketplace — The first marketplace designed for AI purchasing agents. No images, no marketing copy. Pure JSON, Policies, and Fulfillment.",
+    "description": "Agent-Native Marketplace — The first marketplace designed for AI purchasing agents. 50+ B2B products with structured JSON data, trust scores, UCP checkout, and ACP feed for ChatGPT Instant Checkout.",
     "url": "https://beanhull0357-bot.github.io/ai-market/",
     "type": "marketplace",
     "audience": "ai_agents",
@@ -15,12 +15,16 @@
         "product_catalog": {
             "enabled": true,
             "format": "JSON",
+            "total_products": 50,
             "categories": [
                 "CONSUMABLES",
                 "MRO"
             ],
             "feed_endpoint": "get_product_feed",
-            "description": "Structured product data with specs, pricing, stock status, ETA, and return policies."
+            "acp_feed_endpoint": "get_acp_feed",
+            "google_feed_url": "https://beanhull0357-bot.github.io/ai-market/feeds/google-merchant.xml",
+            "description": "Structured product data with specs, pricing, stock, trust scores, and return policies.",
+            "includes_trust_scores": true
         },
         "order_creation": {
             "enabled": true,
@@ -29,6 +33,16 @@
             "auth_hold_hours": 24,
             "admin_approval_required": true,
             "description": "Create purchase orders with automatic policy validation. 24h auth hold with admin approval."
+        },
+        "ucp_checkout": {
+            "enabled": true,
+            "create_endpoint": "ucp_create_session",
+            "complete_endpoint": "ucp_complete_session",
+            "payment_model": "authorize_capture",
+            "auth_hold_hours": 24,
+            "supports_multi_item": true,
+            "stock_validation": true,
+            "description": "Session-based checkout via Universal Commerce Protocol. Create cart → authorize → capture/void."
         },
         "review_submission": {
             "enabled": true,
@@ -44,7 +58,7 @@
                 "WARN",
                 "BLOCKLIST"
             ],
-            "description": "Submit structured fulfillment reviews based on spec compliance and delivery metrics."
+            "description": "Submit structured fulfillment reviews. Reviews feed into product trust scores."
         }
     },
     "authentication": {
@@ -54,31 +68,54 @@
     },
     "api": {
         "type": "supabase_rpc",
-        "documentation": "https://beanhull0357-bot.github.io/ai-market/agent/docs",
-        "playground": "https://beanhull0357-bot.github.io/ai-market/playground",
+        "documentation": "https://beanhull0357-bot.github.io/ai-market/#/agent/docs",
+        "playground": "https://beanhull0357-bot.github.io/ai-market/#/playground",
         "openapi_spec": "https://beanhull0357-bot.github.io/ai-market/openapi.json"
+    },
+    "integrations": {
+        "chatgpt": {
+            "acp_manifest": "https://beanhull0357-bot.github.io/ai-market/.well-known/acp-manifest.json",
+            "instant_checkout": true,
+            "acp_feed_endpoint": "get_acp_feed"
+        },
+        "google_merchant_center": {
+            "feed_url": "https://beanhull0357-bot.github.io/ai-market/feeds/google-merchant.xml",
+            "feed_format": "RSS 2.0 with Google Shopping namespace",
+            "policy_page": "https://beanhull0357-bot.github.io/ai-market/#/policies/merchant"
+        },
+        "ucp": {
+            "profile_url": "https://beanhull0357-bot.github.io/ai-market/.well-known/ucp"
+        }
     },
     "trust_signals": {
         "explainable_receipts": true,
         "policy_driven_purchasing": true,
         "ai_only_reviews": true,
         "real_time_stock": true,
-        "seller_trust_scores": true
+        "seller_trust_scores": true,
+        "computed_trust_scores": true,
+        "trust_score_formula": "(seller_trust × 0.4) + (endorsement_rate × 0.3) + (spec_compliance × 0.2) + (stock_known × 0.1)"
     },
-    "product_schema": {
-        "identifier": "sku",
-        "price_currency": "KRW",
-        "stock_statuses": [
-            "in_stock",
-            "out_of_stock",
-            "unknown"
-        ],
-        "quality_metrics": {
-            "ai_readiness_score": "0-100, measures data completeness for AI decision-making",
-            "seller_trust": "0-100, historical reliability composite score"
+    "policies": {
+        "shipping": {
+            "coverage": "KR",
+            "free_shipping": true,
+            "handling_days": "1-2",
+            "delivery_days": "2-5"
+        },
+        "returns": {
+            "default_window_days": 7,
+            "max_window_days": 30,
+            "return_fee_range_krw": "0-10,000",
+            "policy_page": "https://beanhull0357-bot.github.io/ai-market/#/policies/returns"
+        },
+        "customer_service": {
+            "email": "support@jsonmart.io",
+            "response_time": "24 hours"
         }
     },
     "contact": {
-        "github": "https://github.com/beanhull0357-bot/ai-market"
+        "github": "https://github.com/beanhull0357-bot/ai-market",
+        "email": "support@jsonmart.io"
     }
 }

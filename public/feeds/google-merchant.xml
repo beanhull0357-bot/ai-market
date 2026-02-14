@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:g="http://base.google.com/ns/1.0">
+  <channel>
+    <title>JSONMart - Agent-Native B2B Marketplace</title>
+    <link>https://beanhull0357-bot.github.io/ai-market/</link>
+    <description>B2B Consumables &amp; MRO products for AI purchasing agents. 50+ products with structured data, trust scores, and policy-driven ordering.</description>
+
+    <!-- ==================== CONSUMABLES ==================== -->
+
+    <item>
+      <g:id>TISSUE-70x20</g:id>
+      <title>BrandA Unscented Wet Wipes 70sheets x 20packs</title>
+      <description>BrandA unscented wet wipes, 70 sheets per pack, 20 packs per box. GSM 60. Suitable for office and facility use.</description>
+      <link>https://beanhull0357-bot.github.io/ai-market/#/agent-console?sku=TISSUE-70x20</link>
+      <g:image_link>https://beanhull0357-bot.github.io/ai-market/placeholder.png</g:image_link>
+      <g:availability>in_stock</g:availability>
+      <g:price>18900 KRW</g:price>
+      <g:brand>BrandA</g:brand>
+      <g:gtin>8801234567890</g:gtin>
+      <g:condition>new</g:condition>
+      <g:product_type>Office Supplies &gt; Cleaning &gt; Wet Wipes</g:product_type>
+      <g:shipping>
+        <g:country>KR</g:country>
+        <g:service>Standard</g:service>
+        <g:price>0 KRW</g:price>
+      </g:shipping>
+    </item>
+
+    <item>
+      <g:id>TISSUE-DRY-200</g:id>
+      <title>SoftClean Dry Tissue 200sheets x 12box</title>
+      <description>SoftClean dry tissue, 200 sheets, 2-ply, 12 boxes per case.</description>
+      <link>https://beanhull0357-bot.github.io/ai-market/#/agent-console?sku=TISSUE-DRY-200</link>
+      <g:image_link>https://beanhull0357-bot.github.io/ai-market/placeholder.png</g:image_link>
+      <g:availability>in_stock</g:availability>
+      <g:price>15800 KRW</g:price>
+      <g:brand>SoftClean</g:brand>
+      <g:gtin>8801234567891</g:gtin>
+      <g:condition>new</g:condition>
+      <g:product_type>Office Supplies &gt; Cleaning &gt; Tissue</g:product_type>
+      <g:shipping>
+        <g:country>KR</g:country>
+        <g:service>Standard</g:service>
+        <g:price>0 KRW</g:price>
+      </g:shipping>
+    </item>
+
+    <item>
+      <g:id>COFFEE-MIX-100</g:id>
+      <title>Maxim Mocha Gold Mix 12g x 100sticks</title>
+      <description>Maxim Mocha Gold 3-in-1 coffee mix, 12g per stick, 100 sticks per box. Office favorite.</description>
+      <link>https://beanhull0357-bot.github.io/ai-market/#/agent-console?sku=COFFEE-MIX-100</link>
+      <g:image_link>https://beanhull0357-bot.github.io/ai-market/placeholder.png</g:image_link>
+      <g:availability>in_stock</g:availability>
+      <g:price>18500 KRW</g:price>
+      <g:brand>Maxim</g:brand>
+      <g:gtin>8805678901234</g:gtin>
+      <g:condition>new</g:condition>
+      <g:product_type>Office Supplies &gt; Beverages &gt; Coffee</g:product_type>
+      <g:shipping>
+        <g:country>KR</g:country>
+        <g:service>Standard</g:service>
+        <g:price>0 KRW</g:price>
+      </g:shipping>
+    </item>
+
+    <item>
+      <g:id>WATER-500-40</g:id>
+      <title>Jeju SamDaSoo Water 500ml x 40ea</title>
+      <description>Jeju volcanic spring water, 500ml bottles, 40 per case. Premium natural water from Jeju Island.</description>
+      <link>https://beanhull0357-bot.github.io/ai-market/#/agent-console?sku=WATER-500-40</link>
+      <g:image_link>https://beanhull0357-bot.github.io/ai-market/placeholder.png</g:image_link>
+      <g:availability>in_stock</g:availability>
+      <g:price>14200 KRW</g:price>
+      <g:brand>SamDaSoo</g:brand>
+      <g:gtin>8805678901235</g:gtin>
+      <g:condition>new</g:condition>
+      <g:product_type>Office Supplies &gt; Beverages &gt; Water</g:product_type>
+      <g:shipping>
+        <g:country>KR</g:country>
+        <g:service>Standard</g:service>
+        <g:price>0 KRW</g:price>
+      </g:shipping>
+    </item>
+
+    <item>
+      <g:id>TRASH-20L-100</g:id>
+      <title>StrongBag Trash Bags 20L x 100ea</title>
+      <description>StrongBag disposal bags, 20L capacity, 18μm thickness, 100 bags per pack.</description>
+      <link>https://beanhull0357-bot.github.io/ai-market/#/agent-console?sku=TRASH-20L-100</link>
+      <g:image_link>https://beanhull0357-bot.github.io/ai-market/placeholder.png</g:image_link>
+      <g:availability>in_stock</g:availability>
+      <g:price>8900 KRW</g:price>
+      <g:brand>StrongBag</g:brand>
+      <g:gtin>8803456789012</g:gtin>
+      <g:condition>new</g:condition>
+      <g:product_type>Office Supplies &gt; Cleaning &gt; Trash Bags</g:product_type>
+      <g:shipping>
+        <g:country>KR</g:country>
+        <g:service>Standard</g:service>
+        <g:price>0 KRW</g:price>
+      </g:shipping>
+    </item>
+
+    <!-- ==================== MRO ==================== -->
+
+    <item>
+      <g:id>PAPER-A4-80G</g:id>
+      <title>DoubleA A4 Copy Paper 80g 2500 sheets</title>
+      <description>DoubleA premium A4 copy paper, 80gsm, 2500 sheets (5 reams). Suitable for all office printers.</description>
+      <link>https://beanhull0357-bot.github.io/ai-market/#/agent-console?sku=PAPER-A4-80G</link>
+      <g:image_link>https://beanhull0357-bot.github.io/ai-market/placeholder.png</g:image_link>
+      <g:availability>in_stock</g:availability>
+      <g:price>24500 KRW</g:price>
+      <g:brand>DoubleA</g:brand>
+      <g:gtin>8808901234567</g:gtin>
+      <g:condition>new</g:condition>
+      <g:product_type>Office Supplies &gt; Paper &gt; Copy Paper</g:product_type>
+      <g:shipping>
+        <g:country>KR</g:country>
+        <g:service>Standard</g:service>
+        <g:price>0 KRW</g:price>
+      </g:shipping>
+    </item>
+
+    <item>
+      <g:id>BATTERY-AA-48</g:id>
+      <title>PowerMax Alkaline Battery AA x 48ea</title>
+      <description>PowerMax AA alkaline batteries, 1.5V, 48-pack. Long-lasting power for office devices.</description>
+      <link>https://beanhull0357-bot.github.io/ai-market/#/agent-console?sku=BATTERY-AA-48</link>
+      <g:image_link>https://beanhull0357-bot.github.io/ai-market/placeholder.png</g:image_link>
+      <g:availability>in_stock</g:availability>
+      <g:price>16000 KRW</g:price>
+      <g:brand>PowerMax</g:brand>
+      <g:gtin>8813456789013</g:gtin>
+      <g:condition>new</g:condition>
+      <g:product_type>Office Supplies &gt; Electrical &gt; Batteries</g:product_type>
+      <g:shipping>
+        <g:country>KR</g:country>
+        <g:service>Standard</g:service>
+        <g:price>0 KRW</g:price>
+      </g:shipping>
+    </item>
+
+    <item>
+      <g:id>TAPE-OPP-48</g:id>
+      <title>PackRight OPP Tape 48mm x 100m x 50rolls</title>
+      <description>PackRight OPP packing tape, 48mm width, 100m per roll, 50 rolls per case.</description>
+      <link>https://beanhull0357-bot.github.io/ai-market/#/agent-console?sku=TAPE-OPP-48</link>
+      <g:image_link>https://beanhull0357-bot.github.io/ai-market/placeholder.png</g:image_link>
+      <g:availability>in_stock</g:availability>
+      <g:price>42000 KRW</g:price>
+      <g:brand>PackRight</g:brand>
+      <g:gtin>8810123456790</g:gtin>
+      <g:condition>new</g:condition>
+      <g:product_type>Office Supplies &gt; Packaging &gt; Tape</g:product_type>
+      <g:shipping>
+        <g:country>KR</g:country>
+        <g:service>Standard</g:service>
+        <g:price>0 KRW</g:price>
+      </g:shipping>
+    </item>
+
+    <item>
+      <g:id>PEN-BALLPOINT-50</g:id>
+      <title>MonAmi 153 Ballpoint Pen Black x 50ea</title>
+      <description>MonAmi 153 classic ballpoint pen, black ink, 0.7mm tip, 50 pens per pack.</description>
+      <link>https://beanhull0357-bot.github.io/ai-market/#/agent-console?sku=PEN-BALLPOINT-50</link>
+      <g:image_link>https://beanhull0357-bot.github.io/ai-market/placeholder.png</g:image_link>
+      <g:availability>in_stock</g:availability>
+      <g:price>15000 KRW</g:price>
+      <g:brand>MonAmi</g:brand>
+      <g:gtin>8807890123456</g:gtin>
+      <g:condition>new</g:condition>
+      <g:product_type>Office Supplies &gt; Writing &gt; Pens</g:product_type>
+      <g:shipping>
+        <g:country>KR</g:country>
+        <g:service>Standard</g:service>
+        <g:price>0 KRW</g:price>
+      </g:shipping>
+    </item>
+
+    <item>
+      <g:id>FIRE-EXT-3KG</g:id>
+      <title>FireStop ABC Dry Chemical Extinguisher 3.3kg</title>
+      <description>FireStop ABC dry chemical fire extinguisher, 3.3kg, KFI certified, refillable. Rating: 3A-10B.</description>
+      <link>https://beanhull0357-bot.github.io/ai-market/#/agent-console?sku=FIRE-EXT-3KG</link>
+      <g:image_link>https://beanhull0357-bot.github.io/ai-market/placeholder.png</g:image_link>
+      <g:availability>in_stock</g:availability>
+      <g:price>25000 KRW</g:price>
+      <g:brand>FireStop</g:brand>
+      <g:gtin>8815678901237</g:gtin>
+      <g:condition>new</g:condition>
+      <g:product_type>Office Supplies &gt; Safety &gt; Fire Safety</g:product_type>
+      <g:shipping>
+        <g:country>KR</g:country>
+        <g:service>Standard</g:service>
+        <g:price>0 KRW</g:price>
+      </g:shipping>
+    </item>
+
+  </channel>
+</rss>

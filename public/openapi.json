@@ -427,6 +427,267 @@
                     }
                 }
             }
+        },
+        "/get_acp_feed": {
+            "post": {
+                "summary": "Get ACP/ChatGPT shopping format product feed",
+                "operationId": "getAcpFeed",
+                "tags": [
+                    "Data"
+                ],
+                "security": [],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "ACP-compatible product feed with shipping and return policies",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "format": {
+                                            "type": "string",
+                                            "enum": [
+                                                "acp_product_feed"
+                                            ]
+                                        },
+                                        "merchant": {
+                                            "type": "object",
+                                            "properties": {
+                                                "name": {
+                                                    "type": "string"
+                                                },
+                                                "domain": {
+                                                    "type": "string"
+                                                },
+                                                "checkout_protocol": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        },
+                                        "item_count": {
+                                            "type": "integer"
+                                        },
+                                        "items": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "string"
+                                                    },
+                                                    "title": {
+                                                        "type": "string"
+                                                    },
+                                                    "availability": {
+                                                        "type": "string"
+                                                    },
+                                                    "price": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "value": {
+                                                                "type": "string"
+                                                            },
+                                                            "currency": {
+                                                                "type": "string"
+                                                            }
+                                                        }
+                                                    },
+                                                    "shipping": {
+                                                        "type": "object"
+                                                    },
+                                                    "return_policy": {
+                                                        "type": "object"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/ucp_create_session": {
+            "post": {
+                "summary": "Create UCP checkout session",
+                "operationId": "ucpCreateSession",
+                "tags": [
+                    "Checkout"
+                ],
+                "security": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "p_items"
+                                ],
+                                "properties": {
+                                    "p_items": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "sku": {
+                                                    "type": "string"
+                                                },
+                                                "qty": {
+                                                    "type": "integer",
+                                                    "default": 1
+                                                }
+                                            }
+                                        },
+                                        "description": "Cart items with SKU and quantity"
+                                    },
+                                    "p_agent_id": {
+                                        "type": "string",
+                                        "description": "Agent ID for tracking"
+                                    },
+                                    "p_callback_url": {
+                                        "type": "string",
+                                        "format": "uri",
+                                        "description": "Webhook URL for status updates"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Checkout session created with 24h authorization hold",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "session_id": {
+                                            "type": "string"
+                                        },
+                                        "status": {
+                                            "type": "string",
+                                            "enum": [
+                                                "AUTHORIZED"
+                                            ]
+                                        },
+                                        "items": {
+                                            "type": "array"
+                                        },
+                                        "subtotal": {
+                                            "type": "integer"
+                                        },
+                                        "currency": {
+                                            "type": "string"
+                                        },
+                                        "auth_hold": {
+                                            "type": "object",
+                                            "properties": {
+                                                "amount": {
+                                                    "type": "integer"
+                                                },
+                                                "expires_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/ucp_complete_session": {
+            "post": {
+                "summary": "Complete (capture/void) checkout session",
+                "operationId": "ucpCompleteSession",
+                "tags": [
+                    "Checkout"
+                ],
+                "security": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "p_session_id"
+                                ],
+                                "properties": {
+                                    "p_session_id": {
+                                        "type": "string",
+                                        "description": "Session ID from ucp_create_session"
+                                    },
+                                    "p_action": {
+                                        "type": "string",
+                                        "enum": [
+                                            "capture",
+                                            "void"
+                                        ],
+                                        "default": "capture",
+                                        "description": "Capture payment or void session"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Session completed",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "session_id": {
+                                            "type": "string"
+                                        },
+                                        "status": {
+                                            "type": "string",
+                                            "enum": [
+                                                "CAPTURED",
+                                                "VOIDED"
+                                            ]
+                                        },
+                                        "order_id": {
+                                            "type": "string"
+                                        },
+                                        "amount": {
+                                            "type": "integer"
+                                        },
+                                        "currency": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

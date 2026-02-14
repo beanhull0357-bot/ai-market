@@ -10,6 +10,7 @@ import { AgentManager } from './pages/AgentManager';
 import { PolicyManager } from './pages/PolicyManager';
 import { AgentPlayground } from './pages/AgentPlayground';
 import { AgentDocs } from './pages/AgentDocs';
+import { MerchantPolicies } from './pages/MerchantPolicies';
 import { Terminal, Shield, Cpu, Globe, Package, LogIn, LogOut, User, Key, FileCheck, Zap, BookOpen } from 'lucide-react';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -128,6 +129,8 @@ export default function App() {
                   <Route path="/policies" element={<ProtectedRoute><PolicyManager /></ProtectedRoute>} />
                   <Route path="/playground" element={<AgentPlayground />} />
                   <Route path="/agent/docs" element={<AgentDocs />} />
+                  <Route path="/policies/returns" element={<MerchantPolicies />} />
+                  <Route path="/policies/merchant" element={<MerchantPolicies />} />
                 </Routes>
               </Layout>
             } />
