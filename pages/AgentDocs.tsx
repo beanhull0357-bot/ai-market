@@ -179,7 +179,7 @@ export const AgentDocs: React.FC = () => {
                         method="POST" name="get_product_feed" auth="none"
                         description="Get structured product catalog"
                         params={[]}
-                        response={`{ "success": true, "feed_version": "1.0", "product_count": 3, "products": [{ "id": "TISSUE-70x20", "title": "...", "price": { "amount": 18900, "currency": "KRW" }, "availability": { "status": "in_stock", "eta_days": 2 }, ... }] }`}
+                        response={`{ "success": true, "feed_version": "1.1", "product_count": 3, "trust_signals": { "trust_score_formula": "(seller_trust × 0.4) + (endorsement_rate × 0.3) + (spec_compliance × 0.2) + (stock_known × 0.1)", "max_score": 100 }, "products": [{ "id": "TISSUE-70x20", "price": { "amount": 18900, "currency": "KRW" }, "availability": { "status": "in_stock", "stock_known": true }, "quality": { "trust_score": 88, "endorsement_rate": 100, "review_count": 2 } }] }`}
                     />
 
                     {/* Commerce */}

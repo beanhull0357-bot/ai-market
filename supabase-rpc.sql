@@ -344,7 +344,7 @@ BEGIN
 END;
 $$;
 
--- 4. Product Feed: Returns all products in agent-friendly format
+-- 4. Product Feed: Returns all products with computed trust signals
 CREATE OR REPLACE FUNCTION get_product_feed()
 RETURNS JSON
 LANGUAGE plpgsql
@@ -353,44 +353,74 @@ AS $$
 DECLARE
     v_products JSON;
 BEGIN
-    SELECT json_agg(json_build_object(
-        'id', p.sku,
-        'title', p.title,
-        'brand', p.brand,
-        'category', p.category,
-        'gtin', p.gtin,
-        'price', json_build_object(
-            'amount', p.price,
-            'currency', p.currency
-        ),
-        'availability', json_build_object(
-            'status', p.stock_status,
-            'quantity', p.stock_qty,
-            'ship_by_days', p.ship_by_days,
-            'eta_days', p.eta_days
-        ),
-        'policies', json_build_object(
-            'return_days', p.return_days,
-            'return_fee', p.return_fee,
-            'return_exceptions', p.return_exceptions
-        ),
-        'quality', json_build_object(
-            'ai_readiness_score', p.ai_readiness_score,
-            'seller_trust', p.seller_trust
-        ),
-        'attributes', p.attributes,
-        'last_updated', p.updated_at
-    ) ORDER BY p.ai_readiness_score DESC)
+    SELECT json_agg(feed_row ORDER BY feed_row->>'trust_score' DESC)
     INTO v_products
-    FROM products p
-    WHERE p.stock_status != 'out_of_stock';
+    FROM (
+        SELECT json_build_object(
+            'id', p.sku,
+            'title', p.title,
+            'brand', p.brand,
+            'category', p.category,
+            'gtin', p.gtin,
+            'price', json_build_object(
+                'amount', p.price,
+                'currency', p.currency
+            ),
+            'availability', json_build_object(
+                'status', p.stock_status,
+                'quantity', p.stock_qty,
+                'ship_by_days', p.ship_by_days,
+                'eta_days', p.eta_days,
+                'stock_known', CASE WHEN p.stock_status = 'unknown' THEN false ELSE true END
+            ),
+            'policies', json_build_object(
+                'return_days', p.return_days,
+                'return_fee', p.return_fee,
+                'return_exceptions', p.return_exceptions,
+                'returnable', p.return_days > 0
+            ),
+            'quality', json_build_object(
+                'ai_readiness_score', p.ai_readiness_score,
+                'seller_trust', p.seller_trust,
+                'review_count', COALESCE(rs.review_count, 0),
+                'endorsement_rate', COALESCE(rs.endorsement_rate, 0),
+                'avg_spec_compliance', COALESCE(rs.avg_spec_compliance, 0),
+                'avg_fulfillment_delta_hrs', COALESCE(rs.avg_fulfillment_delta, 0),
+                'trust_score', LEAST(100, GREATEST(0,
+                    (p.seller_trust * 0.4) +
+                    (COALESCE(rs.endorsement_rate, 0) * 0.3) +
+                    (COALESCE(rs.avg_spec_compliance, 1.0) * 100 * 0.2) +
+                    (CASE WHEN p.stock_status = 'in_stock' THEN 10 ELSE 0 END)
+                ))
+            ),
+            'attributes', p.attributes,
+            'last_updated', p.updated_at
+        ) AS feed_row
+        FROM products p
+        LEFT JOIN (
+            SELECT
+                target_sku,
+                count(*) AS review_count,
+                ROUND((count(*) FILTER (WHERE verdict = 'ENDORSE')::numeric / NULLIF(count(*), 0)) * 100, 1) AS endorsement_rate,
+                ROUND(avg(spec_compliance)::numeric, 3) AS avg_spec_compliance,
+                ROUND(avg(fulfillment_delta)::numeric, 1) AS avg_fulfillment_delta
+            FROM agent_reviews
+            GROUP BY target_sku
+        ) rs ON rs.target_sku = p.sku
+        WHERE p.stock_status != 'out_of_stock'
+    ) sub;
 
     RETURN json_build_object(
         'success', true,
-        'feed_version', '1.0',
+        'feed_version', '1.1',
         'generated_at', now(),
         'currency', 'KRW',
         'product_count', (SELECT count(*) FROM products WHERE stock_status != 'out_of_stock'),
+        'trust_signals', json_build_object(
+            'description', 'Trust scores are computed from agent reviews, seller metrics, and stock accuracy',
+            'trust_score_formula', '(seller_trust × 0.4) + (endorsement_rate × 0.3) + (spec_compliance × 0.2) + (stock_known × 0.1)',
+            'max_score', 100
+        ),
         'products', COALESCE(v_products, '[]'::json)
     );
 END;

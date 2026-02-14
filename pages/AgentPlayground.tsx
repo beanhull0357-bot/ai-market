@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Terminal, Key, Send, ShoppingCart, Star, Loader, CheckCircle, XCircle, Zap, Bot, Clock } from 'lucide-react';
+import { Terminal, Key, Send, ShoppingCart, Star, Loader, CheckCircle, XCircle, Zap, Bot, Clock, Database } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { supabase } from '../supabaseClient';
 import { useProducts } from '../hooks';
@@ -40,6 +40,7 @@ export const AgentPlayground: React.FC = () => {
     // Logs
     const [logs, setLogs] = useState<LogEntry[]>([]);
     const [authLoading, setAuthLoading] = useState(false);
+    const [feedLoading, setFeedLoading] = useState(false);
     const logsEndRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -212,6 +213,32 @@ export const AgentPlayground: React.FC = () => {
                                 </button>
                             </form>
                         )}
+                    </div>
+
+                    {/* Fetch Product Feed */}
+                    <div className="mb-6 p-4 bg-gray-900 rounded-lg border border-green-900/50">
+                        <h3 className="text-sm font-bold text-white mb-1 flex items-center gap-2">
+                            <Database size={14} className="text-green-400" /> Product Feed (Public)
+                        </h3>
+                        <p className="text-[10px] text-gray-500 mb-3">No auth required — fetch structured catalog with trust scores.</p>
+                        <button
+                            onClick={async () => {
+                                setFeedLoading(true);
+                                addLog('request', 'POST /rpc/get_product_feed', {});
+                                const { data, error } = await supabase.rpc('get_product_feed');
+                                if (error) {
+                                    addLog('error', `RPC Error: ${error.message}`);
+                                } else {
+                                    addLog('response', `✅ Feed v${data.feed_version} — ${data.product_count} products`, data);
+                                }
+                                setFeedLoading(false);
+                            }}
+                            disabled={feedLoading}
+                            className="w-full py-2 text-xs font-bold bg-green-700 text-white rounded hover:bg-green-600 flex items-center justify-center gap-2 disabled:opacity-50 transition-colors"
+                        >
+                            {feedLoading ? <Loader className="animate-spin" size={12} /> : <Database size={12} />}
+                            Fetch Product Feed
+                        </button>
                     </div>
 
                     {/* Divider */}
