@@ -1681,7 +1681,6 @@ $$;
 -- 17. Product Readiness Score (#4)
 -- ============================================
 ALTER TABLE products ADD COLUMN IF NOT EXISTS ai_readiness_score INTEGER DEFAULT 0;
-ALTER TABLE products ADD COLUMN IF NOT EXISTS readiness_factors JSONB DEFAULT '{}';
 
 CREATE OR REPLACE FUNCTION calculate_product_readiness(p_sku TEXT)
 RETURNS JSON
@@ -1702,15 +1701,15 @@ BEGIN
     SELECT * INTO v_product FROM products WHERE sku = p_sku;
     IF NOT FOUND THEN RETURN json_build_object('success', false, 'error', 'PRODUCT_NOT_FOUND'); END IF;
 
-    -- Data completeness (30%)
-    IF v_product.name IS NOT NULL AND length(v_product.name) > 0 THEN v_field_count := v_field_count + 1; END IF;
-    IF v_product.description IS NOT NULL AND length(v_product.description) > 0 THEN v_field_count := v_field_count + 1; END IF;
+    -- Data completeness (30%) - using actual schema columns
+    IF v_product.title IS NOT NULL AND length(v_product.title) > 0 THEN v_field_count := v_field_count + 1; END IF;
+    IF v_product.brand IS NOT NULL AND length(v_product.brand) > 0 THEN v_field_count := v_field_count + 1; END IF;
     IF v_product.price IS NOT NULL AND v_product.price > 0 THEN v_field_count := v_field_count + 1; END IF;
     IF v_product.stock_qty IS NOT NULL THEN v_field_count := v_field_count + 1; END IF;
     IF v_product.stock_status IS NOT NULL THEN v_field_count := v_field_count + 1; END IF;
     IF v_product.category IS NOT NULL THEN v_field_count := v_field_count + 1; END IF;
-    IF v_product.unit IS NOT NULL THEN v_field_count := v_field_count + 1; END IF;
-    IF v_product.delivery_estimate IS NOT NULL THEN v_field_count := v_field_count + 1; END IF;
+    IF v_product.gtin IS NOT NULL AND length(v_product.gtin) > 0 THEN v_field_count := v_field_count + 1; END IF;
+    IF v_product.ship_by_days IS NOT NULL THEN v_field_count := v_field_count + 1; END IF;
     v_data_score := (v_field_count::real / v_total_fields) * 100;
 
     -- Stock reliability (25%)
@@ -1725,10 +1724,10 @@ BEGIN
     -- Price stability (20%) - assume stable if price exists
     v_price_score := CASE WHEN v_product.price > 0 THEN 90 ELSE 0 END;
 
-    -- Policy coverage (15%)
+    -- Policy coverage (15%) - using return_days and ship_by_days
     v_policy_score := CASE
-        WHEN v_product.return_policy IS NOT NULL AND v_product.shipping_info IS NOT NULL THEN 100
-        WHEN v_product.return_policy IS NOT NULL OR v_product.shipping_info IS NOT NULL THEN 60
+        WHEN v_product.return_days > 0 AND v_product.ship_by_days IS NOT NULL THEN 100
+        WHEN v_product.return_days > 0 OR v_product.ship_by_days IS NOT NULL THEN 60
         ELSE 20
     END;
 
@@ -1747,12 +1746,14 @@ BEGIN
 
     UPDATE products SET
         ai_readiness_score = v_total,
-        readiness_factors = jsonb_build_object(
-            'data_completeness', round(v_data_score::numeric, 1),
-            'stock_reliability', round(v_stock_score::numeric, 1),
-            'price_stability', round(v_price_score::numeric, 1),
-            'policy_coverage', round(v_policy_score::numeric, 1),
-            'review_coverage', round(v_review_score::numeric, 1)
+        attributes = COALESCE(attributes, '{}'::jsonb) || jsonb_build_object(
+            'readiness_factors', jsonb_build_object(
+                'data_completeness', round(v_data_score::numeric, 1),
+                'stock_reliability', round(v_stock_score::numeric, 1),
+                'price_stability', round(v_price_score::numeric, 1),
+                'policy_coverage', round(v_policy_score::numeric, 1),
+                'review_coverage', round(v_review_score::numeric, 1)
+            )
         )
     WHERE sku = p_sku;
 
