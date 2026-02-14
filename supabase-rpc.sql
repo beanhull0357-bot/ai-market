@@ -426,6 +426,267 @@ BEGIN
 END;
 $$;
 
+-- ============================================
+-- 5. ACP Product Feed (ChatGPT Shopping Format)
+-- ============================================
+CREATE OR REPLACE FUNCTION get_acp_feed()
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_items JSON;
+BEGIN
+    SELECT json_agg(json_build_object(
+        'id', p.sku,
+        'title', p.title,
+        'description', p.title || ' — ' || p.brand || ' (' || p.category || ')',
+        'link', 'https://beanhull0357-bot.github.io/ai-market/#/agent-console?sku=' || p.sku,
+        'image_link', 'https://beanhull0357-bot.github.io/ai-market/placeholder.png',
+        'availability', CASE
+            WHEN p.stock_status = 'in_stock' THEN 'in_stock'
+            WHEN p.stock_status = 'out_of_stock' THEN 'out_of_stock'
+            ELSE 'preorder'
+        END,
+        'price', json_build_object(
+            'value', p.price::text,
+            'currency', p.currency
+        ),
+        'brand', p.brand,
+        'gtin', COALESCE(p.gtin, ''),
+        'condition', 'new',
+        'product_type', p.category,
+        'shipping', json_build_object(
+            'country', 'KR',
+            'service', 'Standard',
+            'price', json_build_object('value', '0', 'currency', 'KRW'),
+            'min_handling_time', p.ship_by_days,
+            'max_handling_time', p.ship_by_days,
+            'min_transit_time', p.eta_days - p.ship_by_days,
+            'max_transit_time', p.eta_days
+        ),
+        'return_policy', json_build_object(
+            'type', CASE WHEN p.return_days > 0 THEN 'returnable' ELSE 'non_returnable' END,
+            'days_to_return', p.return_days,
+            'return_fees', json_build_object('value', p.return_fee::text, 'currency', 'KRW'),
+            'return_exceptions', p.return_exceptions
+        ),
+        'custom_attributes', json_build_object(
+            'ai_readiness_score', p.ai_readiness_score,
+            'seller_trust', p.seller_trust,
+            'checkout_url', 'https://beanhull0357-bot.github.io/ai-market/.well-known/ucp'
+        )
+    ) ORDER BY p.ai_readiness_score DESC)
+    INTO v_items
+    FROM products p
+    WHERE p.stock_status != 'out_of_stock';
+
+    RETURN json_build_object(
+        'version', '1.0',
+        'format', 'acp_product_feed',
+        'merchant', json_build_object(
+            'name', 'JSONMart',
+            'domain', 'beanhull0357-bot.github.io',
+            'country', 'KR',
+            'currency', 'KRW',
+            'checkout_protocol', 'UCP',
+            'ucp_url', 'https://beanhull0357-bot.github.io/ai-market/.well-known/ucp'
+        ),
+        'generated_at', now(),
+        'item_count', (SELECT count(*) FROM products WHERE stock_status != 'out_of_stock'),
+        'items', COALESCE(v_items, '[]'::json)
+    );
+END;
+$$;
+
+-- ============================================
+-- 6. UCP Checkout Sessions (Table)
+-- ============================================
+CREATE TABLE IF NOT EXISTS checkout_sessions (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    session_id TEXT UNIQUE NOT NULL,
+    status TEXT NOT NULL DEFAULT 'OPEN' CHECK (status IN ('OPEN','AUTHORIZED','CAPTURED','VOIDED','EXPIRED')),
+    agent_id TEXT,
+    
+    -- Cart
+    items JSONB NOT NULL DEFAULT '[]',
+    subtotal INTEGER NOT NULL DEFAULT 0,
+    currency TEXT NOT NULL DEFAULT 'KRW',
+    
+    -- Auth hold
+    authorized_amount INTEGER DEFAULT 0,
+    auth_expires_at TIMESTAMPTZ,
+    
+    -- Metadata
+    callback_url TEXT,
+    metadata JSONB DEFAULT '{}',
+    
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE checkout_sessions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all for checkout_sessions" ON checkout_sessions FOR ALL USING (true) WITH CHECK (true);
+
+-- ============================================
+-- 7. UCP: Create Checkout Session
+-- ============================================
+CREATE OR REPLACE FUNCTION ucp_create_session(
+    p_items JSONB,          -- [{"sku":"TISSUE-70x20","qty":2}, ...]
+    p_agent_id TEXT DEFAULT NULL,
+    p_callback_url TEXT DEFAULT NULL
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_session_id TEXT;
+    v_subtotal INTEGER := 0;
+    v_validated_items JSONB := '[]'::jsonb;
+    v_item RECORD;
+    v_product RECORD;
+BEGIN
+    -- Generate session ID
+    v_session_id := 'SES-' || upper(substr(md5(random()::text), 1, 8));
+    
+    -- Validate each item
+    FOR v_item IN SELECT * FROM jsonb_array_elements(p_items) AS elem
+    LOOP
+        SELECT * INTO v_product
+        FROM products
+        WHERE sku = (v_item.elem->>'sku')
+        AND stock_status != 'out_of_stock';
+        
+        IF NOT FOUND THEN
+            RETURN json_build_object(
+                'success', false,
+                'error', 'PRODUCT_NOT_FOUND',
+                'message', 'SKU not found or out of stock: ' || (v_item.elem->>'sku')
+            );
+        END IF;
+        
+        -- Check stock
+        IF v_product.stock_qty IS NOT NULL AND v_product.stock_qty < COALESCE((v_item.elem->>'qty')::int, 1) THEN
+            RETURN json_build_object(
+                'success', false,
+                'error', 'INSUFFICIENT_STOCK',
+                'message', 'Not enough stock for ' || v_product.sku || '. Available: ' || v_product.stock_qty
+            );
+        END IF;
+        
+        v_subtotal := v_subtotal + (v_product.price * COALESCE((v_item.elem->>'qty')::int, 1));
+        
+        v_validated_items := v_validated_items || jsonb_build_object(
+            'sku', v_product.sku,
+            'title', v_product.title,
+            'qty', COALESCE((v_item.elem->>'qty')::int, 1),
+            'unit_price', v_product.price,
+            'line_total', v_product.price * COALESCE((v_item.elem->>'qty')::int, 1),
+            'eta_days', v_product.eta_days
+        );
+    END LOOP;
+    
+    -- Create session
+    INSERT INTO checkout_sessions (session_id, status, agent_id, items, subtotal, authorized_amount, auth_expires_at, callback_url)
+    VALUES (
+        v_session_id,
+        'AUTHORIZED',
+        p_agent_id,
+        v_validated_items,
+        v_subtotal,
+        v_subtotal,
+        now() + interval '24 hours',
+        p_callback_url
+    );
+    
+    RETURN json_build_object(
+        'success', true,
+        'session_id', v_session_id,
+        'status', 'AUTHORIZED',
+        'items', v_validated_items,
+        'subtotal', v_subtotal,
+        'currency', 'KRW',
+        'auth_hold', json_build_object(
+            'amount', v_subtotal,
+            'expires_at', now() + interval '24 hours'
+        ),
+        'next_steps', json_build_object(
+            'capture', 'Call ucp_complete_session with session_id to capture payment',
+            'void', 'Session auto-voids after 24h if not captured'
+        )
+    );
+END;
+$$;
+
+-- ============================================
+-- 8. UCP: Complete (Capture) Checkout Session
+-- ============================================
+CREATE OR REPLACE FUNCTION ucp_complete_session(
+    p_session_id TEXT,
+    p_action TEXT DEFAULT 'capture'  -- 'capture' or 'void'
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_session RECORD;
+    v_order_id TEXT;
+BEGIN
+    SELECT * INTO v_session
+    FROM checkout_sessions
+    WHERE session_id = p_session_id;
+    
+    IF NOT FOUND THEN
+        RETURN json_build_object('success', false, 'error', 'SESSION_NOT_FOUND');
+    END IF;
+    
+    IF v_session.status != 'AUTHORIZED' THEN
+        RETURN json_build_object(
+            'success', false,
+            'error', 'INVALID_STATUS',
+            'message', 'Session status is ' || v_session.status || '. Expected AUTHORIZED.'
+        );
+    END IF;
+    
+    IF v_session.auth_expires_at < now() THEN
+        UPDATE checkout_sessions SET status = 'EXPIRED', updated_at = now() WHERE session_id = p_session_id;
+        RETURN json_build_object('success', false, 'error', 'SESSION_EXPIRED');
+    END IF;
+    
+    IF p_action = 'void' THEN
+        UPDATE checkout_sessions SET status = 'VOIDED', updated_at = now() WHERE session_id = p_session_id;
+        RETURN json_build_object('success', true, 'session_id', p_session_id, 'status', 'VOIDED');
+    END IF;
+    
+    -- Capture: create order from session
+    v_order_id := 'ORD-' || upper(substr(md5(random()::text), 1, 6));
+    
+    INSERT INTO orders (order_id, status, items, payment_status, authorized_amount, capture_deadline)
+    VALUES (
+        v_order_id,
+        'PAYMENT_AUTHORIZED',
+        v_session.items,
+        'CAPTURED',
+        v_session.subtotal,
+        v_session.auth_expires_at
+    );
+    
+    UPDATE checkout_sessions SET status = 'CAPTURED', updated_at = now() WHERE session_id = p_session_id;
+    
+    RETURN json_build_object(
+        'success', true,
+        'session_id', p_session_id,
+        'status', 'CAPTURED',
+        'order_id', v_order_id,
+        'amount', v_session.subtotal,
+        'currency', 'KRW',
+        'message', 'Payment captured. Order created and awaiting fulfillment.'
+    );
+END;
+$$;
+
 -- Grant execute permissions to anon and authenticated roles
 GRANT EXECUTE ON FUNCTION agent_self_register(TEXT, TEXT[], TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION approve_pending_agent(TEXT) TO anon, authenticated;
@@ -434,3 +695,7 @@ GRANT EXECUTE ON FUNCTION authenticate_agent(TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION agent_create_order(TEXT, TEXT, INTEGER) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION agent_create_review(TEXT, TEXT, TEXT, REAL, REAL, INTEGER, JSONB) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION get_product_feed() TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION get_acp_feed() TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION ucp_create_session(JSONB, TEXT, TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION ucp_complete_session(TEXT, TEXT) TO anon, authenticated;
+

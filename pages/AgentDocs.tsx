@@ -215,6 +215,41 @@ export const AgentDocs: React.FC = () => {
                         ]}
                         response={`{ "success": true, "review_id": "REV-1A2B3C", "sku": "TISSUE-70x20", "verdict": "ENDORSE" }`}
                     />
+
+                    {/* ACP Feed */}
+                    <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 mt-6 flex items-center gap-2">
+                        <Database size={14} className="text-cyan-400" /> ACP / ChatGPT Shopping
+                    </h3>
+                    <Endpoint
+                        method="POST" name="get_acp_feed" auth="none"
+                        description="Product feed in ChatGPT/ACP shopping format"
+                        params={[]}
+                        response={`{ "format": "acp_product_feed", "merchant": { "name": "JSONMart", "checkout_protocol": "UCP" }, "item_count": 50, "items": [{ "id": "TISSUE-70x20", "title": "...", "availability": "in_stock", "price": { "value": "18900", "currency": "KRW" }, "shipping": { ... }, "return_policy": { "type": "returnable", "days_to_return": 7 } }] }`}
+                    />
+
+                    {/* UCP Checkout */}
+                    <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 mt-6 flex items-center gap-2">
+                        <ShoppingCart size={14} className="text-emerald-400" /> UCP Checkout
+                    </h3>
+                    <Endpoint
+                        method="POST" name="ucp_create_session" auth="none"
+                        description="Create checkout session with cart items"
+                        params={[
+                            { name: 'p_items', type: 'JSONB', required: true, description: '[{"sku":"TISSUE-70x20","qty":2}]' },
+                            { name: 'p_agent_id', type: 'TEXT', required: false, description: 'Agent ID for tracking' },
+                            { name: 'p_callback_url', type: 'TEXT', required: false, description: 'Webhook URL for status updates' },
+                        ]}
+                        response={`{ "success": true, "session_id": "SES-1A2B3C4D", "status": "AUTHORIZED", "subtotal": 37800, "auth_hold": { "amount": 37800, "expires_at": "..." } }`}
+                    />
+                    <Endpoint
+                        method="POST" name="ucp_complete_session" auth="none"
+                        description="Capture or void a checkout session"
+                        params={[
+                            { name: 'p_session_id', type: 'TEXT', required: true, description: 'Session ID from ucp_create_session' },
+                            { name: 'p_action', type: 'TEXT', required: false, description: 'capture (default) or void' },
+                        ]}
+                        response={`{ "success": true, "session_id": "SES-1A2B3C4D", "status": "CAPTURED", "order_id": "ORD-5E6F7G", "amount": 37800 }`}
+                    />
                 </section>
 
                 {/* Order Flow */}
