@@ -273,9 +273,86 @@ export const AgentDocs: React.FC = () => {
                     </div>
                 </section>
 
+                {/* Webhooks */}
+                <section className="mb-10">
+                    <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2"><Zap size={18} /> Webhooks — Agent Notifications</h2>
+                    <p className="text-sm text-gray-400 mb-4">
+                        Register a callback URL to receive real-time event notifications. Equivalent to push notifications for humans.
+                        Events are signed with HMAC-SHA256 using the secret returned during registration.
+                    </p>
+                    <div className="bg-gray-900 border border-gray-800 rounded-lg p-4 mb-4">
+                        <h4 className="text-xs text-gray-500 uppercase mb-2">Supported Events</h4>
+                        <div className="flex flex-wrap gap-2 text-xs font-mono">
+                            <span className="px-2 py-1 rounded bg-blue-900/40 text-blue-300">order.created</span>
+                            <span className="px-2 py-1 rounded bg-blue-900/40 text-blue-300">order.shipped</span>
+                            <span className="px-2 py-1 rounded bg-blue-900/40 text-blue-300">order.delivered</span>
+                            <span className="px-2 py-1 rounded bg-green-900/40 text-green-300">offer.created</span>
+                            <span className="px-2 py-1 rounded bg-green-900/40 text-green-300">price.dropped</span>
+                            <span className="px-2 py-1 rounded bg-green-900/40 text-green-300">stock.back_in</span>
+                        </div>
+                    </div>
+                    <Endpoint
+                        method="POST" name="agent_register_webhook" auth="api_key"
+                        description="Subscribe to event notifications"
+                        params={[
+                            { name: 'p_api_key', type: 'TEXT', required: true, description: 'Agent API key' },
+                            { name: 'p_callback_url', type: 'TEXT', required: true, description: 'Webhook endpoint URL' },
+                            { name: 'p_events', type: 'TEXT[]', required: false, description: 'Event types to subscribe to (default: all)' },
+                        ]}
+                        response={`{ "success": true, "subscription_id": "uuid", "secret": "whsec_...", "message": "Use secret for HMAC-SHA256 verification" }`}
+                    />
+                    <Endpoint
+                        method="POST" name="agent_unregister_webhook" auth="api_key"
+                        description="Remove a webhook subscription"
+                        params={[
+                            { name: 'p_api_key', type: 'TEXT', required: true, description: 'Agent API key' },
+                            { name: 'p_subscription_id', type: 'UUID', required: true, description: 'Subscription ID to remove' },
+                        ]}
+                        response={`{ "success": true, "message": "Webhook subscription removed." }`}
+                    />
+                </section>
+
+                {/* Order Events */}
+                <section className="mb-10">
+                    <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2"><Database size={18} /> Order Events — Polling API</h2>
+                    <p className="text-sm text-gray-400 mb-4">
+                        If your agent cannot receive webhooks, poll this endpoint to check for order status changes.
+                        Returns events since a given timestamp, ordered by most recent first.
+                    </p>
+                    <Endpoint
+                        method="POST" name="get_order_events" auth="none"
+                        description="Poll for order status change events"
+                        params={[
+                            { name: 'p_since', type: 'TIMESTAMPTZ', required: false, description: 'Start time (default: last 24 hours)' },
+                            { name: 'p_order_id', type: 'TEXT', required: false, description: 'Filter by specific order' },
+                            { name: 'p_limit', type: 'INTEGER', required: false, description: 'Max events to return (default: 50)' },
+                        ]}
+                        response={`{ "success": true, "event_count": 3, "events": [{ "event_id": "...", "order_id": "ORD-...", "event_type": "order.shipped", "payload": { "tracking": "CJ123" }, "timestamp": "2026-02-14T..." }] }`}
+                    />
+                </section>
+
+                {/* Agent Offers */}
+                <section className="mb-10">
+                    <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2"><ShoppingCart size={18} /> Agent Offers — Promotions Feed</h2>
+                    <p className="text-sm text-gray-400 mb-4">
+                        Rule-based promotions that agents can compute against their policies. Unlike human coupons,
+                        these offers include structured constraints (min_qty, max_per_order, min_order_amount) that
+                        agents can evaluate programmatically.
+                    </p>
+                    <Endpoint
+                        method="POST" name="get_agent_offers" auth="none"
+                        description="Get active promotions and discounts"
+                        params={[
+                            { name: 'p_sku', type: 'TEXT', required: false, description: 'Filter by specific product SKU' },
+                            { name: 'p_category', type: 'TEXT', required: false, description: 'Filter by category (CONSUMABLES, MRO)' },
+                        ]}
+                        response={`{ "success": true, "offer_count": 6, "offers": [{ "offer_id": "OFR-2026-001", "sku": "COFFEE-MIX-100", "discount": { "type": "percent_discount", "value": 5, "explain": "커피 정기 구매 5% 할인" }, "constraints": { "min_qty": 1, "max_per_order": 50000, "max_per_month": 200000 }, "original_price": 18500, "discounted_price": 17575 }] }`}
+                    />
+                </section>
+
                 {/* Footer */}
                 <footer className="border-t border-gray-800 pt-6 text-center text-xs text-gray-600">
-                    <p>JSONMart Agent API v1.0 · Agent-Native Commerce Infrastructure</p>
+                    <p>JSONMart Agent API v2.0 · Agent-Native Commerce Infrastructure</p>
                     <p className="mt-1">Built for AI agents, by humans who trust them (with approval).</p>
                 </footer>
             </div>

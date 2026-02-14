@@ -687,6 +687,277 @@ BEGIN
 END;
 $$;
 
+-- ============================================
+-- 9. Agent Webhook Subscriptions
+-- ============================================
+CREATE TABLE IF NOT EXISTS agent_webhook_subscriptions (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    agent_id TEXT NOT NULL,
+    callback_url TEXT NOT NULL,
+    events TEXT[] NOT NULL DEFAULT '{order.created,order.shipped,order.delivered}',
+    secret TEXT,  -- HMAC secret for signature verification
+    status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE','PAUSED','FAILED')),
+    failure_count INTEGER DEFAULT 0,
+    last_triggered_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE agent_webhook_subscriptions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all for agent_webhook_subscriptions" ON agent_webhook_subscriptions FOR ALL USING (true) WITH CHECK (true);
+
+-- 9a. Register webhook subscription
+CREATE OR REPLACE FUNCTION agent_register_webhook(
+    p_api_key TEXT,
+    p_callback_url TEXT,
+    p_events TEXT[] DEFAULT '{order.created,order.shipped,order.delivered,offer.created,price.dropped,stock.back_in}'
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_agent RECORD;
+    v_secret TEXT;
+    v_sub_id UUID;
+    v_chars TEXT := 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    i INTEGER;
+BEGIN
+    -- Authenticate
+    SELECT * INTO v_agent FROM agents WHERE api_key = p_api_key AND status = 'ACTIVE';
+    IF NOT FOUND THEN
+        RETURN json_build_object('success', false, 'error', 'AUTH_FAILED');
+    END IF;
+
+    -- Generate HMAC secret
+    v_secret := 'whsec_';
+    FOR i IN 1..32 LOOP
+        v_secret := v_secret || substr(v_chars, floor(random() * 62 + 1)::int, 1);
+    END LOOP;
+
+    INSERT INTO agent_webhook_subscriptions (agent_id, callback_url, events, secret)
+    VALUES (v_agent.agent_id, p_callback_url, p_events, v_secret)
+    RETURNING id INTO v_sub_id;
+
+    RETURN json_build_object(
+        'success', true,
+        'subscription_id', v_sub_id,
+        'agent_id', v_agent.agent_id,
+        'callback_url', p_callback_url,
+        'events', p_events,
+        'secret', v_secret,
+        'message', 'Webhook registered. Use the secret for HMAC-SHA256 signature verification of payloads.'
+    );
+END;
+$$;
+
+-- 9b. Unregister webhook
+CREATE OR REPLACE FUNCTION agent_unregister_webhook(
+    p_api_key TEXT,
+    p_subscription_id UUID
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_agent RECORD;
+BEGIN
+    SELECT * INTO v_agent FROM agents WHERE api_key = p_api_key AND status = 'ACTIVE';
+    IF NOT FOUND THEN
+        RETURN json_build_object('success', false, 'error', 'AUTH_FAILED');
+    END IF;
+
+    DELETE FROM agent_webhook_subscriptions
+    WHERE id = p_subscription_id AND agent_id = v_agent.agent_id;
+
+    IF NOT FOUND THEN
+        RETURN json_build_object('success', false, 'error', 'SUBSCRIPTION_NOT_FOUND');
+    END IF;
+
+    RETURN json_build_object('success', true, 'message', 'Webhook subscription removed.');
+END;
+$$;
+
+-- ============================================
+-- 10. Order Events Log + Polling API
+-- ============================================
+CREATE TABLE IF NOT EXISTS order_events (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    order_id TEXT NOT NULL,
+    event_type TEXT NOT NULL CHECK (event_type IN (
+        'order.created','order.authorized','order.captured','order.shipped',
+        'order.delivered','order.voided','order.cancelled','order.refunded'
+    )),
+    payload JSONB DEFAULT '{}',
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE order_events ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all for order_events" ON order_events FOR ALL USING (true) WITH CHECK (true);
+
+CREATE INDEX IF NOT EXISTS idx_order_events_created ON order_events(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_order_events_order_id ON order_events(order_id);
+
+-- 10a. Get order events (polling endpoint)
+CREATE OR REPLACE FUNCTION get_order_events(
+    p_since TIMESTAMPTZ DEFAULT (now() - interval '24 hours'),
+    p_order_id TEXT DEFAULT NULL,
+    p_limit INTEGER DEFAULT 50
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_events JSON;
+BEGIN
+    SELECT json_agg(json_build_object(
+        'event_id', id,
+        'order_id', order_id,
+        'event_type', event_type,
+        'payload', payload,
+        'timestamp', created_at
+    ) ORDER BY created_at DESC)
+    INTO v_events
+    FROM (
+        SELECT * FROM order_events
+        WHERE created_at >= p_since
+        AND (p_order_id IS NULL OR order_id = p_order_id)
+        ORDER BY created_at DESC
+        LIMIT p_limit
+    ) sub;
+
+    RETURN json_build_object(
+        'success', true,
+        'since', p_since,
+        'event_count', COALESCE(json_array_length(v_events), 0),
+        'events', COALESCE(v_events, '[]'::json)
+    );
+END;
+$$;
+
+-- 10b. Helper: Log an order event (called internally when order status changes)
+CREATE OR REPLACE FUNCTION log_order_event(
+    p_order_id TEXT,
+    p_event_type TEXT,
+    p_payload JSONB DEFAULT '{}'
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    INSERT INTO order_events (order_id, event_type, payload)
+    VALUES (p_order_id, p_event_type, p_payload);
+END;
+$$;
+
+-- ============================================
+-- 11. Agent Offers Feed (Promotions for Agents)
+-- ============================================
+CREATE TABLE IF NOT EXISTS agent_offers (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    offer_id TEXT UNIQUE NOT NULL,
+    sku TEXT REFERENCES products(sku),
+    category TEXT,  -- NULL = all categories, or 'CONSUMABLES' / 'MRO'
+
+    -- Discount
+    discount_type TEXT NOT NULL CHECK (discount_type IN ('percent_discount','fixed_discount','bundle_deal','free_shipping_upgrade')),
+    discount_value NUMERIC NOT NULL DEFAULT 0,
+
+    -- Constraints (agent-computable rules)
+    min_qty INTEGER DEFAULT 1,
+    max_per_order INTEGER,
+    max_per_month INTEGER,
+    min_order_amount INTEGER DEFAULT 0,
+
+    -- Validity
+    valid_from TIMESTAMPTZ NOT NULL DEFAULT now(),
+    valid_to TIMESTAMPTZ NOT NULL DEFAULT (now() + interval '7 days'),
+    stackable BOOLEAN DEFAULT false,
+
+    -- Explanation for agent reasoning
+    explain TEXT NOT NULL DEFAULT '',
+
+    status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE','EXPIRED','PAUSED')),
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE agent_offers ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all for agent_offers" ON agent_offers FOR ALL USING (true) WITH CHECK (true);
+
+-- 11a. Get active offers feed
+CREATE OR REPLACE FUNCTION get_agent_offers(
+    p_sku TEXT DEFAULT NULL,
+    p_category TEXT DEFAULT NULL
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_offers JSON;
+BEGIN
+    SELECT json_agg(json_build_object(
+        'offer_id', ao.offer_id,
+        'sku', ao.sku,
+        'category', COALESCE(ao.category, 'ALL'),
+        'product_title', p.title,
+        'discount', json_build_object(
+            'type', ao.discount_type,
+            'value', ao.discount_value,
+            'explain', ao.explain
+        ),
+        'constraints', json_build_object(
+            'min_qty', ao.min_qty,
+            'max_per_order', ao.max_per_order,
+            'max_per_month', ao.max_per_month,
+            'min_order_amount', ao.min_order_amount
+        ),
+        'validity', json_build_object(
+            'from', ao.valid_from,
+            'to', ao.valid_to,
+            'stackable', ao.stackable
+        ),
+        'original_price', p.price,
+        'discounted_price', CASE
+            WHEN ao.discount_type = 'percent_discount' THEN ROUND(p.price * (1 - ao.discount_value / 100))
+            WHEN ao.discount_type = 'fixed_discount' THEN GREATEST(0, p.price - ao.discount_value::int)
+            ELSE p.price
+        END
+    ) ORDER BY ao.valid_to ASC)
+    INTO v_offers
+    FROM agent_offers ao
+    LEFT JOIN products p ON ao.sku = p.sku
+    WHERE ao.status = 'ACTIVE'
+    AND ao.valid_from <= now()
+    AND ao.valid_to >= now()
+    AND (p_sku IS NULL OR ao.sku = p_sku)
+    AND (p_category IS NULL OR ao.category = p_category OR ao.category IS NULL);
+
+    RETURN json_build_object(
+        'success', true,
+        'feed_type', 'agent_offers',
+        'generated_at', now(),
+        'offer_count', COALESCE(json_array_length(v_offers), 0),
+        'note', 'All offers are rule-based and agent-computable. Constraints must be validated by the agent before applying.',
+        'offers', COALESCE(v_offers, '[]'::json)
+    );
+END;
+$$;
+
+-- ============================================
+-- Seed: Sample Offers
+-- ============================================
+INSERT INTO agent_offers (offer_id, sku, category, discount_type, discount_value, min_qty, max_per_order, max_per_month, min_order_amount, valid_from, valid_to, stackable, explain, status) VALUES
+('OFR-2026-001', 'COFFEE-MIX-100', NULL, 'percent_discount', 5, 1, 50000, 200000, 0, '2026-02-14T00:00:00+09:00', '2026-03-14T23:59:59+09:00', false, '커피 정기 구매 할인 — 월 20만원 한도 내 5% 할인', 'ACTIVE'),
+('OFR-2026-002', 'WATER-500-40', NULL, 'percent_discount', 3, 2, 60000, 300000, 28400, '2026-02-14T00:00:00+09:00', '2026-02-28T23:59:59+09:00', false, '생수 2박스 이상 주문 시 3% 할인 (최소 28,400원)', 'ACTIVE'),
+('OFR-2026-003', NULL, 'CONSUMABLES', 'percent_discount', 2, 1, 100000, 500000, 50000, '2026-02-14T00:00:00+09:00', '2026-03-31T23:59:59+09:00', false, '소모품 카테고리 전체 2% 할인 — 5만원 이상 주문 시', 'ACTIVE'),
+('OFR-2026-004', 'PAPER-A4-80G', NULL, 'fixed_discount', 2000, 1, NULL, NULL, 0, '2026-02-14T00:00:00+09:00', '2026-02-21T23:59:59+09:00', true, 'A4 용지 2,000원 즉시 할인 (다른 오퍼와 중복 적용 가능)', 'ACTIVE'),
+('OFR-2026-005', 'TRASH-20L-100', NULL, 'bundle_deal', 10, 3, NULL, NULL, 0, '2026-02-14T00:00:00+09:00', '2026-03-14T23:59:59+09:00', false, '쓰레기봉투 3팩 동시 주문 시 10% 번들 할인', 'ACTIVE'),
+('OFR-2026-006', 'BATTERY-AA-48', NULL, 'percent_discount', 7, 1, NULL, 100000, 0, '2026-02-14T00:00:00+09:00', '2026-02-28T23:59:59+09:00', false, 'AA 배터리 7% 재고 정리 할인 — 월 10만원 한도', 'ACTIVE')
+ON CONFLICT (offer_id) DO NOTHING;
+
 -- Grant execute permissions to anon and authenticated roles
 GRANT EXECUTE ON FUNCTION agent_self_register(TEXT, TEXT[], TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION approve_pending_agent(TEXT) TO anon, authenticated;
@@ -698,4 +969,9 @@ GRANT EXECUTE ON FUNCTION get_product_feed() TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION get_acp_feed() TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION ucp_create_session(JSONB, TEXT, TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION ucp_complete_session(TEXT, TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION agent_register_webhook(TEXT, TEXT, TEXT[]) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION agent_unregister_webhook(TEXT, UUID) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION get_order_events(TIMESTAMPTZ, TEXT, INTEGER) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION log_order_event(TEXT, TEXT, JSONB) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION get_agent_offers(TEXT, TEXT) TO anon, authenticated;
 
