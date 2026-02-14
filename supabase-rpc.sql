@@ -1229,6 +1229,342 @@ $$;
 
 
 
+-- ============================================
+-- 12. AI Operations: Agent Activity Log
+-- ============================================
+CREATE TABLE IF NOT EXISTS agent_activity_log (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    agent_role TEXT NOT NULL CHECK (agent_role IN ('SOURCING','PRICING','OPS','SYSTEM','ORDER','REVIEW')),
+    action TEXT NOT NULL,
+    target_sku TEXT,
+    details JSONB DEFAULT '{}',
+    confidence INTEGER CHECK (confidence BETWEEN 0 AND 100),
+    decision TEXT CHECK (decision IN ('RECOMMEND','SKIP','FLAG','AUTO','HUMAN_APPROVED','HUMAN_REJECTED','INFO')),
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE agent_activity_log ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all for agent_activity_log" ON agent_activity_log;
+CREATE POLICY "Allow all for agent_activity_log" ON agent_activity_log FOR ALL USING (true) WITH CHECK (true);
+
+CREATE INDEX IF NOT EXISTS idx_activity_log_time ON agent_activity_log(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_activity_log_role ON agent_activity_log(agent_role);
+
+-- 12a. Helper: Log agent activity
+CREATE OR REPLACE FUNCTION log_agent_activity(
+    p_role TEXT,
+    p_action TEXT,
+    p_sku TEXT DEFAULT NULL,
+    p_details JSONB DEFAULT '{}',
+    p_confidence INTEGER DEFAULT NULL,
+    p_decision TEXT DEFAULT 'INFO'
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_id UUID;
+BEGIN
+    INSERT INTO agent_activity_log (agent_role, action, target_sku, details, confidence, decision)
+    VALUES (p_role, p_action, p_sku, p_details, p_confidence, p_decision)
+    RETURNING id INTO v_id;
+    RETURN v_id;
+END;
+$$;
+
+-- 12b. Get recent activity log (public feed)
+CREATE OR REPLACE FUNCTION get_agent_activity_log(
+    p_limit INTEGER DEFAULT 50,
+    p_role TEXT DEFAULT NULL
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_items JSON;
+BEGIN
+    SELECT json_agg(row_to_json(t)) INTO v_items FROM (
+        SELECT id, agent_role, action, target_sku, details, confidence, decision, created_at
+        FROM agent_activity_log
+        WHERE (p_role IS NULL OR agent_role = p_role)
+        ORDER BY created_at DESC
+        LIMIT p_limit
+    ) t;
+
+    RETURN json_build_object(
+        'success', true,
+        'count', COALESCE(json_array_length(v_items), 0),
+        'activities', COALESCE(v_items, '[]'::json)
+    );
+END;
+$$;
+
+-- ============================================
+-- 13. AI Operations: Product Candidates (Sourcing)
+-- ============================================
+CREATE TABLE IF NOT EXISTS product_candidates (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    source_url TEXT,
+    source_name TEXT DEFAULT 'domeme',
+    source_data JSONB DEFAULT '{}',
+    normalized_pack JSONB DEFAULT '{}',
+    confidence_score INTEGER CHECK (confidence_score BETWEEN 0 AND 100),
+    confidence_factors JSONB DEFAULT '{}',
+    decision TEXT DEFAULT 'RECOMMEND' CHECK (decision IN ('RECOMMEND','SKIP','FLAG')),
+    reason TEXT,
+    suggested_price INTEGER,
+    suggested_margin REAL,
+    status TEXT DEFAULT 'DRAFT' CHECK (status IN ('DRAFT','APPROVED','PUBLISHED','REJECTED')),
+    reviewed_by TEXT,
+    reviewed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE product_candidates ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all for product_candidates" ON product_candidates;
+CREATE POLICY "Allow all for product_candidates" ON product_candidates FOR ALL USING (true) WITH CHECK (true);
+
+CREATE INDEX IF NOT EXISTS idx_candidates_status ON product_candidates(status);
+
+-- ============================================
+-- 14. AI Operations: Pricing Rules
+-- ============================================
+CREATE TABLE IF NOT EXISTS pricing_rules (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    category TEXT NOT NULL UNIQUE,
+    target_margin REAL DEFAULT 0.25,
+    min_margin REAL DEFAULT 0.10,
+    max_price INTEGER,
+    rounding INTEGER DEFAULT 100,
+    active BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE pricing_rules ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all for pricing_rules" ON pricing_rules;
+CREATE POLICY "Allow all for pricing_rules" ON pricing_rules FOR ALL USING (true) WITH CHECK (true);
+
+-- Seed pricing rules
+INSERT INTO pricing_rules (category, target_margin, min_margin, max_price, rounding) VALUES
+('CONSUMABLES', 0.25, 0.10, 500000, 100),
+('MRO', 0.35, 0.15, 1000000, 100)
+ON CONFLICT (category) DO NOTHING;
+
+-- 14a. Calculate suggested price
+CREATE OR REPLACE FUNCTION calculate_price(
+    p_cost INTEGER,
+    p_category TEXT
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_rule RECORD;
+    v_price INTEGER;
+    v_margin REAL;
+BEGIN
+    SELECT * INTO v_rule FROM pricing_rules WHERE category = p_category AND active = true;
+
+    IF NOT FOUND THEN
+        v_rule.target_margin := 0.25;
+        v_rule.rounding := 100;
+    END IF;
+
+    -- Calculate: cost × (1 + margin), rounded up to rounding unit
+    v_price := CEIL(p_cost * (1 + v_rule.target_margin) / v_rule.rounding) * v_rule.rounding;
+
+    -- Enforce max price
+    IF v_rule.max_price IS NOT NULL AND v_price > v_rule.max_price THEN
+        v_price := v_rule.max_price;
+    END IF;
+
+    v_margin := (v_price - p_cost)::real / v_price;
+
+    RETURN json_build_object(
+        'cost', p_cost,
+        'price', v_price,
+        'margin', round(v_margin * 100, 1),
+        'category', p_category,
+        'target_margin', v_rule.target_margin * 100,
+        'rounding', v_rule.rounding
+    );
+END;
+$$;
+
+-- ============================================
+-- 15. Telegram Admin Notifications
+-- ============================================
+
+-- Config table for notification settings
+CREATE TABLE IF NOT EXISTS notification_config (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE notification_config ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all for notification_config" ON notification_config;
+CREATE POLICY "Allow all for notification_config" ON notification_config FOR ALL USING (true) WITH CHECK (true);
+
+-- 15a. Send Telegram message
+CREATE OR REPLACE FUNCTION notify_admin_telegram(p_message TEXT)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_token TEXT;
+    v_chat_id TEXT;
+BEGIN
+    SELECT value INTO v_token FROM notification_config WHERE key = 'telegram_bot_token';
+    SELECT value INTO v_chat_id FROM notification_config WHERE key = 'telegram_chat_id';
+
+    IF v_token IS NULL OR v_chat_id IS NULL THEN
+        RETURN;  -- Silent fail if not configured
+    END IF;
+
+    PERFORM net.http_post(
+        url := 'https://api.telegram.org/bot' || v_token || '/sendMessage',
+        headers := '{"Content-Type": "application/json"}'::jsonb,
+        body := jsonb_build_object(
+            'chat_id', v_chat_id,
+            'text', p_message,
+            'parse_mode', 'HTML'
+        )
+    );
+END;
+$$;
+
+-- 15b. Trigger: notify admin on new order + log activity
+CREATE OR REPLACE FUNCTION trigger_order_admin_notify()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_items TEXT;
+    v_msg TEXT;
+BEGIN
+    -- Build item summary
+    v_items := (
+        SELECT string_agg(
+            (elem->>'sku') || ' x ' || (elem->>'qty'),
+            ', '
+        )
+        FROM jsonb_array_elements(NEW.items) AS elem
+    );
+
+    IF v_items IS NULL THEN
+        v_items := NEW.order_id;
+    END IF;
+
+    -- Send telegram notification
+    v_msg := '🛒 <b>새 주문</b>' || chr(10)
+        || '주문번호: <code>' || NEW.order_id || '</code>' || chr(10)
+        || '상품: ' || v_items || chr(10)
+        || '금액: ' || COALESCE(NEW.authorized_amount, 0) || '원' || chr(10)
+        || '승인 마감: ' || to_char(NEW.capture_deadline, 'MM/DD HH24:MI') || chr(10)
+        || '상태: ' || NEW.status;
+
+    PERFORM notify_admin_telegram(v_msg);
+
+    -- Log to activity log
+    PERFORM log_agent_activity(
+        'ORDER', 'order.created', NULL,
+        jsonb_build_object(
+            'order_id', NEW.order_id,
+            'amount', NEW.authorized_amount,
+            'status', NEW.status,
+            'items', v_items
+        ),
+        NULL, 'INFO'
+    );
+
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_order_admin_notify ON orders;
+CREATE TRIGGER trg_order_admin_notify
+    AFTER INSERT ON orders
+    FOR EACH ROW
+    EXECUTE FUNCTION trigger_order_admin_notify();
+
+-- 15c. Enhanced auto-void: also sends telegram warning
+CREATE OR REPLACE FUNCTION auto_void_expired_sessions()
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_session RECORD;
+    v_expired_sessions INTEGER := 0;
+    v_expired_orders INTEGER := 0;
+    v_warning_msg TEXT := '';
+BEGIN
+    -- 1. Expired checkout sessions → restore stock
+    FOR v_session IN
+        SELECT session_id FROM checkout_sessions
+        WHERE status = 'AUTHORIZED'
+        AND auth_expires_at < now()
+    LOOP
+        PERFORM restore_session_stock(v_session.session_id);
+        UPDATE checkout_sessions SET status = 'EXPIRED', updated_at = now()
+        WHERE session_id = v_session.session_id;
+        v_expired_sessions := v_expired_sessions + 1;
+    END LOOP;
+
+    -- 2. Expired orders (PROCUREMENT_PENDING past deadline)
+    UPDATE orders SET
+        status = 'VOIDED',
+        payment_status = 'VOIDED',
+        updated_at = now()
+    WHERE status = 'PROCUREMENT_PENDING'
+    AND capture_deadline < now();
+
+    GET DIAGNOSTICS v_expired_orders = ROW_COUNT;
+
+    -- 3. Send telegram alert if anything expired
+    IF v_expired_sessions > 0 OR v_expired_orders > 0 THEN
+        v_warning_msg := '⏰ <b>자동 만료 처리</b>' || chr(10)
+            || '세션 만료: ' || v_expired_sessions || '건' || chr(10)
+            || '주문 만료: ' || v_expired_orders || '건';
+        PERFORM notify_admin_telegram(v_warning_msg);
+
+        PERFORM log_agent_activity(
+            'OPS', 'auto_void.executed', NULL,
+            jsonb_build_object('sessions', v_expired_sessions, 'orders', v_expired_orders),
+            NULL, 'AUTO'
+        );
+    END IF;
+
+    -- 4. Warn about orders expiring in next 2 hours
+    FOR v_session IN
+        SELECT order_id, capture_deadline, authorized_amount
+        FROM orders
+        WHERE status = 'PROCUREMENT_PENDING'
+        AND capture_deadline BETWEEN now() AND now() + interval '2 hours'
+    LOOP
+        v_warning_msg := '⚠️ <b>승인 마감 임박!</b>' || chr(10)
+            || '주문: <code>' || v_session.order_id || '</code>' || chr(10)
+            || '금액: ' || v_session.authorized_amount || '원' || chr(10)
+            || '마감: ' || to_char(v_session.capture_deadline, 'MM/DD HH24:MI');
+        PERFORM notify_admin_telegram(v_warning_msg);
+    END LOOP;
+
+    RETURN json_build_object(
+        'success', true,
+        'expired_sessions', v_expired_sessions,
+        'expired_orders', v_expired_orders,
+        'run_at', now()
+    );
+END;
+$$;
+
+
 
 -- Grant execute permissions to anon and authenticated roles
 GRANT EXECUTE ON FUNCTION agent_self_register(TEXT, TEXT[], TEXT) TO anon, authenticated;
@@ -1250,3 +1586,7 @@ GRANT EXECUTE ON FUNCTION restore_session_stock(TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION auto_void_expired_sessions() TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION dispatch_webhooks(TEXT, JSONB) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION test_webhook_dispatch(TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION log_agent_activity(TEXT, TEXT, TEXT, JSONB, INTEGER, TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION get_agent_activity_log(INTEGER, TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION calculate_price(INTEGER, TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION notify_admin_telegram(TEXT) TO anon, authenticated;
