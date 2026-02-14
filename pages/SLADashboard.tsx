@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
+import { useLanguage } from '../context/LanguageContext';
 
 interface SLAData {
     success: boolean;
@@ -101,6 +102,7 @@ export function SLADashboard() {
     const [data, setData] = useState<SLAData | null>(null);
     const [loading, setLoading] = useState(true);
     const [period, setPeriod] = useState(30);
+    const { t } = useLanguage();
 
     const fetchSLA = async () => {
         setLoading(true);
@@ -130,13 +132,13 @@ export function SLADashboard() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
                         <div>
                             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 12px', borderRadius: 100, background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.2)', marginBottom: 12 }}>
-                                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, color: '#34d399' }}>TRANSPARENT</span>
+                                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, color: '#34d399' }}>{t('sla.badge')}</span>
                             </div>
                             <h1 style={{ fontSize: 32, fontWeight: 900, color: '#fafafa', margin: '0 0 6px', letterSpacing: -0.5 }}>
-                                Service Level Agreement
+                                {t('sla.title')}
                             </h1>
                             <p style={{ fontSize: 13, color: '#71717a', lineHeight: 1.5 }}>
-                                Proving we deliver on our promises — updated in real-time
+                                {t('sla.subtitle')}
                             </p>
                         </div>
                         <div style={{ display: 'flex', gap: 4, background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: 3, border: '1px solid rgba(255,255,255,0.06)' }}>
@@ -180,9 +182,9 @@ export function SLADashboard() {
                             animation: 'cardSlideUp 0.5s ease both',
                         }}>
                             <ProgressRing value={overall} size={140} color="#34d399" label="UPTIME" />
-                            <div style={{ marginTop: 16, fontSize: 14, fontWeight: 700, color: '#fafafa' }}>Overall Health</div>
+                            <div style={{ marginTop: 16, fontSize: 14, fontWeight: 700, color: '#fafafa' }}>{t('sla.overall')}</div>
                             <div style={{ fontSize: 11, color: '#71717a', marginTop: 4 }}>
-                                {period}-day average across all metrics
+                                {period}{t('sla.dayAverage')}
                             </div>
                             <div style={{
                                 marginTop: 16, display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -191,17 +193,17 @@ export function SLADashboard() {
                                 border: `1px solid ${overall >= 90 ? 'rgba(52,211,153,0.2)' : 'rgba(245,158,11,0.2)'}`,
                             }}>
                                 <span style={{ fontSize: 11, fontWeight: 700, color: overall >= 90 ? '#34d399' : '#f59e0b' }}>
-                                    {overall >= 90 ? '✅ All Systems Operational' : '⚠ Needs Attention'}
+                                    {overall >= 90 ? `✅ ${t('sla.operational')}` : `⚠ ${t('sla.attention')}`}
                                 </span>
                             </div>
                         </div>
 
                         {/* Small metric cards */}
                         {[
-                            { label: 'Stock Accuracy', value: avg.stock_accuracy || 0, color: '#22d3ee', icon: '📦' },
-                            { label: 'Delivery SLA', value: avg.delivery_sla || 0, color: '#34d399', icon: '🚀' },
-                            { label: 'Webhook Success', value: avg.webhook_success || 0, color: '#a78bfa', icon: '⚡' },
-                            { label: 'Processing', value: avg.processing_hours || 0, color: '#f59e0b', icon: '⏱️' },
+                            { label: t('sla.stockAccuracy'), value: avg.stock_accuracy || 0, color: '#22d3ee', icon: '📦' },
+                            { label: t('sla.deliverySla'), value: avg.delivery_sla || 0, color: '#34d399', icon: '🚀' },
+                            { label: t('sla.webhookSuccess'), value: avg.webhook_success || 0, color: '#a78bfa', icon: '⚡' },
+                            { label: t('sla.processing'), value: avg.processing_hours || 0, color: '#f59e0b', icon: '⏱️' },
                         ].map((m, i) => (
                             <div key={m.label} style={{
                                 background: 'rgba(255,255,255,0.03)', backdropFilter: 'blur(12px)',
@@ -215,7 +217,7 @@ export function SLADashboard() {
                             >
                                 <div style={{ fontSize: 20, marginBottom: 8 }}>{m.icon}</div>
                                 <div style={{ fontSize: 24, fontWeight: 900, fontFamily: "'JetBrains Mono', monospace", color: m.color }}>
-                                    <AnimNum value={m.value} />{m.label !== 'Processing' ? '%' : 'h'}
+                                    <AnimNum value={m.value} />{m.label !== t('sla.processing') ? '%' : 'h'}
                                 </div>
                                 <div style={{ fontSize: 10, color: '#71717a', fontWeight: 600, letterSpacing: 0.5, marginTop: 4 }}>{m.label}</div>
                             </div>
@@ -228,15 +230,15 @@ export function SLADashboard() {
                         border: '1px solid rgba(255,255,255,0.06)', borderRadius: 20, overflow: 'hidden',
                     }}>
                         <div style={{ padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                            <span style={{ fontSize: 14, fontWeight: 700, color: '#fafafa' }}>📋 SLA Commitments</span>
+                            <span style={{ fontSize: 14, fontWeight: 700, color: '#fafafa' }}>📋 {t('sla.commitments')}</span>
                         </div>
                         <div style={{ padding: '4px 24px 16px' }}>
-                            <MetricBar label="Stock accuracy reflects real inventory" value={avg.stock_accuracy || 0} target="≥95" unit="%" color="#22d3ee" />
-                            <MetricBar label="Order processing within deadline" value={avg.processing_hours || 0} target="<6" unit="hrs" color="#f59e0b" />
-                            <MetricBar label="Delivery within estimated window" value={avg.delivery_sla || 0} target="≥92" unit="%" color="#34d399" />
-                            <MetricBar label="Webhook event delivery success" value={avg.webhook_success || 0} target="≥99" unit="%" color="#a78bfa" />
-                            <MetricBar label="Price change notification" value={0.5} target="<1" unit="hr" color="#60a5fa" />
-                            <MetricBar label="API response time (p95)" value={320} target="<500" unit="ms" color="#f472b6" />
+                            <MetricBar label={t('sla.stockLabel')} value={avg.stock_accuracy || 0} target="≥95" unit="%" color="#22d3ee" />
+                            <MetricBar label={t('sla.orderLabel')} value={avg.processing_hours || 0} target="<6" unit="hrs" color="#f59e0b" />
+                            <MetricBar label={t('sla.deliveryLabel')} value={avg.delivery_sla || 0} target="≥92" unit="%" color="#34d399" />
+                            <MetricBar label={t('sla.webhookLabel')} value={avg.webhook_success || 0} target="≥99" unit="%" color="#a78bfa" />
+                            <MetricBar label={t('sla.priceLabel')} value={0.5} target="<1" unit="hr" color="#60a5fa" />
+                            <MetricBar label={t('sla.apiLabel')} value={320} target="<500" unit="ms" color="#f472b6" />
                         </div>
                     </div>
 

@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
+import { useLanguage } from '../context/LanguageContext';
 
 interface ActivityItem {
     id: string;
@@ -73,6 +74,7 @@ export function LiveFeed() {
     const [loading, setLoading] = useState(true);
     const [isLive, setIsLive] = useState(true);
     const [filter, setFilter] = useState<string | null>(null);
+    const { t } = useLanguage();
 
     const fetchActivities = useCallback(async () => {
         try {
@@ -120,11 +122,10 @@ export function LiveFeed() {
                         </span>
                     </div>
                     <h1 style={{ fontSize: 36, fontWeight: 900, color: '#fafafa', margin: '0 0 8px', letterSpacing: -0.5 }}>
-                        AI Operations Feed
+                        {t('live.title')}
                     </h1>
                     <p style={{ fontSize: 14, color: '#71717a', maxWidth: 460, margin: '0 auto', lineHeight: 1.6 }}>
-                        Every AI agent decision is logged and transparent.
-                        Real-time proof of operations.
+                        {t('live.subtitle')}
                     </p>
                 </div>
             </div>
@@ -133,10 +134,10 @@ export function LiveFeed() {
             <div style={{ maxWidth: 800, margin: '0 auto', padding: '0 20px 20px' }}>
                 <div className="grid-responsive-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
                     {[
-                        { label: 'Total Events', value: activities.length, suffix: '', color: '#22d3ee' },
-                        { label: 'Active Roles', value: Object.keys(roleCounts).length, suffix: '', color: '#a78bfa' },
-                        { label: 'Auto Decisions', value: autoCount, suffix: '', color: '#34d399' },
-                        { label: 'Avg Confidence', value: Math.round(avgConf), suffix: '%', color: '#f59e0b' },
+                        { label: t('live.totalEvents'), value: activities.length, suffix: '', color: '#22d3ee' },
+                        { label: t('live.activeRoles'), value: Object.keys(roleCounts).length, suffix: '', color: '#a78bfa' },
+                        { label: t('live.autoDecisions'), value: autoCount, suffix: '', color: '#34d399' },
+                        { label: t('live.avgConfidence'), value: Math.round(avgConf), suffix: '%', color: '#f59e0b' },
                     ].map((s, i) => (
                         <div key={s.label} style={{
                             background: 'rgba(255,255,255,0.03)', backdropFilter: 'blur(12px)',
@@ -160,7 +161,7 @@ export function LiveFeed() {
                         background: !filter ? 'rgba(250,250,250,0.08)' : 'transparent',
                         color: !filter ? '#fafafa' : '#71717a',
                         transition: 'all 0.2s',
-                    }}>ALL</button>
+                    }}>{t('live.allFilter')}</button>
                     {Object.entries(ROLES).map(([key, r]) => (
                         <button key={key} onClick={() => setFilter(key)} style={{
                             padding: '5px 14px', fontSize: 11, fontWeight: 600, borderRadius: 8, cursor: 'pointer',
@@ -180,7 +181,7 @@ export function LiveFeed() {
                     border: '1px solid rgba(255,255,255,0.06)', borderRadius: 20, overflow: 'hidden',
                 }}>
                     <div style={{ padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: 13, fontWeight: 700, color: '#fafafa' }}>Activity Stream</span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: '#fafafa' }}>{t('live.activityStream')}</span>
                         <button onClick={() => setIsLive(!isLive)} style={{
                             display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px', fontSize: 11,
                             borderRadius: 6, cursor: 'pointer',
@@ -188,7 +189,7 @@ export function LiveFeed() {
                             background: isLive ? 'rgba(52,211,153,0.08)' : 'rgba(239,68,68,0.08)',
                             color: isLive ? '#34d399' : '#ef4444', fontWeight: 600,
                         }}>
-                            {isLive ? '⏸ Pause' : '▶ Resume'}
+                            {isLive ? `⏸ ${t('live.pause')}` : `▶ ${t('live.resume')}`}
                         </button>
                     </div>
 
@@ -237,7 +238,7 @@ export function LiveFeed() {
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
                                                 <span style={{ fontSize: 10, fontWeight: 700, color: '#a1a1aa', letterSpacing: 1 }}>{a.agent_role}</span>
                                                 <span style={{ fontSize: 10, color: '#3f3f46' }}>•</span>
-                                                <span style={{ fontSize: 10, color: '#52525b' }}>{timeAgo(a.created_at)} ago</span>
+                                                <span style={{ fontSize: 10, color: '#52525b' }}>{timeAgo(a.created_at)} {t('live.ago')}</span>
                                                 {a.decision === 'AUTO' && (
                                                     <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: 'rgba(52,211,153,0.1)', color: '#34d399', fontWeight: 700 }}>AUTO</span>
                                                 )}
@@ -264,7 +265,7 @@ export function LiveFeed() {
 
             {/* ━━━ Footer ━━━ */}
             <div style={{ textAlign: 'center', padding: '32px 24px 24px', color: '#3f3f46', fontSize: 11 }}>
-                Powered by <span style={{ color: '#71717a', fontWeight: 700 }}>JSONMart AI</span> • ACP + UCP Compatible
+                {t('live.footer')}
             </div>
 
             <style>{`

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { Activity, Bot, Package, DollarSign, AlertTriangle, CheckCircle, XCircle, Clock, RefreshCw, TrendingUp } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
 interface ActivityItem {
     id: string;
@@ -59,7 +60,7 @@ function ActivityFeed({ activities, loading }: { activities: ActivityItem[]; loa
     if (loading) {
         return (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 40, color: '#6b7280' }}>
-                <RefreshCw size={20} className="animate-spin" style={{ marginRight: 8 }} /> Loading...
+                <RefreshCw size={20} className="animate-spin" style={{ marginRight: 8 }} /> {useLanguage().t('aiops.loading')}
             </div>
         );
     }
@@ -68,8 +69,8 @@ function ActivityFeed({ activities, loading }: { activities: ActivityItem[]; loa
         return (
             <div style={{ textAlign: 'center', padding: 40, color: '#6b7280' }}>
                 <Bot size={32} style={{ margin: '0 auto 8px', opacity: 0.5 }} />
-                <p>No agent activity yet</p>
-                <p style={{ fontSize: 12, marginTop: 4 }}>Activity will appear here when agents take actions</p>
+                <p>{useLanguage().t('aiops.noActivity')}</p>
+                <p style={{ fontSize: 12, marginTop: 4 }}>{useLanguage().t('aiops.noActivityDesc')}</p>
             </div>
         );
     }
@@ -155,11 +156,12 @@ function StatsCards({ activities }: { activities: ActivityItem[] }) {
     const ops = todayActivities.filter(a => a.agent_role === 'OPS').length;
     const autoDecisions = todayActivities.filter(a => a.decision === 'AUTO').length;
 
+    const { t } = useLanguage();
     const cards = [
-        { label: 'Today Activities', value: todayActivities.length, icon: <Activity size={18} />, color: '#22d3ee' },
+        { label: t('aiops.totalActions'), value: todayActivities.length, icon: <Activity size={18} />, color: '#22d3ee' },
         { label: 'Orders', value: orders, icon: <Package size={18} />, color: '#34d399' },
         { label: 'Ops Actions', value: ops, icon: <Bot size={18} />, color: '#f59e0b' },
-        { label: 'Auto Decisions', value: autoDecisions, icon: <TrendingUp size={18} />, color: '#a78bfa' },
+        { label: t('aiops.autoDecisions'), value: autoDecisions, icon: <TrendingUp size={18} />, color: '#a78bfa' },
     ];
 
     return (
@@ -186,6 +188,7 @@ export function AIOps() {
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<string | null>(null);
     const [autoRefresh, setAutoRefresh] = useState(true);
+    const { t } = useLanguage();
 
     const fetchActivities = async () => {
         try {
@@ -222,10 +225,10 @@ export function AIOps() {
                 <div>
                     <h1 style={{ fontSize: 24, fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', gap: 10 }}>
                         <Bot size={24} style={{ color: '#22d3ee' }} />
-                        AI Operations
+                        {t('aiops.title')}
                     </h1>
                     <p style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>
-                        Real-time AI agent activity — sourcing, pricing, orders, and ops
+                        {t('aiops.subtitle')}
                     </p>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -251,7 +254,7 @@ export function AIOps() {
                             color: '#9ca3af', cursor: 'pointer',
                         }}
                     >
-                        Refresh
+                        {t('aiops.refresh')}
                     </button>
                 </div>
             </div>
@@ -277,7 +280,7 @@ export function AIOps() {
                             }}
                         >
                             {config?.icon || <Activity size={12} />}
-                            {config?.label || 'All'}
+                            {config?.label || t('aiops.allRoles')}
                         </button>
                     );
                 })}
@@ -296,7 +299,7 @@ export function AIOps() {
                         boxShadow: autoRefresh ? '0 0 8px #34d399' : 'none',
                     }} />
                     <span style={{ fontSize: 12, color: '#9ca3af', fontWeight: 600 }}>
-                        Agent Activity Feed
+                        {t('aiops.activityFeed')}
                     </span>
                     <span style={{ fontSize: 11, color: '#4b5563', marginLeft: 'auto' }}>
                         {activities.length} events

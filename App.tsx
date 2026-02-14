@@ -189,28 +189,29 @@ const UserStatus: React.FC = () => {
 /* ━━━ Mobile Menu ━━━ */
 function MobileMenu({ onClose }: { onClose: () => void }) {
   const location = useLocation();
+  const { t } = useLanguage();
   const groups = [
     {
-      label: 'Commerce', items: [
-        { to: '/', icon: <Terminal size={15} />, label: 'Home' },
-        { to: '/inventory', icon: <Package size={15} />, label: 'Inventory' },
-        { to: '/admin-queue', icon: <Shield size={15} />, label: 'Admin Queue' },
+      label: t('nav.commerce'), items: [
+        { to: '/', icon: <Terminal size={15} />, label: t('nav.home') },
+        { to: '/inventory', icon: <Package size={15} />, label: t('nav.inventory') },
+        { to: '/admin-queue', icon: <Shield size={15} />, label: t('nav.adminQueue') },
       ],
     },
     {
-      label: 'Agents', items: [
-        { to: '/agent-console', icon: <Cpu size={15} />, label: 'Agent Console' },
-        { to: '/agents', icon: <Key size={15} />, label: 'Agent Manager' },
-        { to: '/policies', icon: <FileCheck size={15} />, label: 'Policies' },
-        { to: '/playground', icon: <Zap size={15} />, label: 'Playground' },
-        { to: '/agent/docs', icon: <BookOpen size={15} />, label: 'Docs' },
+      label: t('nav.agents'), items: [
+        { to: '/agent-console', icon: <Cpu size={15} />, label: t('nav.agentConsole') },
+        { to: '/agents', icon: <Key size={15} />, label: t('nav.agentManager') },
+        { to: '/policies', icon: <FileCheck size={15} />, label: t('nav.policies') },
+        { to: '/playground', icon: <Zap size={15} />, label: t('nav.playground') },
+        { to: '/agent/docs', icon: <BookOpen size={15} />, label: t('nav.docs') },
       ],
     },
     {
-      label: 'AI Operations', items: [
-        { to: '/ai-ops', icon: <Bot size={15} />, label: 'AI Ops' },
-        { to: '/live', icon: <Radio size={15} />, label: 'Live Feed' },
-        { to: '/sla', icon: <BarChart3 size={15} />, label: 'SLA Dashboard' },
+      label: t('nav.ai'), items: [
+        { to: '/ai-ops', icon: <Bot size={15} />, label: t('nav.aiOps') },
+        { to: '/live', icon: <Radio size={15} />, label: t('nav.live') },
+        { to: '/sla', icon: <BarChart3 size={15} />, label: t('nav.sla') },
       ],
     },
   ];
@@ -261,12 +262,12 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     { to: '/agents', icon: <Key size={13} />, label: t('agents.title') },
     { to: '/policies', icon: <FileCheck size={13} />, label: t('policies.title') },
     { to: '/playground', icon: <Zap size={13} />, label: t('playground.navTitle') },
-    { to: '/agent/docs', icon: <BookOpen size={13} />, label: 'Docs' },
+    { to: '/agent/docs', icon: <BookOpen size={13} />, label: t('nav.docs') },
   ];
   const aiItems: NavItem[] = [
-    { to: '/ai-ops', icon: <Bot size={13} />, label: 'AI Ops' },
-    { to: '/live', icon: <Radio size={13} />, label: 'Live' },
-    { to: '/sla', icon: <BarChart3 size={13} />, label: 'SLA' },
+    { to: '/ai-ops', icon: <Bot size={13} />, label: t('nav.aiOps') },
+    { to: '/live', icon: <Radio size={13} />, label: t('nav.live') },
+    { to: '/sla', icon: <BarChart3 size={13} />, label: t('nav.sla') },
   ];
 
   return (
@@ -288,9 +289,9 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
         {/* Desktop Nav */}
         <div className="desktop-nav" style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <NavGroup label="Commerce" icon={<Package size={13} />} items={commerceItems} />
-          <NavGroup label="Agents" icon={<Cpu size={13} />} items={agentItems} />
-          <NavGroup label="AI" icon={<Bot size={13} />} items={aiItems} />
+          <NavGroup label={t('nav.commerce')} icon={<Package size={13} />} items={commerceItems} />
+          <NavGroup label={t('nav.agents')} icon={<Cpu size={13} />} items={agentItems} />
+          <NavGroup label={t('nav.ai')} icon={<Bot size={13} />} items={aiItems} />
         </div>
 
         {/* Right Side */}
