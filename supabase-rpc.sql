@@ -946,17 +946,8 @@ BEGIN
 END;
 $$;
 
--- ============================================
--- Seed: Sample Offers
--- ============================================
-INSERT INTO agent_offers (offer_id, sku, category, discount_type, discount_value, min_qty, max_per_order, max_per_month, min_order_amount, valid_from, valid_to, stackable, explain, status) VALUES
-('OFR-2026-001', 'COFFEE-MIX-100', NULL, 'percent_discount', 5, 1, 50000, 200000, 0, '2026-02-14T00:00:00+09:00', '2026-03-14T23:59:59+09:00', false, '커피 정기 구매 할인 — 월 20만원 한도 내 5% 할인', 'ACTIVE'),
-('OFR-2026-002', 'WATER-500-40', NULL, 'percent_discount', 3, 2, 60000, 300000, 28400, '2026-02-14T00:00:00+09:00', '2026-02-28T23:59:59+09:00', false, '생수 2박스 이상 주문 시 3% 할인 (최소 28,400원)', 'ACTIVE'),
-('OFR-2026-003', NULL, 'CONSUMABLES', 'percent_discount', 2, 1, 100000, 500000, 50000, '2026-02-14T00:00:00+09:00', '2026-03-31T23:59:59+09:00', false, '소모품 카테고리 전체 2% 할인 — 5만원 이상 주문 시', 'ACTIVE'),
-('OFR-2026-004', 'PAPER-A4-80G', NULL, 'fixed_discount', 2000, 1, NULL, NULL, 0, '2026-02-14T00:00:00+09:00', '2026-02-21T23:59:59+09:00', true, 'A4 용지 2,000원 즉시 할인 (다른 오퍼와 중복 적용 가능)', 'ACTIVE'),
-('OFR-2026-005', 'TRASH-20L-100', NULL, 'bundle_deal', 10, 3, NULL, NULL, 0, '2026-02-14T00:00:00+09:00', '2026-03-14T23:59:59+09:00', false, '쓰레기봉투 3팩 동시 주문 시 10% 번들 할인', 'ACTIVE'),
-('OFR-2026-006', 'BATTERY-AA-48', NULL, 'percent_discount', 7, 1, NULL, 100000, 0, '2026-02-14T00:00:00+09:00', '2026-02-28T23:59:59+09:00', false, 'AA 배터리 7% 재고 정리 할인 — 월 10만원 한도', 'ACTIVE')
-ON CONFLICT (offer_id) DO NOTHING;
+
+
 
 -- Grant execute permissions to anon and authenticated roles
 GRANT EXECUTE ON FUNCTION agent_self_register(TEXT, TEXT[], TEXT) TO anon, authenticated;
