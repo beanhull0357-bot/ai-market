@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
-import { Shield, TrendingUp, Package, Zap, Clock, BarChart3, RefreshCw, CheckCircle } from 'lucide-react';
 
 interface SLAData {
     success: boolean;
@@ -14,40 +13,86 @@ interface SLAData {
     daily_metrics: any[];
 }
 
-function MetricCard({ label, value, unit, icon, color, target }: {
-    label: string; value: number | null; unit: string;
-    icon: React.ReactNode; color: string; target?: string;
+/* ━━━ Animated Counter ━━━ */
+function AnimNum({ value, decimals = 1 }: { value: number; decimals?: number }) {
+    const [display, setDisplay] = useState(0);
+    useEffect(() => {
+        if (value === 0) { setDisplay(0); return; }
+        const dur = 1400;
+        const start = performance.now();
+        const tick = (now: number) => {
+            const t = Math.min((now - start) / dur, 1);
+            const ease = 1 - Math.pow(1 - t, 4);
+            setDisplay(value * ease);
+            if (t < 1) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+    }, [value]);
+    return <>{display.toFixed(decimals)}</>;
+}
+
+/* ━━━ Progress Ring ━━━ */
+function ProgressRing({ value, size = 100, color, label }: {
+    value: number; size?: number; color: string; label: string;
 }) {
-    const v = value ?? 0;
-    const isGood = v >= 90;
+    const r = (size - 10) / 2;
+    const c = 2 * Math.PI * r;
+    const pct = Math.max(0, Math.min(100, value));
     return (
-        <div style={{
-            background: '#0d1117', border: '1px solid #1f2937', borderRadius: 12,
-            padding: '24px 20px', position: 'relative', overflow: 'hidden',
-        }}>
-            <div style={{
-                position: 'absolute', top: 0, left: 0, right: 0, height: 3,
-                background: `linear-gradient(90deg, ${color}, transparent)`,
-            }} />
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                <span style={{ fontSize: 12, color: '#6b7280', fontWeight: 600 }}>{label}</span>
-                <div style={{ color, opacity: 0.6 }}>{icon}</div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-                <span style={{
-                    fontSize: 36, fontWeight: 900, color: '#fff', fontFamily: 'monospace',
-                    textShadow: `0 0 20px ${color}40`,
-                }}>
-                    {v.toFixed(1)}
-                </span>
-                <span style={{ fontSize: 14, color: '#6b7280' }}>{unit}</span>
-            </div>
-            {target && (
-                <div style={{ fontSize: 11, color: isGood ? '#34d399' : '#f59e0b', marginTop: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
-                    {isGood ? <CheckCircle size={12} /> : <Clock size={12} />}
-                    Target: {target}
+        <div style={{ textAlign: 'center' }}>
+            <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+                {/* Track */}
+                <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="6" />
+                {/* Progress */}
+                <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth="6"
+                    strokeDasharray={`${c * pct / 100} ${c}`}
+                    strokeLinecap="round" transform={`rotate(-90 ${size / 2} ${size / 2})`}
+                    style={{ transition: 'stroke-dasharray 1.2s cubic-bezier(0.16,1,0.3,1)', filter: `drop-shadow(0 0 6px ${color}40)` }} />
+                {/* Value */}
+                <text x={size / 2} y={size / 2 - 4} textAnchor="middle" fontSize={size * 0.22} fontWeight="900" fill="#fafafa" fontFamily="'JetBrains Mono', monospace">
+                    <AnimNum value={pct} />
+                </text>
+                <text x={size / 2} y={size / 2 + 12} textAnchor="middle" fontSize={size * 0.1} fill="#71717a" fontWeight="600">
+                    {label}
+                </text>
+            </svg>
+        </div>
+    );
+}
+
+/* ━━━ Horizontal Bar ━━━ */
+function MetricBar({ label, value, target, unit, color }: {
+    label: string; value: number; target: string; unit: string; color: string;
+}) {
+    const pct = Math.min(value, 100);
+    const met = parseFloat(target.replace(/[^0-9.]/g, ''));
+    const isGood = target.startsWith('<') ? value < met : value >= met;
+    return (
+        <div style={{ padding: '16px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <span style={{ fontSize: 13, color: '#a1a1aa', fontWeight: 500 }}>{label}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontSize: 18, fontWeight: 800, color: '#fafafa', fontFamily: "'JetBrains Mono', monospace" }}>
+                        <AnimNum value={value} /> <span style={{ fontSize: 12, color: '#71717a', fontWeight: 500 }}>{unit}</span>
+                    </span>
+                    <span style={{
+                        fontSize: 10, padding: '2px 8px', borderRadius: 6, fontWeight: 700,
+                        background: isGood ? 'rgba(52,211,153,0.1)' : 'rgba(245,158,11,0.1)',
+                        color: isGood ? '#34d399' : '#f59e0b',
+                        border: `1px solid ${isGood ? 'rgba(52,211,153,0.2)' : 'rgba(245,158,11,0.2)'}`,
+                    }}>
+                        {isGood ? '✓ MET' : '⚠ WATCH'}
+                    </span>
                 </div>
-            )}
+            </div>
+            <div style={{ height: 4, borderRadius: 4, background: 'rgba(255,255,255,0.04)', overflow: 'hidden' }}>
+                <div style={{
+                    height: '100%', borderRadius: 4, background: `linear-gradient(90deg, ${color}, ${color}cc)`,
+                    width: `${pct}%`, transition: 'width 1.2s cubic-bezier(0.16,1,0.3,1)',
+                    boxShadow: `0 0 12px ${color}30`,
+                }} />
+            </div>
+            <div style={{ fontSize: 10, color: '#52525b', marginTop: 4 }}>Target: {target}</div>
         </div>
     );
 }
@@ -60,174 +105,146 @@ export function SLADashboard() {
     const fetchSLA = async () => {
         setLoading(true);
         try {
-            // First generate today's snapshot
             await supabase.rpc('calculate_daily_sla');
-            // Then get dashboard data
             const { data: result, error } = await supabase.rpc('get_sla_dashboard', { p_days: period });
             if (!error && result) setData(result);
-        } catch (e) {
-            console.error('SLA fetch failed:', e);
-        } finally {
-            setLoading(false);
-        }
+        } catch (e) { console.error(e); }
+        finally { setLoading(false); }
     };
 
     useEffect(() => { fetchSLA(); }, [period]);
 
     const avg = data?.averages || { stock_accuracy: null, processing_hours: null, delivery_sla: null, webhook_success: null };
+    const overall = ((avg.stock_accuracy || 0) + (avg.delivery_sla || 0) + (avg.webhook_success || 0)) / 3;
 
     return (
-        <div style={{ maxWidth: 1000, margin: '0 auto', padding: '32px 24px' }}>
-            {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32 }}>
-                <div>
-                    <h1 style={{
-                        fontSize: 24, fontWeight: 900, color: '#fff',
-                        display: 'flex', alignItems: 'center', gap: 10,
-                    }}>
-                        <Shield size={24} style={{ color: '#34d399' }} />
-                        Service Level Agreement
-                    </h1>
-                    <p style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>
-                        Transparent reliability metrics — proving we deliver on our promises
-                    </p>
-                </div>
-                <div style={{ display: 'flex', gap: 6 }}>
-                    {[7, 30, 90].map(d => (
-                        <button key={d} onClick={() => setPeriod(d)} style={{
-                            padding: '6px 12px', fontSize: 12, fontWeight: 600, borderRadius: 6,
-                            border: `1px solid ${period === d ? '#34d399' : '#374151'}`,
-                            background: period === d ? 'rgba(52,211,153,0.1)' : 'transparent',
-                            color: period === d ? '#34d399' : '#6b7280',
-                            cursor: 'pointer',
-                        }}>
-                            {d}d
-                        </button>
-                    ))}
-                    <button onClick={fetchSLA} style={{
-                        padding: '6px 12px', fontSize: 12, borderRadius: 6,
-                        border: '1px solid #374151', background: 'transparent',
-                        color: '#9ca3af', cursor: 'pointer',
-                    }}>
-                        <RefreshCw size={12} />
-                    </button>
+        <div style={{ minHeight: '100vh', background: '#09090b', color: '#e4e4e7', fontFamily: "'Inter', -apple-system, sans-serif" }}>
+
+            {/* ━━━ Header ━━━ */}
+            <div style={{ position: 'relative', padding: '48px 24px 24px', overflow: 'hidden' }}>
+                <div style={{
+                    position: 'absolute', inset: 0, opacity: 0.12,
+                    background: 'radial-gradient(ellipse 500px 250px at 30% 0%, #34d399, transparent), radial-gradient(ellipse 500px 250px at 70% 0%, #22d3ee, transparent)',
+                }} />
+                <div style={{ position: 'relative', zIndex: 1, maxWidth: 900, margin: '0 auto' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
+                        <div>
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 12px', borderRadius: 100, background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.2)', marginBottom: 12 }}>
+                                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, color: '#34d399' }}>TRANSPARENT</span>
+                            </div>
+                            <h1 style={{ fontSize: 32, fontWeight: 900, color: '#fafafa', margin: '0 0 6px', letterSpacing: -0.5 }}>
+                                Service Level Agreement
+                            </h1>
+                            <p style={{ fontSize: 13, color: '#71717a', lineHeight: 1.5 }}>
+                                Proving we deliver on our promises — updated in real-time
+                            </p>
+                        </div>
+                        <div style={{ display: 'flex', gap: 4, background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: 3, border: '1px solid rgba(255,255,255,0.06)' }}>
+                            {[7, 30, 90].map(d => (
+                                <button key={d} onClick={() => setPeriod(d)} style={{
+                                    padding: '6px 16px', fontSize: 12, fontWeight: 600, borderRadius: 8,
+                                    border: 'none', cursor: 'pointer',
+                                    background: period === d ? 'rgba(255,255,255,0.1)' : 'transparent',
+                                    color: period === d ? '#fafafa' : '#52525b',
+                                    transition: 'all 0.2s',
+                                }}>
+                                    {d}d
+                                </button>
+                            ))}
+                        </div>
+                    </div>
                 </div>
             </div>
 
             {loading ? (
-                <div style={{ textAlign: 'center', padding: 60, color: '#6b7280' }}>
-                    <RefreshCw size={24} style={{ animation: 'spin 1s linear infinite' }} />
-                    <p style={{ marginTop: 8 }}>Calculating metrics...</p>
-                    <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+                <div style={{ padding: 80, textAlign: 'center', color: '#52525b' }}>
+                    <div style={{ width: 28, height: 28, border: '2.5px solid #27272a', borderTop: '2.5px solid #34d399', borderRadius: '50%', margin: '0 auto', animation: 'spin 0.8s linear infinite' }} />
+                    <p style={{ marginTop: 14, fontSize: 13 }}>Calculating metrics...</p>
                 </div>
             ) : (
-                <>
-                    {/* Metric Cards */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 32 }}>
-                        <MetricCard
-                            label="Stock Accuracy" value={avg.stock_accuracy} unit="%"
-                            icon={<Package size={18} />} color="#22d3ee" target="≥ 95%"
-                        />
-                        <MetricCard
-                            label="Avg Processing" value={avg.processing_hours} unit="hrs"
-                            icon={<Clock size={18} />} color="#f59e0b" target="< 6h"
-                        />
-                        <MetricCard
-                            label="Delivery SLA" value={avg.delivery_sla} unit="%"
-                            icon={<TrendingUp size={18} />} color="#34d399" target="≥ 92%"
-                        />
-                        <MetricCard
-                            label="Webhook Success" value={avg.webhook_success} unit="%"
-                            icon={<Zap size={18} />} color="#a78bfa" target="≥ 99%"
-                        />
-                    </div>
+                <div style={{ maxWidth: 900, margin: '0 auto', padding: '0 20px 60px' }}>
 
-                    {/* Overall Status Banner */}
-                    <div style={{
-                        background: 'linear-gradient(135deg, rgba(52,211,153,0.1), rgba(34,211,238,0.1))',
-                        border: '1px solid rgba(52,211,153,0.2)',
-                        borderRadius: 12, padding: '20px 24px',
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        marginBottom: 32,
-                    }}>
-                        <div>
-                            <div style={{ fontSize: 16, fontWeight: 700, color: '#fff', marginBottom: 4 }}>
-                                ✅ All Systems Operational
+                    {/* ━━━ Bento Grid ━━━ */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gridTemplateRows: 'auto auto', gap: 12, marginBottom: 32 }}>
+
+                        {/* Big overall card — spans 2 */}
+                        <div style={{
+                            gridColumn: 'span 2', gridRow: 'span 2',
+                            background: 'linear-gradient(145deg, rgba(52,211,153,0.06), rgba(34,211,238,0.04))',
+                            backdropFilter: 'blur(12px)',
+                            border: '1px solid rgba(52,211,153,0.1)', borderRadius: 20, padding: 32,
+                            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                            animation: 'cardSlideUp 0.5s ease both',
+                        }}>
+                            <ProgressRing value={overall} size={140} color="#34d399" label="UPTIME" />
+                            <div style={{ marginTop: 16, fontSize: 14, fontWeight: 700, color: '#fafafa' }}>Overall Health</div>
+                            <div style={{ fontSize: 11, color: '#71717a', marginTop: 4 }}>
+                                {period}-day average across all metrics
                             </div>
-                            <div style={{ fontSize: 12, color: '#6b7280' }}>
-                                {period}-day window • Updated {new Date().toLocaleTimeString()}
+                            <div style={{
+                                marginTop: 16, display: 'inline-flex', alignItems: 'center', gap: 6,
+                                padding: '6px 16px', borderRadius: 100,
+                                background: overall >= 90 ? 'rgba(52,211,153,0.1)' : 'rgba(245,158,11,0.1)',
+                                border: `1px solid ${overall >= 90 ? 'rgba(52,211,153,0.2)' : 'rgba(245,158,11,0.2)'}`,
+                            }}>
+                                <span style={{ fontSize: 11, fontWeight: 700, color: overall >= 90 ? '#34d399' : '#f59e0b' }}>
+                                    {overall >= 90 ? '✅ All Systems Operational' : '⚠ Needs Attention'}
+                                </span>
                             </div>
                         </div>
-                        <div style={{
-                            padding: '8px 16px', background: 'rgba(52,211,153,0.15)',
-                            borderRadius: 8, color: '#34d399', fontWeight: 800, fontSize: 18,
-                            fontFamily: 'monospace',
-                        }}>
-                            {((
-                                (avg.stock_accuracy || 0) +
-                                (avg.delivery_sla || 0) +
-                                (avg.webhook_success || 0)
-                            ) / 3).toFixed(1)}%
+
+                        {/* Small metric cards */}
+                        {[
+                            { label: 'Stock Accuracy', value: avg.stock_accuracy || 0, color: '#22d3ee', icon: '📦' },
+                            { label: 'Delivery SLA', value: avg.delivery_sla || 0, color: '#34d399', icon: '🚀' },
+                            { label: 'Webhook Success', value: avg.webhook_success || 0, color: '#a78bfa', icon: '⚡' },
+                            { label: 'Processing', value: avg.processing_hours || 0, color: '#f59e0b', icon: '⏱️' },
+                        ].map((m, i) => (
+                            <div key={m.label} style={{
+                                background: 'rgba(255,255,255,0.03)', backdropFilter: 'blur(12px)',
+                                border: '1px solid rgba(255,255,255,0.06)', borderRadius: 16, padding: '20px 16px',
+                                animation: `cardSlideUp 0.5s ease ${0.1 + i * 0.08}s both`,
+                                transition: 'border-color 0.2s, transform 0.2s',
+                                cursor: 'default',
+                            }}
+                                onMouseEnter={e => { e.currentTarget.style.borderColor = `${m.color}30`; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                                onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'; e.currentTarget.style.transform = 'none'; }}
+                            >
+                                <div style={{ fontSize: 20, marginBottom: 8 }}>{m.icon}</div>
+                                <div style={{ fontSize: 24, fontWeight: 900, fontFamily: "'JetBrains Mono', monospace", color: m.color }}>
+                                    <AnimNum value={m.value} />{m.label !== 'Processing' ? '%' : 'h'}
+                                </div>
+                                <div style={{ fontSize: 10, color: '#71717a', fontWeight: 600, letterSpacing: 0.5, marginTop: 4 }}>{m.label}</div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* ━━━ Commitments Table ━━━ */}
+                    <div style={{
+                        background: 'rgba(255,255,255,0.02)', backdropFilter: 'blur(12px)',
+                        border: '1px solid rgba(255,255,255,0.06)', borderRadius: 20, overflow: 'hidden',
+                    }}>
+                        <div style={{ padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                            <span style={{ fontSize: 14, fontWeight: 700, color: '#fafafa' }}>📋 SLA Commitments</span>
+                        </div>
+                        <div style={{ padding: '4px 24px 16px' }}>
+                            <MetricBar label="Stock accuracy reflects real inventory" value={avg.stock_accuracy || 0} target="≥95" unit="%" color="#22d3ee" />
+                            <MetricBar label="Order processing within deadline" value={avg.processing_hours || 0} target="<6" unit="hrs" color="#f59e0b" />
+                            <MetricBar label="Delivery within estimated window" value={avg.delivery_sla || 0} target="≥92" unit="%" color="#34d399" />
+                            <MetricBar label="Webhook event delivery success" value={avg.webhook_success || 0} target="≥99" unit="%" color="#a78bfa" />
+                            <MetricBar label="Price change notification" value={0.5} target="<1" unit="hr" color="#60a5fa" />
+                            <MetricBar label="API response time (p95)" value={320} target="<500" unit="ms" color="#f472b6" />
                         </div>
                     </div>
 
-                    {/* SLA Commitments Table */}
-                    <div style={{
-                        background: '#0d1117', border: '1px solid #1f2937', borderRadius: 12,
-                        overflow: 'hidden',
-                    }}>
-                        <div style={{
-                            padding: '14px 20px', borderBottom: '1px solid #1f2937',
-                            fontSize: 13, fontWeight: 700, color: '#fff',
-                        }}>
-                            <BarChart3 size={14} style={{ display: 'inline', marginRight: 8, verticalAlign: 'middle' }} />
-                            SLA Commitments
-                        </div>
-                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                            <thead>
-                                <tr style={{ borderBottom: '1px solid #1f2937' }}>
-                                    <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 11, color: '#6b7280', fontWeight: 600 }}>METRIC</th>
-                                    <th style={{ padding: '10px 20px', textAlign: 'center', fontSize: 11, color: '#6b7280', fontWeight: 600 }}>COMMITMENT</th>
-                                    <th style={{ padding: '10px 20px', textAlign: 'center', fontSize: 11, color: '#6b7280', fontWeight: 600 }}>CURRENT</th>
-                                    <th style={{ padding: '10px 20px', textAlign: 'center', fontSize: 11, color: '#6b7280', fontWeight: 600 }}>STATUS</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {[
-                                    { metric: 'Stock accuracy reflects real inventory', commitment: '≥ 95%', current: avg.stock_accuracy, good: (v: number) => v >= 95 },
-                                    { metric: 'Order processing within deadline', commitment: '< 6 hours', current: avg.processing_hours, good: (v: number) => v < 6 },
-                                    { metric: 'Delivery within estimated window', commitment: '≥ 92%', current: avg.delivery_sla, good: (v: number) => v >= 92 },
-                                    { metric: 'Webhook event delivery success', commitment: '≥ 99%', current: avg.webhook_success, good: (v: number) => v >= 99 },
-                                    { metric: 'Price change notification', commitment: '< 1 hour', current: 0.5, good: (v: number) => v < 1 },
-                                    { metric: 'API response time (p95)', commitment: '< 500ms', current: 320, good: (v: number) => v < 500 },
-                                ].map((row, i) => {
-                                    const v = row.current ?? 0;
-                                    const isGood = row.good(v);
-                                    return (
-                                        <tr key={i} style={{ borderBottom: '1px solid #111827' }}>
-                                            <td style={{ padding: '12px 20px', fontSize: 13, color: '#e5e7eb' }}>{row.metric}</td>
-                                            <td style={{ padding: '12px 20px', textAlign: 'center', fontSize: 13, color: '#9ca3af', fontFamily: 'monospace' }}>{row.commitment}</td>
-                                            <td style={{ padding: '12px 20px', textAlign: 'center', fontSize: 13, color: '#fff', fontFamily: 'monospace', fontWeight: 700 }}>
-                                                {typeof v === 'number' ? v.toFixed(1) : v}
-                                            </td>
-                                            <td style={{ padding: '12px 20px', textAlign: 'center' }}>
-                                                <span style={{
-                                                    display: 'inline-flex', alignItems: 'center', gap: 4,
-                                                    padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 700,
-                                                    background: isGood ? 'rgba(52,211,153,0.15)' : 'rgba(245,158,11,0.15)',
-                                                    color: isGood ? '#34d399' : '#f59e0b',
-                                                }}>
-                                                    {isGood ? '✓ MET' : '⚠ MONITOR'}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
-                </>
+                </div>
             )}
+
+            <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700;800&display=swap');
+        @keyframes spin { to { transform:rotate(360deg); } }
+        @keyframes cardSlideUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+      `}</style>
         </div>
     );
 }

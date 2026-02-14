@@ -1,6 +1,5 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
-import { Activity, Bot, Package, DollarSign, CheckCircle, AlertTriangle, RefreshCw, Eye, Radio } from 'lucide-react';
 
 interface ActivityItem {
     id: string;
@@ -13,213 +12,260 @@ interface ActivityItem {
     created_at: string;
 }
 
-const ROLE_ICONS: Record<string, { icon: string; color: string }> = {
-    SOURCING: { icon: '🔍', color: '#22d3ee' },
-    PRICING: { icon: '💰', color: '#a78bfa' },
-    OPS: { icon: '⚙️', color: '#f59e0b' },
-    SYSTEM: { icon: '🤖', color: '#6b7280' },
-    ORDER: { icon: '📦', color: '#34d399' },
-    REVIEW: { icon: '⭐', color: '#60a5fa' },
+const ROLES: Record<string, { icon: string; label: string; gradient: string }> = {
+    SOURCING: { icon: '🔍', label: 'Sourcing', gradient: 'linear-gradient(135deg, #06b6d4, #0891b2)' },
+    PRICING: { icon: '💰', label: 'Pricing', gradient: 'linear-gradient(135deg, #a78bfa, #7c3aed)' },
+    OPS: { icon: '⚙️', label: 'Operations', gradient: 'linear-gradient(135deg, #f59e0b, #d97706)' },
+    SYSTEM: { icon: '🤖', label: 'System', gradient: 'linear-gradient(135deg, #6b7280, #4b5563)' },
+    ORDER: { icon: '📦', label: 'Orders', gradient: 'linear-gradient(135deg, #34d399, #059669)' },
+    REVIEW: { icon: '⭐', label: 'Reviews', gradient: 'linear-gradient(135deg, #60a5fa, #2563eb)' },
 };
 
 function timeAgo(dateStr: string): string {
     const diff = Date.now() - new Date(dateStr).getTime();
-    const secs = Math.floor(diff / 1000);
-    if (secs < 60) return `${secs}s ago`;
-    const mins = Math.floor(secs / 60);
-    if (mins < 60) return `${mins}m ago`;
-    const hours = Math.floor(mins / 60);
-    if (hours < 24) return `${hours}h ago`;
-    return `${Math.floor(hours / 24)}d ago`;
+    const s = Math.floor(diff / 1000);
+    if (s < 60) return `${s}s`;
+    const m = Math.floor(s / 60);
+    if (m < 60) return `${m}m`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h}h`;
+    return `${Math.floor(h / 24)}d`;
 }
 
-function maskValue(val: string): string {
-    if (!val) return '';
-    if (val.length <= 4) return '****';
-    return val.substring(0, 2) + '***' + val.substring(val.length - 2);
+/* ━━━ Animated Counter ━━━ */
+function AnimCounter({ value, suffix = '' }: { value: number; suffix?: string }) {
+    const [display, setDisplay] = useState(0);
+    useEffect(() => {
+        if (value === 0) { setDisplay(0); return; }
+        const duration = 1200;
+        const start = performance.now();
+        const tick = (now: number) => {
+            const t = Math.min((now - start) / duration, 1);
+            const ease = 1 - Math.pow(1 - t, 4);
+            setDisplay(Math.round(value * ease));
+            if (t < 1) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+    }, [value]);
+    return <>{display}{suffix}</>;
+}
+
+/* ━━━ Confidence Ring ━━━ */
+function ConfidenceRing({ value }: { value: number }) {
+    const r = 8; const c = 2 * Math.PI * r;
+    const color = value >= 80 ? '#34d399' : value >= 50 ? '#f59e0b' : '#ef4444';
+    return (
+        <svg width="22" height="22" viewBox="0 0 22 22" style={{ flexShrink: 0 }}>
+            <circle cx="11" cy="11" r={r} fill="none" stroke="#1f2937" strokeWidth="2.5" />
+            <circle cx="11" cy="11" r={r} fill="none" stroke={color} strokeWidth="2.5"
+                strokeDasharray={`${c * value / 100} ${c}`}
+                strokeLinecap="round" transform="rotate(-90 11 11)"
+                style={{ transition: 'stroke-dasharray 0.8s ease' }} />
+            <text x="11" y="12" textAnchor="middle" fontSize="6" fontWeight="800" fill={color} fontFamily="monospace">
+                {value}
+            </text>
+        </svg>
+    );
 }
 
 export function LiveFeed() {
     const [activities, setActivities] = useState<ActivityItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [isLive, setIsLive] = useState(true);
-    const [count, setCount] = useState(0);
-    const feedRef = useRef<HTMLDivElement>(null);
+    const [filter, setFilter] = useState<string | null>(null);
 
-    const fetchActivities = async () => {
+    const fetchActivities = useCallback(async () => {
         try {
-            const { data, error } = await supabase.rpc('get_agent_activity_log', { p_limit: 50, p_role: null });
-            if (!error && data?.activities) {
-                setActivities(data.activities);
-                setCount(data.activities.length);
-            }
-        } catch (e) {
-            console.error('Failed to fetch activities:', e);
-        } finally {
-            setLoading(false);
-        }
-    };
+            const { data, error } = await supabase.rpc('get_agent_activity_log', { p_limit: 50, p_role: filter });
+            if (!error && data?.activities) setActivities(data.activities);
+        } catch (e) { console.error(e); }
+        finally { setLoading(false); }
+    }, [filter]);
 
-    useEffect(() => { fetchActivities(); }, []);
+    useEffect(() => { fetchActivities(); }, [fetchActivities]);
     useEffect(() => {
         if (!isLive) return;
-        const interval = setInterval(fetchActivities, 8000);
-        return () => clearInterval(interval);
-    }, [isLive]);
+        const id = setInterval(fetchActivities, 6000);
+        return () => clearInterval(id);
+    }, [isLive, fetchActivities]);
+
+    const roleCounts = activities.reduce<Record<string, number>>((acc, a) => {
+        acc[a.agent_role] = (acc[a.agent_role] || 0) + 1; return acc;
+    }, {});
+    const autoCount = activities.filter(a => a.decision === 'AUTO').length;
+    const avgConf = activities.filter(a => a.confidence != null).reduce((s, a) => s + (a.confidence || 0), 0)
+        / (activities.filter(a => a.confidence != null).length || 1);
 
     return (
-        <div style={{
-            minHeight: '100vh', background: '#000', color: '#e5e7eb',
-            fontFamily: "'Inter', -apple-system, sans-serif",
-        }}>
-            {/* Hero Header */}
-            <div style={{
-                padding: '40px 24px 24px', textAlign: 'center',
-                background: 'linear-gradient(180deg, #0a0a1a 0%, #000 100%)',
-                borderBottom: '1px solid #1f2937',
-            }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 12 }}>
-                    <div style={{
-                        width: 12, height: 12, borderRadius: '50%',
-                        background: isLive ? '#34d399' : '#ef4444',
-                        boxShadow: isLive ? '0 0 12px #34d399, 0 0 24px rgba(52,211,153,0.3)' : 'none',
-                        animation: isLive ? 'pulse 2s infinite' : 'none',
-                    }} />
-                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: isLive ? '#34d399' : '#ef4444', textTransform: 'uppercase' }}>
-                        {isLive ? 'LIVE' : 'PAUSED'}
-                    </span>
-                </div>
-                <h1 style={{
-                    fontSize: 32, fontWeight: 900, color: '#fff', margin: '0 0 8px',
-                    background: 'linear-gradient(135deg, #22d3ee, #a78bfa, #f59e0b)',
-                    WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-                }}>
-                    JSONMart AI Operations
-                </h1>
-                <p style={{ fontSize: 14, color: '#6b7280', maxWidth: 500, margin: '0 auto' }}>
-                    Real-time proof that AI agents are actively sourcing, pricing, and managing operations.
-                    Every decision is logged and transparent.
-                </p>
+        <div style={{ minHeight: '100vh', background: '#09090b', color: '#e4e4e7', fontFamily: "'Inter', -apple-system, sans-serif" }}>
 
-                {/* Live Stats */}
-                <div style={{ display: 'flex', justifyContent: 'center', gap: 32, marginTop: 24 }}>
+            {/* ━━━ Hero ━━━ */}
+            <div style={{
+                position: 'relative', padding: '48px 24px 32px', textAlign: 'center', overflow: 'hidden',
+            }}>
+                {/* Background mesh */}
+                <div style={{
+                    position: 'absolute', inset: 0, opacity: 0.15,
+                    background: 'radial-gradient(ellipse 600px 300px at 50% 0%, #22d3ee, transparent), radial-gradient(ellipse 400px 200px at 20% 50%, #a78bfa, transparent), radial-gradient(ellipse 400px 200px at 80% 50%, #34d399, transparent)',
+                }} />
+                <div style={{ position: 'relative', zIndex: 1 }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '4px 14px', borderRadius: 100, background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.2)', marginBottom: 16 }}>
+                        <div style={{
+                            width: 8, height: 8, borderRadius: '50%', background: isLive ? '#34d399' : '#ef4444',
+                            boxShadow: isLive ? '0 0 8px #34d399' : 'none',
+                            animation: isLive ? 'livePulse 2s infinite' : 'none',
+                        }} />
+                        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: isLive ? '#34d399' : '#ef4444' }}>
+                            {isLive ? 'LIVE' : 'PAUSED'}
+                        </span>
+                    </div>
+                    <h1 style={{ fontSize: 36, fontWeight: 900, color: '#fafafa', margin: '0 0 8px', letterSpacing: -0.5 }}>
+                        AI Operations Feed
+                    </h1>
+                    <p style={{ fontSize: 14, color: '#71717a', maxWidth: 460, margin: '0 auto', lineHeight: 1.6 }}>
+                        Every AI agent decision is logged and transparent.
+                        Real-time proof of operations.
+                    </p>
+                </div>
+            </div>
+
+            {/* ━━━ Bento Stats ━━━ */}
+            <div style={{ maxWidth: 800, margin: '0 auto', padding: '0 20px 20px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
                     {[
-                        { label: 'Events (24h)', value: count, color: '#22d3ee' },
-                        { label: 'Active Agents', value: new Set(activities.map(a => a.agent_role)).size, color: '#a78bfa' },
-                        { label: 'Auto Decisions', value: activities.filter(a => a.decision === 'AUTO').length, color: '#34d399' },
-                    ].map(s => (
-                        <div key={s.label} style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: 28, fontWeight: 800, color: s.color, fontFamily: 'monospace' }}>
-                                {s.value}
+                        { label: 'Total Events', value: activities.length, suffix: '', color: '#22d3ee' },
+                        { label: 'Active Roles', value: Object.keys(roleCounts).length, suffix: '', color: '#a78bfa' },
+                        { label: 'Auto Decisions', value: autoCount, suffix: '', color: '#34d399' },
+                        { label: 'Avg Confidence', value: Math.round(avgConf), suffix: '%', color: '#f59e0b' },
+                    ].map((s, i) => (
+                        <div key={s.label} style={{
+                            background: 'rgba(255,255,255,0.03)', backdropFilter: 'blur(12px)',
+                            border: '1px solid rgba(255,255,255,0.06)', borderRadius: 16, padding: '20px 16px',
+                            textAlign: 'center',
+                            animation: `cardSlideUp 0.5s ease ${i * 0.08}s both`,
+                        }}>
+                            <div style={{ fontSize: 30, fontWeight: 900, fontFamily: "'JetBrains Mono', monospace", color: s.color, marginBottom: 4 }}>
+                                <AnimCounter value={s.value} suffix={s.suffix} />
                             </div>
-                            <div style={{ fontSize: 10, color: '#6b7280', fontWeight: 600, letterSpacing: 1 }}>
-                                {s.label.toUpperCase()}
-                            </div>
+                            <div style={{ fontSize: 10, color: '#71717a', fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase' }}>{s.label}</div>
                         </div>
                     ))}
                 </div>
-            </div>
 
-            {/* Feed */}
-            <div style={{ maxWidth: 700, margin: '0 auto', padding: '16px 16px 80px' }} ref={feedRef}>
-                {loading ? (
-                    <div style={{ textAlign: 'center', padding: 60, color: '#6b7280' }}>
-                        <RefreshCw size={24} style={{ animation: 'spin 1s linear infinite' }} />
-                        <p style={{ marginTop: 8 }}>Loading agent activity...</p>
-                    </div>
-                ) : activities.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: 60, color: '#6b7280' }}>
-                        <Bot size={48} style={{ opacity: 0.3, margin: '0 auto' }} />
-                        <p style={{ marginTop: 12 }}>No activity yet. Agents will appear here when active.</p>
-                    </div>
-                ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        {activities.map((a, i) => {
-                            const role = ROLE_ICONS[a.agent_role] || ROLE_ICONS.SYSTEM;
-                            return (
-                                <div key={a.id} style={{
-                                    display: 'flex', alignItems: 'flex-start', gap: 12,
-                                    padding: '12px 16px', borderRadius: 8,
-                                    background: i === 0 ? 'rgba(34,211,238,0.05)' : 'transparent',
-                                    borderLeft: i === 0 ? '3px solid #22d3ee' : '3px solid transparent',
-                                    transition: 'all 0.3s ease',
-                                    animation: i === 0 ? 'fadeInDown 0.5s ease' : 'none',
-                                }}>
-                                    <div style={{ fontSize: 20, width: 32, textAlign: 'center', flexShrink: 0 }}>
-                                        {role.icon}
-                                    </div>
-                                    <div style={{ flex: 1, minWidth: 0 }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                            <span style={{
-                                                fontSize: 10, fontWeight: 800, color: role.color,
-                                                textTransform: 'uppercase', letterSpacing: 1.5,
-                                            }}>
-                                                {a.agent_role}
-                                            </span>
-                                            <span style={{ fontSize: 11, color: '#4b5563' }}>•</span>
-                                            <span style={{ fontSize: 11, color: '#6b7280' }}>{timeAgo(a.created_at)}</span>
-                                        </div>
-                                        <div style={{ fontSize: 13, color: '#e5e7eb', marginTop: 3, fontWeight: 500 }}>
-                                            {a.action}
-                                            {a.target_sku && (
-                                                <span style={{ color: '#22d3ee', marginLeft: 6, fontSize: 12 }}>
-                                                    [{a.target_sku}]
-                                                </span>
-                                            )}
-                                        </div>
-                                        {a.confidence !== null && (
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                                                <div style={{ width: 50, height: 3, borderRadius: 2, background: '#1f2937', overflow: 'hidden' }}>
-                                                    <div style={{
-                                                        width: `${a.confidence}%`, height: '100%',
-                                                        background: a.confidence >= 80 ? '#34d399' : a.confidence >= 50 ? '#f59e0b' : '#ef4444',
-                                                        borderRadius: 2,
-                                                    }} />
-                                                </div>
-                                                <span style={{ fontSize: 10, color: '#9ca3af' }}>
-                                                    confidence: {a.confidence}%
-                                                </span>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
-            </div>
+                {/* ━━━ Role Filters ━━━ */}
+                <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap', justifyContent: 'center' }}>
+                    <button onClick={() => setFilter(null)} style={{
+                        padding: '5px 14px', fontSize: 11, fontWeight: 600, borderRadius: 8, cursor: 'pointer',
+                        border: `1px solid ${!filter ? 'rgba(250,250,250,0.2)' : 'rgba(255,255,255,0.06)'}`,
+                        background: !filter ? 'rgba(250,250,250,0.08)' : 'transparent',
+                        color: !filter ? '#fafafa' : '#71717a',
+                        transition: 'all 0.2s',
+                    }}>ALL</button>
+                    {Object.entries(ROLES).map(([key, r]) => (
+                        <button key={key} onClick={() => setFilter(key)} style={{
+                            padding: '5px 14px', fontSize: 11, fontWeight: 600, borderRadius: 8, cursor: 'pointer',
+                            border: `1px solid ${filter === key ? 'rgba(250,250,250,0.2)' : 'rgba(255,255,255,0.06)'}`,
+                            background: filter === key ? 'rgba(250,250,250,0.08)' : 'transparent',
+                            color: filter === key ? '#fafafa' : '#71717a',
+                            transition: 'all 0.2s',
+                        }}>
+                            {r.icon} {r.label}
+                        </button>
+                    ))}
+                </div>
 
-            {/* Footer */}
-            <div style={{
-                position: 'fixed', bottom: 0, left: 0, right: 0,
-                padding: '12px 24px', background: 'rgba(0,0,0,0.9)',
-                borderTop: '1px solid #1f2937',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16,
-                backdropFilter: 'blur(8px)',
-            }}>
-                <span style={{ fontSize: 11, color: '#6b7280' }}>
-                    Powered by <span style={{ fontWeight: 800, color: '#fff' }}>JSONMart</span> AI
-                </span>
-                <span style={{ fontSize: 11, color: '#374151' }}>•</span>
-                <span style={{ fontSize: 11, color: '#6b7280' }}>
-                    ACP + UCP Compatible
-                </span>
-                <span style={{ fontSize: 11, color: '#374151' }}>•</span>
-                <button onClick={() => setIsLive(!isLive)} style={{
-                    fontSize: 11, padding: '4px 10px', borderRadius: 4,
-                    border: `1px solid ${isLive ? '#34d399' : '#ef4444'}`,
-                    background: 'transparent',
-                    color: isLive ? '#34d399' : '#ef4444',
-                    cursor: 'pointer',
+                {/* ━━━ Activity Stream ━━━ */}
+                <div style={{
+                    background: 'rgba(255,255,255,0.02)', backdropFilter: 'blur(12px)',
+                    border: '1px solid rgba(255,255,255,0.06)', borderRadius: 20, overflow: 'hidden',
                 }}>
-                    {isLive ? '⏸ Pause' : '▶ Resume'}
-                </button>
+                    <div style={{ padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: '#fafafa' }}>Activity Stream</span>
+                        <button onClick={() => setIsLive(!isLive)} style={{
+                            display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px', fontSize: 11,
+                            borderRadius: 6, cursor: 'pointer',
+                            border: `1px solid ${isLive ? 'rgba(52,211,153,0.3)' : 'rgba(239,68,68,0.3)'}`,
+                            background: isLive ? 'rgba(52,211,153,0.08)' : 'rgba(239,68,68,0.08)',
+                            color: isLive ? '#34d399' : '#ef4444', fontWeight: 600,
+                        }}>
+                            {isLive ? '⏸ Pause' : '▶ Resume'}
+                        </button>
+                    </div>
+
+                    {loading ? (
+                        <div style={{ padding: 60, textAlign: 'center', color: '#52525b' }}>
+                            <div style={{ width: 24, height: 24, border: '2px solid #27272a', borderTop: '2px solid #22d3ee', borderRadius: '50%', margin: '0 auto', animation: 'spin 0.8s linear infinite' }} />
+                            <p style={{ marginTop: 12, fontSize: 13 }}>Loading...</p>
+                        </div>
+                    ) : activities.length === 0 ? (
+                        <div style={{ padding: 60, textAlign: 'center', color: '#52525b' }}>
+                            <div style={{ fontSize: 40, marginBottom: 8, opacity: 0.3 }}>🤖</div>
+                            <p style={{ fontSize: 13 }}>No activity yet</p>
+                        </div>
+                    ) : (
+                        <div>
+                            {activities.map((a, i) => {
+                                const role = ROLES[a.agent_role] || ROLES.SYSTEM;
+                                return (
+                                    <div key={a.id} style={{
+                                        display: 'flex', alignItems: 'flex-start', gap: 12,
+                                        padding: '14px 20px',
+                                        borderBottom: i < activities.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+                                        animation: `rowFadeIn 0.4s ease ${Math.min(i * 0.04, 0.8)}s both`,
+                                        transition: 'background 0.2s',
+                                    }}
+                                        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
+                                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                                    >
+                                        {/* Role badge */}
+                                        <div style={{
+                                            width: 32, height: 32, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            background: role.gradient, fontSize: 15, flexShrink: 0,
+                                            boxShadow: `0 4px 12px ${role.gradient.includes('#06b6d4') ? 'rgba(6,182,212,0.2)' : 'rgba(0,0,0,0.3)'}`,
+                                        }}>
+                                            {role.icon}
+                                        </div>
+                                        {/* Content */}
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                                                <span style={{ fontSize: 10, fontWeight: 700, color: '#a1a1aa', letterSpacing: 1 }}>{a.agent_role}</span>
+                                                <span style={{ fontSize: 10, color: '#3f3f46' }}>•</span>
+                                                <span style={{ fontSize: 10, color: '#52525b' }}>{timeAgo(a.created_at)} ago</span>
+                                                {a.decision === 'AUTO' && (
+                                                    <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: 'rgba(52,211,153,0.1)', color: '#34d399', fontWeight: 700 }}>AUTO</span>
+                                                )}
+                                            </div>
+                                            <div style={{ fontSize: 13, color: '#e4e4e7', fontWeight: 500, lineHeight: 1.4 }}>
+                                                {a.action}
+                                                {a.target_sku && (
+                                                    <span style={{
+                                                        marginLeft: 6, fontSize: 11, padding: '1px 6px', borderRadius: 4,
+                                                        background: 'rgba(34,211,238,0.08)', color: '#22d3ee', fontWeight: 600,
+                                                    }}>{a.target_sku}</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        {/* Confidence */}
+                                        {a.confidence != null && <ConfidenceRing value={a.confidence} />}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* ━━━ Footer ━━━ */}
+            <div style={{ textAlign: 'center', padding: '32px 24px 24px', color: '#3f3f46', fontSize: 11 }}>
+                Powered by <span style={{ color: '#71717a', fontWeight: 700 }}>JSONMart AI</span> • ACP + UCP Compatible
             </div>
 
             <style>{`
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-        @keyframes fadeInDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700;800&display=swap');
+        @keyframes livePulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+        @keyframes spin { to { transform:rotate(360deg); } }
+        @keyframes cardSlideUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes rowFadeIn { from { opacity:0; transform:translateX(-8px); } to { opacity:1; transform:translateX(0); } }
       `}</style>
         </div>
     );
