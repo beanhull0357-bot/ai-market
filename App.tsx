@@ -146,25 +146,9 @@ const LanguageToggle: React.FC = () => {
 const UserStatus: React.FC = () => {
   const { user, signOut } = useAuth();
   const { t } = useLanguage();
-  const navigate = useNavigate();
 
-  if (!user) {
-    return (
-      <button
-        onClick={() => navigate('/auth')}
-        style={{
-          display: 'flex', alignItems: 'center', gap: 4,
-          padding: '5px 12px', fontSize: 11, fontWeight: 700,
-          border: '1px solid var(--accent-green)', borderRadius: 'var(--radius-sm)',
-          color: 'var(--accent-green)', background: 'transparent', cursor: 'pointer',
-          transition: 'all 150ms',
-        }}
-      >
-        <LogIn size={12} />
-        {t('auth.signIn')}
-      </button>
-    );
-  }
+  if (!user) return null;
+
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
       <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--text-tertiary)' }}>
