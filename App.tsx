@@ -12,9 +12,10 @@ import { AgentPlayground } from './pages/AgentPlayground';
 import { AgentDocs } from './pages/AgentDocs';
 import { MerchantPolicies } from './pages/MerchantPolicies';
 import { AIOps } from './pages/AIOps';
+import { DomeggookSync } from './pages/DomeggookSync';
 import { LiveFeed } from './pages/LiveFeed';
 import { SLADashboard } from './pages/SLADashboard';
-import { Terminal, Shield, Cpu, Globe, Package, LogIn, LogOut, User, Key, FileCheck, Zap, BookOpen, Bot, Radio, BarChart3, ChevronDown, Menu, X } from 'lucide-react';
+import { Terminal, Shield, Cpu, Globe, Package, LogIn, LogOut, User, Key, FileCheck, Zap, BookOpen, Bot, Radio, BarChart3, ChevronDown, Menu, X, Store } from 'lucide-react';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -196,6 +197,7 @@ function MobileMenu({ onClose }: { onClose: () => void }) {
         { to: '/', icon: <Terminal size={15} />, label: t('nav.home') },
         { to: '/inventory', icon: <Package size={15} />, label: t('nav.inventory') },
         { to: '/admin-queue', icon: <Shield size={15} />, label: t('nav.adminQueue') },
+        { to: '/domeggook', icon: <Store size={15} />, label: t('nav.domeggook') },
       ],
     },
     {
@@ -256,6 +258,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     { to: '/', icon: <Terminal size={13} />, label: t('nav.humanMode') },
     { to: '/inventory', icon: <Package size={13} />, label: t('nav.inventory') },
     { to: '/admin-queue', icon: <Shield size={13} />, label: t('nav.adminQueue') },
+    { to: '/domeggook', icon: <Store size={13} />, label: t('nav.domeggook') },
   ];
   const agentItems: NavItem[] = [
     { to: '/agent-console', icon: <Cpu size={13} />, label: t('nav.agentConsole') },
@@ -350,6 +353,7 @@ export default function App() {
                     <Route path="/ai-ops" element={<ProtectedRoute><AIOps /></ProtectedRoute>} />
                     <Route path="/live" element={<LiveFeed />} />
                     <Route path="/sla" element={<SLADashboard />} />
+                    <Route path="/domeggook" element={<ProtectedRoute><DomeggookSync /></ProtectedRoute>} />
                   </Routes>
                 </Layout>
               } />
