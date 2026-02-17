@@ -473,9 +473,9 @@ BEGIN
     SELECT json_agg(json_build_object(
         'id', p.sku,
         'title', p.title,
-        'description', p.title || ' — ' || p.brand || ' (' || p.category || ')',
-        'link', 'https://beanhull0357-bot.github.io/ai-market/#/agent-console?sku=' || p.sku,
-        'image_link', 'https://beanhull0357-bot.github.io/ai-market/placeholder.png',
+        'description', p.title || ' ??' || p.brand || ' (' || p.category || ')',
+        'link', 'https://jsonmart.xyz/#/agent-console?sku=' || p.sku,
+        'image_link', 'https://jsonmart.xyz/placeholder.png',
         'availability', CASE
             WHEN p.stock_status = 'in_stock' THEN 'in_stock'
             WHEN p.stock_status = 'out_of_stock' THEN 'out_of_stock'
@@ -507,7 +507,7 @@ BEGIN
         'custom_attributes', json_build_object(
             'ai_readiness_score', p.ai_readiness_score,
             'seller_trust', p.seller_trust,
-            'checkout_url', 'https://beanhull0357-bot.github.io/ai-market/.well-known/ucp'
+            'checkout_url', 'https://jsonmart.xyz/.well-known/ucp'
         )
     ) ORDER BY p.ai_readiness_score DESC)
     INTO v_items
@@ -519,11 +519,11 @@ BEGIN
         'format', 'acp_product_feed',
         'merchant', json_build_object(
             'name', 'JSONMart',
-            'domain', 'beanhull0357-bot.github.io',
+            'domain', 'jsonmart.xyz',
             'country', 'KR',
             'currency', 'KRW',
             'checkout_protocol', 'UCP',
-            'ucp_url', 'https://beanhull0357-bot.github.io/ai-market/.well-known/ucp'
+            'ucp_url', 'https://jsonmart.xyz/.well-known/ucp'
         ),
         'generated_at', now(),
         'item_count', (SELECT count(*) FROM products WHERE stock_status != 'out_of_stock'),
@@ -777,7 +777,7 @@ DECLARE
     v_expired_sessions INTEGER := 0;
     v_expired_orders INTEGER := 0;
 BEGIN
-    -- 1. Expired checkout sessions → restore stock
+    -- 1. Expired checkout sessions ??restore stock
     FOR v_session IN
         SELECT session_id FROM checkout_sessions
         WHERE status = 'AUTHORIZED'
@@ -830,7 +830,7 @@ CREATE TABLE IF NOT EXISTS agent_webhook_subscriptions (
 
 ALTER TABLE agent_webhook_subscriptions ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all for agent_webhook_subscriptions" ON agent_webhook_subscriptions;
--- NO direct table access — HMAC secrets protected. Access only via SECURITY DEFINER RPCs.
+-- NO direct table access ??HMAC secrets protected. Access only via SECURITY DEFINER RPCs.
 
 -- 9a. Register webhook subscription
 CREATE OR REPLACE FUNCTION agent_register_webhook(
@@ -1438,7 +1438,7 @@ CREATE TABLE IF NOT EXISTS notification_config (
 
 ALTER TABLE notification_config ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all for notification_config" ON notification_config;
--- NO direct table access — Telegram bot token protected. Access only via SECURITY DEFINER RPCs.
+-- NO direct table access ??Telegram bot token protected. Access only via SECURITY DEFINER RPCs.
 
 -- 15a. Send Telegram message
 CREATE OR REPLACE FUNCTION notify_admin_telegram(p_message TEXT)
@@ -1493,12 +1493,12 @@ BEGIN
     END IF;
 
     -- Send telegram notification
-    v_msg := '🛒 <b>새 주문</b>' || chr(10)
+    v_msg := '?�� <b>??주문</b>' || chr(10)
         || '주문번호: <code>' || NEW.order_id || '</code>' || chr(10)
-        || '상품: ' || v_items || chr(10)
-        || '금액: ' || COALESCE(NEW.authorized_amount, 0) || '원' || chr(10)
-        || '승인 마감: ' || to_char(NEW.capture_deadline, 'MM/DD HH24:MI') || chr(10)
-        || '상태: ' || NEW.status;
+        || '?�품: ' || v_items || chr(10)
+        || '금액: ' || COALESCE(NEW.authorized_amount, 0) || '?? || chr(10)
+        || '?�인 마감: ' || to_char(NEW.capture_deadline, 'MM/DD HH24:MI') || chr(10)
+        || '?�태: ' || NEW.status;
 
     PERFORM notify_admin_telegram(v_msg);
 
@@ -1536,7 +1536,7 @@ DECLARE
     v_expired_orders INTEGER := 0;
     v_warning_msg TEXT := '';
 BEGIN
-    -- 1. Expired checkout sessions → restore stock
+    -- 1. Expired checkout sessions ??restore stock
     FOR v_session IN
         SELECT session_id FROM checkout_sessions
         WHERE status = 'AUTHORIZED'
@@ -1560,9 +1560,9 @@ BEGIN
 
     -- 3. Send telegram alert if anything expired
     IF v_expired_sessions > 0 OR v_expired_orders > 0 THEN
-        v_warning_msg := '⏰ <b>자동 만료 처리</b>' || chr(10)
-            || '세션 만료: ' || v_expired_sessions || '건' || chr(10)
-            || '주문 만료: ' || v_expired_orders || '건';
+        v_warning_msg := '??<b>?�동 만료 처리</b>' || chr(10)
+            || '?�션 만료: ' || v_expired_sessions || '�? || chr(10)
+            || '주문 만료: ' || v_expired_orders || '�?;
         PERFORM notify_admin_telegram(v_warning_msg);
 
         PERFORM log_agent_activity(
@@ -1579,9 +1579,9 @@ BEGIN
         WHERE status = 'PROCUREMENT_PENDING'
         AND capture_deadline BETWEEN now() AND now() + interval '2 hours'
     LOOP
-        v_warning_msg := '⚠️ <b>승인 마감 임박!</b>' || chr(10)
+        v_warning_msg := '?�️ <b>?�인 마감 ?�박!</b>' || chr(10)
             || '주문: <code>' || v_session.order_id || '</code>' || chr(10)
-            || '금액: ' || v_session.authorized_amount || '원' || chr(10)
+            || '금액: ' || v_session.authorized_amount || '?? || chr(10)
             || '마감: ' || to_char(v_session.capture_deadline, 'MM/DD HH24:MI');
         PERFORM notify_admin_telegram(v_warning_msg);
     END LOOP;
@@ -1878,7 +1878,7 @@ BEGIN
             'product_readiness', COALESCE(v_product.ai_readiness_score, 0)
         ),
         0,
-        'API direct order — policy and stock verified',
+        'API direct order ??policy and stock verified',
         'agent-api/v1'
     );
 

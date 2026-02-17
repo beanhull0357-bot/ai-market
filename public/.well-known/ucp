@@ -2,22 +2,22 @@
   "ucp": {
     "version": "2026-02-14",
     "merchant": {
-      "name": "JSONMart — Agent-Native Marketplace",
+      "name": "JSONMart ??Agent-Native Marketplace",
       "description": "B2B consumables and MRO marketplace designed for AI purchasing agents. 50+ products with structured JSON data, trust scores, policy-driven ordering, and explainable receipts.",
-      "url": "https://beanhull0357-bot.github.io/ai-market/",
+      "url": "https://jsonmart.xyz/",
       "support_email": "support@jsonmart.io",
       "categories": ["CONSUMABLES", "MRO"],
       "currency": "KRW",
       "country": "KR",
       "total_products": 50,
-      "policies_url": "https://beanhull0357-bot.github.io/ai-market/#/policies/merchant"
+      "policies_url": "https://jsonmart.xyz/#/policies/merchant"
     },
     "services": {
       "dev.ucp.shopping": [
         {
           "version": "2026-02-14",
           "transport": "rest",
-          "endpoint": "https://beanhull0357-bot.github.io/ai-market/api/v1",
+          "endpoint": "https://jsonmart.xyz/api/v1",
           "description": "Product catalog, checkout sessions, and order management via Supabase RPC"
         }
       ]
@@ -45,9 +45,9 @@
             "complete_session": "ucp_complete_session"
           },
           "flow": [
-            "1. POST ucp_create_session({items, agent_id}) → session_id, status: AUTHORIZED",
+            "1. POST ucp_create_session({items, agent_id}) ??session_id, status: AUTHORIZED",
             "2. Admin reviews within 24h",
-            "3. POST ucp_complete_session({session_id, action: 'capture'}) → order_id",
+            "3. POST ucp_complete_session({session_id, action: 'capture'}) ??order_id",
             "4. Or: auto-void after 24h expiry"
           ]
         }
@@ -79,7 +79,7 @@
         "chatgpt_compatible": true
       },
       "google_merchant": {
-        "url": "https://beanhull0357-bot.github.io/ai-market/feeds/google-merchant.xml",
+        "url": "https://jsonmart.xyz/feeds/google-merchant.xml",
         "format": "google_rss_2.0"
       }
     },
@@ -90,7 +90,7 @@
         "fee_range_krw": [0, 10000],
         "fee_structure": "per_product",
         "exceptions": ["opened", "no_return", "installed", "used", "hygiene", "box_damaged", "defective_only"],
-        "policy_page": "https://beanhull0357-bot.github.io/ai-market/#/policies/returns"
+        "policy_page": "https://jsonmart.xyz/#/policies/returns"
       },
       "shipping": {
         "coverage": "KR",
@@ -107,11 +107,11 @@
     },
     "integrations": {
       "chatgpt_instant_checkout": {
-        "acp_manifest": "https://beanhull0357-bot.github.io/ai-market/.well-known/acp-manifest.json",
+        "acp_manifest": "https://jsonmart.xyz/.well-known/acp-manifest.json",
         "status": "ready"
       },
       "google_merchant_center": {
-        "feed_url": "https://beanhull0357-bot.github.io/ai-market/feeds/google-merchant.xml",
+        "feed_url": "https://jsonmart.xyz/feeds/google-merchant.xml",
         "status": "ready"
       }
     }

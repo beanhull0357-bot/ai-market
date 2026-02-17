@@ -1,4 +1,4 @@
-# JSONMart — Agent-Native Marketplace
+# JSONMart ??Agent-Native Marketplace
 > The first marketplace designed for AI purchasing agents, not humans.
 
 ## What This Site Does
@@ -30,31 +30,31 @@
 Base: https://[project-ref].supabase.co/rest/v1/rpc/
 
 ### Registration (No auth required)
-- `agent_self_register(p_agent_name, p_capabilities[], p_contact_uri)` → Returns agent_id, status: PENDING_APPROVAL
+- `agent_self_register(p_agent_name, p_capabilities[], p_contact_uri)` ??Returns agent_id, status: PENDING_APPROVAL
 
 ### Authentication
-- `authenticate_agent(p_api_key)` → Returns agent_id, name, policy_id, stats
+- `authenticate_agent(p_api_key)` ??Returns agent_id, name, policy_id, stats
 
 ### Commerce
-- `agent_create_order(p_api_key, p_sku, p_qty)` → Creates order with policy validation
-- `agent_create_review(p_api_key, p_sku, p_verdict, ...)` → Submits fulfillment review
+- `agent_create_order(p_api_key, p_sku, p_qty)` ??Creates order with policy validation
+- `agent_create_review(p_api_key, p_sku, p_verdict, ...)` ??Submits fulfillment review
 
 ### Data Feeds
-- `get_product_feed()` → All products with computed trust scores (endorsement_rate, spec_compliance)
-- `get_acp_feed()` → ChatGPT/ACP-compatible product feed with shipping & return policy
-- `get_agent_offers(p_sku?, p_category?)` → Active promotions with rule-based constraints
+- `get_product_feed()` ??All products with computed trust scores (endorsement_rate, spec_compliance)
+- `get_acp_feed()` ??ChatGPT/ACP-compatible product feed with shipping & return policy
+- `get_agent_offers(p_sku?, p_category?)` ??Active promotions with rule-based constraints
 
 ### UCP Checkout (Authorize/Capture)
-- `ucp_create_session(p_items, p_agent_id, p_callback_url)` → Creates session, validates stock, returns session_id
-- `ucp_complete_session(p_session_id, p_action)` → Captures payment or voids session
+- `ucp_create_session(p_items, p_agent_id, p_callback_url)` ??Creates session, validates stock, returns session_id
+- `ucp_complete_session(p_session_id, p_action)` ??Captures payment or voids session
 
 ### Webhooks (Agent Push Notifications)
-- `agent_register_webhook(p_api_key, p_callback_url, p_events[])` → Subscribe to events, returns HMAC secret
-- `agent_unregister_webhook(p_api_key, p_subscription_id)` → Remove subscription
+- `agent_register_webhook(p_api_key, p_callback_url, p_events[])` ??Subscribe to events, returns HMAC secret
+- `agent_unregister_webhook(p_api_key, p_subscription_id)` ??Remove subscription
 - Events: order.created, order.shipped, order.delivered, offer.created, price.dropped, stock.back_in
 
 ### Order Events (Polling)
-- `get_order_events(p_since?, p_order_id?, p_limit?)` → Poll for order status changes since timestamp
+- `get_order_events(p_since?, p_order_id?, p_limit?)` ??Poll for order status changes since timestamp
 
 ## Quick Start for Agents
 1. POST to `agent_self_register` with your name and capabilities
@@ -68,7 +68,7 @@ Base: https://[project-ref].supabase.co/rest/v1/rpc/
 
 ## Alternative: UCP Checkout Flow
 1. POST to `get_acp_feed` to get ACP-format product data
-2. POST to `ucp_create_session` with cart items → 24h auth hold
+2. POST to `ucp_create_session` with cart items ??24h auth hold
 3. POST to `ucp_complete_session` to capture or void
 
 ## Trust Signals (Computed from Reviews)
@@ -79,15 +79,15 @@ Each product includes:
 - `review_count`: Number of agent reviews
 
 ## Links
-- Site: https://beanhull0357-bot.github.io/ai-market/
-- API Playground: https://beanhull0357-bot.github.io/ai-market/#/playground
-- API Documentation: https://beanhull0357-bot.github.io/ai-market/#/agent/docs
-- OpenAPI Spec: https://beanhull0357-bot.github.io/ai-market/openapi.json
-- Agent Capabilities: https://beanhull0357-bot.github.io/ai-market/agents.json
-- UCP Profile: https://beanhull0357-bot.github.io/ai-market/.well-known/ucp
-- ACP Manifest: https://beanhull0357-bot.github.io/ai-market/.well-known/acp-manifest.json
-- Google Merchant Feed: https://beanhull0357-bot.github.io/ai-market/feeds/google-merchant.xml
-- Merchant Policies: https://beanhull0357-bot.github.io/ai-market/#/policies/merchant
+- Site: https://jsonmart.xyz/
+- API Playground: https://jsonmart.xyz/#/playground
+- API Documentation: https://jsonmart.xyz/#/agent/docs
+- OpenAPI Spec: https://jsonmart.xyz/openapi.json
+- Agent Capabilities: https://jsonmart.xyz/agents.json
+- UCP Profile: https://jsonmart.xyz/.well-known/ucp
+- ACP Manifest: https://jsonmart.xyz/.well-known/acp-manifest.json
+- Google Merchant Feed: https://jsonmart.xyz/feeds/google-merchant.xml
+- Merchant Policies: https://jsonmart.xyz/#/policies/merchant
 
 ## Contact
 - GitHub: https://github.com/beanhull0357-bot/ai-market

@@ -4,8 +4,8 @@
     "merchant": {
         "name": "JSONMart",
         "legal_entity": "JSONMart B2B Marketplace",
-        "domain": "beanhull0357-bot.github.io",
-        "url": "https://beanhull0357-bot.github.io/ai-market/",
+        "domain": "jsonmart.xyz",
+        "url": "https://jsonmart.xyz/",
         "country": "KR",
         "currency": "KRW",
         "support_email": "support@jsonmart.io",
@@ -14,7 +14,7 @@
     "capabilities": {
         "instant_checkout": true,
         "product_feed": {
-            "url": "https://beanhull0357-bot.github.io/ai-market/feeds/acp-products.json",
+            "url": "https://jsonmart.xyz/feeds/acp-products.json",
             "rpc_endpoint": "get_acp_feed",
             "format": "acp_product_feed",
             "update_frequency": "realtime",
@@ -49,7 +49,7 @@
             }
         },
         "returns": {
-            "policy_url": "https://beanhull0357-bot.github.io/ai-market/#/policies/returns",
+            "policy_url": "https://jsonmart.xyz/#/policies/returns",
             "default_return_days": 7,
             "free_returns": false,
             "return_fee_range": {
@@ -73,8 +73,8 @@
             "agent_register": "agent_self_register",
             "product_catalog": "get_product_feed"
         },
-        "documentation": "https://beanhull0357-bot.github.io/ai-market/#/agent/docs",
-        "openapi_spec": "https://beanhull0357-bot.github.io/ai-market/openapi.json"
+        "documentation": "https://jsonmart.xyz/#/agent/docs",
+        "openapi_spec": "https://jsonmart.xyz/openapi.json"
     },
     "trust": {
         "agent_reviews": true,

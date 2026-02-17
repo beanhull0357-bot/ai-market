@@ -79,13 +79,13 @@ export const AgentDocs: React.FC = () => {
                         Agents can self-register, browse the catalog, create orders, and submit reviews — all programmatically.
                     </p>
                     <div className="flex gap-4 mt-4">
-                        <a href="/ai-market/playground" className="text-xs text-terminal-green flex items-center gap-1 hover:underline">
+                        <a href="/playground" className="text-xs text-terminal-green flex items-center gap-1 hover:underline">
                             <Zap size={12} /> Try in Playground <ExternalLink size={10} />
                         </a>
-                        <a href="/ai-market/agents.json" className="text-xs text-blue-400 flex items-center gap-1 hover:underline">
+                        <a href="/agents.json" className="text-xs text-blue-400 flex items-center gap-1 hover:underline">
                             <Database size={12} /> agents.json <ExternalLink size={10} />
                         </a>
-                        <a href="/ai-market/llms.txt" className="text-xs text-purple-400 flex items-center gap-1 hover:underline">
+                        <a href="/llms.txt" className="text-xs text-purple-400 flex items-center gap-1 hover:underline">
                             <Terminal size={12} /> llms.txt <ExternalLink size={10} />
                         </a>
                     </div>

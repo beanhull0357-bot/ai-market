@@ -1,8 +1,8 @@
 {
     "schema_version": "2.0",
     "name": "JSONMart",
-    "description": "Agent-Native Marketplace — The first marketplace designed for AI purchasing agents. 50+ B2B products with structured JSON data, trust scores, UCP checkout, and ACP feed for ChatGPT Instant Checkout.",
-    "url": "https://beanhull0357-bot.github.io/ai-market/",
+    "description": "Agent-Native Marketplace ??The first marketplace designed for AI purchasing agents. 50+ B2B products with structured JSON data, trust scores, UCP checkout, and ACP feed for ChatGPT Instant Checkout.",
+    "url": "https://jsonmart.xyz/",
     "type": "marketplace",
     "audience": "ai_agents",
     "capabilities": {
@@ -22,7 +22,7 @@
             ],
             "feed_endpoint": "get_product_feed",
             "acp_feed_endpoint": "get_acp_feed",
-            "google_feed_url": "https://beanhull0357-bot.github.io/ai-market/feeds/google-merchant.xml",
+            "google_feed_url": "https://jsonmart.xyz/feeds/google-merchant.xml",
             "description": "Structured product data with specs, pricing, stock, trust scores, and return policies.",
             "includes_trust_scores": true
         },
@@ -42,7 +42,7 @@
             "auth_hold_hours": 24,
             "supports_multi_item": true,
             "stock_validation": true,
-            "description": "Session-based checkout via Universal Commerce Protocol. Create cart → authorize → capture/void."
+            "description": "Session-based checkout via Universal Commerce Protocol. Create cart ??authorize ??capture/void."
         },
         "review_submission": {
             "enabled": true,
@@ -68,23 +68,23 @@
     },
     "api": {
         "type": "supabase_rpc",
-        "documentation": "https://beanhull0357-bot.github.io/ai-market/#/agent/docs",
-        "playground": "https://beanhull0357-bot.github.io/ai-market/#/playground",
-        "openapi_spec": "https://beanhull0357-bot.github.io/ai-market/openapi.json"
+        "documentation": "https://jsonmart.xyz/#/agent/docs",
+        "playground": "https://jsonmart.xyz/#/playground",
+        "openapi_spec": "https://jsonmart.xyz/openapi.json"
     },
     "integrations": {
         "chatgpt": {
-            "acp_manifest": "https://beanhull0357-bot.github.io/ai-market/.well-known/acp-manifest.json",
+            "acp_manifest": "https://jsonmart.xyz/.well-known/acp-manifest.json",
             "instant_checkout": true,
             "acp_feed_endpoint": "get_acp_feed"
         },
         "google_merchant_center": {
-            "feed_url": "https://beanhull0357-bot.github.io/ai-market/feeds/google-merchant.xml",
+            "feed_url": "https://jsonmart.xyz/feeds/google-merchant.xml",
             "feed_format": "RSS 2.0 with Google Shopping namespace",
-            "policy_page": "https://beanhull0357-bot.github.io/ai-market/#/policies/merchant"
+            "policy_page": "https://jsonmart.xyz/#/policies/merchant"
         },
         "ucp": {
-            "profile_url": "https://beanhull0357-bot.github.io/ai-market/.well-known/ucp"
+            "profile_url": "https://jsonmart.xyz/.well-known/ucp"
         }
     },
     "trust_signals": {
@@ -107,7 +107,7 @@
             "default_window_days": 7,
             "max_window_days": 30,
             "return_fee_range_krw": "0-10,000",
-            "policy_page": "https://beanhull0357-bot.github.io/ai-market/#/policies/returns"
+            "policy_page": "https://jsonmart.xyz/#/policies/returns"
         },
         "customer_service": {
             "email": "support@jsonmart.io",

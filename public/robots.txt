@@ -33,7 +33,7 @@ User-agent: PerplexityBot
 Allow: /
 
 # Sitemaps
-Sitemap: https://beanhull0357-bot.github.io/ai-market/sitemap.xml
+Sitemap: https://jsonmart.xyz/sitemap.xml
 
 # Agent Discovery
 # LLM info: /llms.txt
