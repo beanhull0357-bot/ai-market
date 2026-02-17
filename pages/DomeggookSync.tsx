@@ -3,10 +3,6 @@ import { supabase } from '../supabaseClient';
 import { useLanguage } from '../context/LanguageContext';
 import { Search, Download, Package, ExternalLink, Check, Loader2, AlertCircle, ChevronLeft, ChevronRight, Store } from 'lucide-react';
 
-// ─── Domeggook API Config ───
-const DOME_API_BASE = 'https://domeggook.com/ssl/api/';
-const DOME_API_KEY = '59a4d8f9efc963d6446f86615902e416';
-
 // ─── Types ───
 interface DomeItem {
     no: string;
@@ -67,29 +63,30 @@ function mapCategory(categoryName: string): string {
     return 'OTHER';
 }
 
-// ─── API Helpers ───
+// ─── API Helpers (via Supabase RPC — bypasses CORS) ───
 async function searchDomeggook(keyword: string, page: number = 1, size: number = 20): Promise<{ items: DomeItem[]; header: DomeHeader }> {
-    const params = new URLSearchParams({
-        ver: '4.1', mode: 'getItemList', aid: DOME_API_KEY,
-        market: 'dome', om: 'json', sz: String(size), pg: String(page), kw: keyword,
+    const { data, error } = await supabase.rpc('domeggook_search', {
+        p_keyword: keyword,
+        p_page: page,
+        p_size: size,
     });
-    const res = await fetch(`${DOME_API_BASE}?${params.toString()}`);
-    if (!res.ok) throw new Error(`API error: ${res.status}`);
-    const data = await res.json();
-    if (data.errors) throw new Error(data.errors.message || 'API 오류');
-    const list = data.domeggook?.list?.item || [];
+    if (error) throw new Error(error.message);
+    if (data?.error) throw new Error(data.message || data.error);
+
+    const list = data?.domeggook?.list?.item || [];
     const items = Array.isArray(list) ? list : [list];
-    return { items, header: data.domeggook?.header || { numberOfItems: 0, currentPage: 1, numberOfPages: 1, itemsPerPage: size } };
+    return {
+        items,
+        header: data?.domeggook?.header || { numberOfItems: 0, currentPage: 1, numberOfPages: 1, itemsPerPage: size },
+    };
 }
 
 async function getItemDetail(itemNo: string): Promise<DomeDetailResponse> {
-    const params = new URLSearchParams({
-        ver: '4.1', mode: 'getItemView', aid: DOME_API_KEY, no: itemNo, om: 'json',
+    const { data, error } = await supabase.rpc('domeggook_detail', {
+        p_item_no: itemNo,
     });
-    const res = await fetch(`${DOME_API_BASE}?${params.toString()}`);
-    if (!res.ok) throw new Error(`API error: ${res.status}`);
-    const data = await res.json();
-    if (data.errors) throw new Error(data.errors.message || 'API 오류');
+    if (error) throw new Error(error.message);
+    if (data?.error) throw new Error(data.message || data.error);
     return data;
 }
 
