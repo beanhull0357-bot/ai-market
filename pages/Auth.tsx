@@ -2,39 +2,59 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
-import { LogIn, UserPlus, AlertCircle, Terminal, Loader } from 'lucide-react';
+import { LogIn, AlertCircle, Terminal, Loader, Mail, KeyRound } from 'lucide-react';
+
+type AuthStep = 'password' | 'otp';
 
 export const Auth: React.FC = () => {
-    const [isSignUp, setIsSignUp] = useState(false);
+    const [step, setStep] = useState<AuthStep>('password');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [otpCode, setOtpCode] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const [signUpSuccess, setSignUpSuccess] = useState(false);
-    const { signIn, signUp } = useAuth();
+    const { signIn, sendOtp, verifyOtp } = useAuth();
     const { t } = useLanguage();
     const navigate = useNavigate();
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handlePasswordSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
         setLoading(true);
 
-        if (isSignUp) {
-            const { error } = await signUp(email, password);
-            if (error) {
-                setError(error);
-            } else {
-                setSignUpSuccess(true);
-            }
-        } else {
-            const { error } = await signIn(email, password);
-            if (error) {
-                setError(error);
-            } else {
-                navigate('/');
-            }
+        // Step 1: Verify password
+        const { error: signInError } = await signIn(email, password);
+        if (signInError) {
+            setError(signInError);
+            setLoading(false);
+            return;
         }
+
+        // Step 2: Send OTP to email
+        const { error: otpError } = await sendOtp(email);
+        if (otpError) {
+            setError(otpError);
+            setLoading(false);
+            return;
+        }
+
+        setStep('otp');
+        setLoading(false);
+    };
+
+    const handleOtpSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+        setLoading(true);
+
+        const { error: verifyError } = await verifyOtp(email, otpCode);
+        if (verifyError) {
+            setError(verifyError);
+            setLoading(false);
+            return;
+        }
+
+        navigate('/');
         setLoading(false);
     };
 
@@ -52,38 +72,38 @@ export const Auth: React.FC = () => {
                         </span>
                     </div>
                     <p className="text-gray-500 text-sm">
-                        {isSignUp ? t('auth.signUpSubtitle') : t('auth.signInSubtitle')}
+                        {step === 'password'
+                            ? t('auth.signInSubtitle')
+                            : (language => language === 'ko'
+                                ? '이메일로 전송된 인증 코드를 입력하세요'
+                                : 'Enter the verification code sent to your email'
+                            )(t('auth.signInSubtitle').includes('관리') ? 'ko' : 'en')
+                        }
                     </p>
                 </div>
 
                 {/* Form */}
                 <div className="bg-gray-900 border border-gray-800 rounded-lg p-6">
-                    {signUpSuccess ? (
-                        <div className="text-center space-y-4 py-4">
-                            <div className="text-terminal-green text-lg font-bold">✓ {t('auth.signUpSuccess')}</div>
-                            <p className="text-gray-400 text-sm">{t('auth.checkEmail')}</p>
-                            <button
-                                onClick={() => { setIsSignUp(false); setSignUpSuccess(false); }}
-                                className="text-terminal-blue text-sm hover:underline"
-                            >
-                                {t('auth.goToSignIn')}
-                            </button>
-                        </div>
-                    ) : (
-                        <form onSubmit={handleSubmit} className="space-y-4">
+                    {step === 'password' ? (
+                        /* ──── Step 1: Password Login ──── */
+                        <form onSubmit={handlePasswordSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-xs text-gray-500 uppercase mb-2">{t('auth.email')}</label>
+                                <label className="block text-xs text-gray-500 uppercase mb-2">
+                                    {t('auth.email')}
+                                </label>
                                 <input
                                     type="email"
                                     required
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     className="w-full bg-black border border-gray-700 rounded p-3 text-white text-sm focus:border-terminal-green outline-none transition-colors"
-                                    placeholder="agent@jsonmart.io"
+                                    placeholder="admin@jsonmart.io"
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs text-gray-500 uppercase mb-2">{t('auth.password')}</label>
+                                <label className="block text-xs text-gray-500 uppercase mb-2">
+                                    {t('auth.password')}
+                                </label>
                                 <input
                                     type="password"
                                     required
@@ -106,31 +126,83 @@ export const Auth: React.FC = () => {
                                 type="submit"
                                 disabled={loading}
                                 className={`w-full py-3 font-bold rounded flex items-center justify-center gap-2 transition-colors ${loading
-                                        ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                                        : 'bg-terminal-green text-black hover:bg-green-400'
+                                    ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                                    : 'bg-terminal-green text-black hover:bg-green-400'
                                     }`}
                             >
                                 {loading ? (
                                     <Loader className="animate-spin" size={16} />
-                                ) : isSignUp ? (
-                                    <UserPlus size={16} />
                                 ) : (
                                     <LogIn size={16} />
                                 )}
-                                {loading ? t('auth.processing') : isSignUp ? t('auth.signUp') : t('auth.signIn')}
+                                {loading ? t('auth.processing') : t('auth.signIn')}
                             </button>
                         </form>
-                    )}
+                    ) : (
+                        /* ──── Step 2: OTP Verification ──── */
+                        <form onSubmit={handleOtpSubmit} className="space-y-4">
+                            <div className="text-center mb-4">
+                                <div style={{
+                                    width: 56, height: 56, borderRadius: '50%',
+                                    background: 'rgba(0,255,136,0.1)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    margin: '0 auto 12px',
+                                }}>
+                                    <Mail size={24} style={{ color: 'var(--accent-green, #00ff88)' }} />
+                                </div>
+                                <p className="text-sm text-gray-400">
+                                    <span className="text-terminal-green font-bold">{email}</span>
+                                    {' '}으로 인증 코드가 전송되었습니다
+                                </p>
+                            </div>
 
-                    {!signUpSuccess && (
-                        <div className="mt-4 pt-4 border-t border-gray-800 text-center">
+                            <div>
+                                <label className="block text-xs text-gray-500 uppercase mb-2">
+                                    인증 코드 (Verification Code)
+                                </label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={otpCode}
+                                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                    className="w-full bg-black border border-gray-700 rounded p-3 text-white text-2xl text-center tracking-[0.5em] focus:border-terminal-green outline-none transition-colors font-mono"
+                                    placeholder="000000"
+                                    maxLength={6}
+                                    autoFocus
+                                />
+                            </div>
+
+                            {error && (
+                                <div className="flex items-center gap-2 text-red-400 text-xs bg-red-900/10 border border-red-900/30 rounded p-3">
+                                    <AlertCircle size={14} />
+                                    {error}
+                                </div>
+                            )}
+
                             <button
-                                onClick={() => { setIsSignUp(!isSignUp); setError(''); }}
-                                className="text-sm text-gray-500 hover:text-gray-300 transition-colors"
+                                type="submit"
+                                disabled={loading || otpCode.length < 6}
+                                className={`w-full py-3 font-bold rounded flex items-center justify-center gap-2 transition-colors ${loading || otpCode.length < 6
+                                    ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                                    : 'bg-terminal-green text-black hover:bg-green-400'
+                                    }`}
                             >
-                                {isSignUp ? t('auth.hasAccount') : t('auth.noAccount')}
+                                {loading ? (
+                                    <Loader className="animate-spin" size={16} />
+                                ) : (
+                                    <KeyRound size={16} />
+                                )}
+                                {loading ? t('auth.processing') : '인증 확인'}
                             </button>
-                        </div>
+
+                            <button
+                                type="button"
+                                onClick={() => { setStep('password'); setOtpCode(''); setError(''); }}
+                                className="w-full text-sm text-gray-500 hover:text-gray-300 transition-colors py-2"
+                            >
+                                ← 다시 로그인
+                            </button>
+                        </form>
                     )}
                 </div>
 

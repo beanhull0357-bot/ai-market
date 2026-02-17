@@ -4,35 +4,53 @@ import { supabase } from '../supabaseClient';
 interface User {
     id: string;
     email: string;
+    role: 'admin' | 'viewer';
 }
 
 interface AuthContextType {
     user: User | null;
     loading: boolean;
-    signUp: (email: string, password: string) => Promise<{ error: string | null }>;
+    isAdmin: boolean;
     signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+    sendOtp: (email: string) => Promise<{ error: string | null }>;
+    verifyOtp: (email: string, token: string) => Promise<{ error: string | null }>;
     signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+async function fetchUserRole(userId: string): Promise<'admin' | 'viewer'> {
+    const { data, error } = await supabase.rpc('get_my_role');
+    if (error || !data) return 'viewer';
+    return data === 'admin' ? 'admin' : 'viewer';
+}
+
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
 
+    const loadUser = async (sessionUser: { id: string; email?: string }) => {
+        const role = await fetchUserRole(sessionUser.id);
+        setUser({
+            id: sessionUser.id,
+            email: sessionUser.email || '',
+            role,
+        });
+    };
+
     useEffect(() => {
         // Check current session
-        supabase.auth.getSession().then(({ data: { session } }) => {
+        supabase.auth.getSession().then(async ({ data: { session } }) => {
             if (session?.user) {
-                setUser({ id: session.user.id, email: session.user.email || '' });
+                await loadUser(session.user);
             }
             setLoading(false);
         });
 
         // Listen for auth changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
             if (session?.user) {
-                setUser({ id: session.user.id, email: session.user.email || '' });
+                await loadUser(session.user);
             } else {
                 setUser(null);
             }
@@ -41,19 +59,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return () => subscription.unsubscribe();
     }, []);
 
-    const signUp = async (email: string, password: string) => {
-        const { error } = await supabase.auth.signUp({
+    const signIn = async (email: string, password: string) => {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        return { error: error?.message || null };
+    };
+
+    const sendOtp = async (email: string) => {
+        const { error } = await supabase.auth.signInWithOtp({
             email,
-            password,
-            options: {
-                emailRedirectTo: window.location.origin + (window.location.pathname.replace(/\/[^/]*$/, '/') || '/')
-            }
+            options: { shouldCreateUser: false },
         });
         return { error: error?.message || null };
     };
 
-    const signIn = async (email: string, password: string) => {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const verifyOtp = async (email: string, token: string) => {
+        const { error } = await supabase.auth.verifyOtp({
+            email,
+            token,
+            type: 'email',
+        });
         return { error: error?.message || null };
     };
 
@@ -63,7 +87,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
 
     return (
-        <AuthContext.Provider value={{ user, loading, signUp, signIn, signOut }}>
+        <AuthContext.Provider value={{
+            user,
+            loading,
+            isAdmin: user?.role === 'admin',
+            signIn,
+            sendOtp,
+            verifyOtp,
+            signOut,
+        }}>
             {children}
         </AuthContext.Provider>
     );

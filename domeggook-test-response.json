@@ -1,0 +1,41 @@
+﻿{
+    "domeggook":  {
+                      "header":  {
+                                     "numberOfItems":  9243,
+                                     "firstItem":  1,
+                                     "lastItem":  1,
+                                     "currentPage":  1,
+                                     "itemsPerPage":  1,
+                                     "numberOfPages":  9243,
+                                     "sort":  "rd"
+                                 },
+                      "list":  {
+                                   "item":  [
+                                                {
+                                                    "no":  "8093979",
+                                                    "title":  "[역마진500딜] 저렴한택배비 동급최강 품질력 비교할수록 갓성비 100매 캡형 물티슈 전문제조[실중량340g]",
+                                                    "thumb":  "https://cdn1.domeggook.com//upload/item/2018/08/24/15350982914B7D5DE3041093783A371D/15350982914B7D5DE3041093783A371D_img_330?hash=e727f1cbd42828c5b94b1cf11420e21f",
+                                                    "idxCOM":  "0",
+                                                    "id":  "happynet",
+                                                    "nick":  "1위파워샵",
+                                                    "price":  "500",
+                                                    "unitQty":  "10",
+                                                    "comOnly":  "false",
+                                                    "adultOnly":  "false",
+                                                    "lwp":  "false",
+                                                    "deli":  {
+                                                                 "who":  "P",
+                                                                 "fee":  2400,
+                                                                 "add":  "true",
+                                                                 "fromOversea":  "false"
+                                                             },
+                                                    "url":  "http://domeggook.com/8093979",
+                                                    "market":  {
+                                                                   "domeggook":  "true",
+                                                                   "supply":  "true"
+                                                               }
+                                                }
+                                            ]
+                               }
+                  }
+}

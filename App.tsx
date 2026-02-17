@@ -19,6 +19,7 @@ import { Terminal, Shield, Cpu, Globe, Package, LogIn, LogOut, User, Key, FileCh
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { AdminRoute } from './components/AdminRoute';
 
 /* ━━━ Toast System ━━━ */
 interface Toast { id: number; type: 'success' | 'error' | 'info'; message: string; }
@@ -191,27 +192,34 @@ const UserStatus: React.FC = () => {
 function MobileMenu({ onClose }: { onClose: () => void }) {
   const location = useLocation();
   const { t } = useLanguage();
+  const { isAdmin } = useAuth();
   const groups = [
     {
       label: t('nav.commerce'), items: [
         { to: '/', icon: <Terminal size={15} />, label: t('nav.home') },
-        { to: '/inventory', icon: <Package size={15} />, label: t('nav.inventory') },
-        { to: '/admin-queue', icon: <Shield size={15} />, label: t('nav.adminQueue') },
-        { to: '/domeggook', icon: <Store size={15} />, label: t('nav.domeggook') },
+        ...(isAdmin ? [
+          { to: '/inventory', icon: <Package size={15} />, label: t('nav.inventory') },
+          { to: '/admin-queue', icon: <Shield size={15} />, label: t('nav.adminQueue') },
+          { to: '/domeggook', icon: <Store size={15} />, label: t('nav.domeggook') },
+        ] : []),
       ],
     },
     {
       label: t('nav.agents'), items: [
         { to: '/agent-console', icon: <Cpu size={15} />, label: t('nav.agentConsole') },
-        { to: '/agents', icon: <Key size={15} />, label: t('nav.agentManager') },
-        { to: '/policies', icon: <FileCheck size={15} />, label: t('nav.policies') },
+        ...(isAdmin ? [
+          { to: '/agents', icon: <Key size={15} />, label: t('nav.agentManager') },
+          { to: '/policies', icon: <FileCheck size={15} />, label: t('nav.policies') },
+        ] : []),
         { to: '/playground', icon: <Zap size={15} />, label: t('nav.playground') },
         { to: '/agent/docs', icon: <BookOpen size={15} />, label: t('nav.docs') },
       ],
     },
     {
       label: t('nav.ai'), items: [
-        { to: '/ai-ops', icon: <Bot size={15} />, label: t('nav.aiOps') },
+        ...(isAdmin ? [
+          { to: '/ai-ops', icon: <Bot size={15} />, label: t('nav.aiOps') },
+        ] : []),
         { to: '/live', icon: <Radio size={15} />, label: t('nav.live') },
         { to: '/sla', icon: <BarChart3 size={15} />, label: t('nav.sla') },
       ],
@@ -248,6 +256,7 @@ function MobileMenu({ onClose }: { onClose: () => void }) {
 /* ━━━ Layout ━━━ */
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { t } = useLanguage();
+  const { isAdmin } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
 
@@ -256,19 +265,25 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   const commerceItems: NavItem[] = [
     { to: '/', icon: <Terminal size={13} />, label: t('nav.humanMode') },
-    { to: '/inventory', icon: <Package size={13} />, label: t('nav.inventory') },
-    { to: '/admin-queue', icon: <Shield size={13} />, label: t('nav.adminQueue') },
-    { to: '/domeggook', icon: <Store size={13} />, label: t('nav.domeggook') },
+    ...(isAdmin ? [
+      { to: '/inventory', icon: <Package size={13} />, label: t('nav.inventory') },
+      { to: '/admin-queue', icon: <Shield size={13} />, label: t('nav.adminQueue') },
+      { to: '/domeggook', icon: <Store size={13} />, label: t('nav.domeggook') },
+    ] : []),
   ];
   const agentItems: NavItem[] = [
     { to: '/agent-console', icon: <Cpu size={13} />, label: t('nav.agentConsole') },
-    { to: '/agents', icon: <Key size={13} />, label: t('agents.title') },
-    { to: '/policies', icon: <FileCheck size={13} />, label: t('policies.title') },
+    ...(isAdmin ? [
+      { to: '/agents', icon: <Key size={13} />, label: t('agents.title') },
+      { to: '/policies', icon: <FileCheck size={13} />, label: t('policies.title') },
+    ] : []),
     { to: '/playground', icon: <Zap size={13} />, label: t('playground.navTitle') },
     { to: '/agent/docs', icon: <BookOpen size={13} />, label: t('nav.docs') },
   ];
   const aiItems: NavItem[] = [
-    { to: '/ai-ops', icon: <Bot size={13} />, label: t('nav.aiOps') },
+    ...(isAdmin ? [
+      { to: '/ai-ops', icon: <Bot size={13} />, label: t('nav.aiOps') },
+    ] : []),
     { to: '/live', icon: <Radio size={13} />, label: t('nav.live') },
     { to: '/sla', icon: <BarChart3 size={13} />, label: t('nav.sla') },
   ];
@@ -341,19 +356,19 @@ export default function App() {
                   <Routes>
                     <Route path="/" element={<Landing />} />
                     <Route path="/agent-console" element={<AgentConsole />} />
-                    <Route path="/admin-queue" element={<ProtectedRoute><AdminQueue /></ProtectedRoute>} />
-                    <Route path="/inventory" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
+                    <Route path="/admin-queue" element={<AdminRoute><AdminQueue /></AdminRoute>} />
+                    <Route path="/inventory" element={<AdminRoute><Inventory /></AdminRoute>} />
                     <Route path="/receipt" element={<Receipt />} />
-                    <Route path="/agents" element={<ProtectedRoute><AgentManager /></ProtectedRoute>} />
-                    <Route path="/policies" element={<ProtectedRoute><PolicyManager /></ProtectedRoute>} />
+                    <Route path="/agents" element={<AdminRoute><AgentManager /></AdminRoute>} />
+                    <Route path="/policies" element={<AdminRoute><PolicyManager /></AdminRoute>} />
                     <Route path="/playground" element={<AgentPlayground />} />
                     <Route path="/agent/docs" element={<AgentDocs />} />
                     <Route path="/policies/returns" element={<MerchantPolicies />} />
                     <Route path="/policies/merchant" element={<MerchantPolicies />} />
-                    <Route path="/ai-ops" element={<ProtectedRoute><AIOps /></ProtectedRoute>} />
+                    <Route path="/ai-ops" element={<AdminRoute><AIOps /></AdminRoute>} />
                     <Route path="/live" element={<LiveFeed />} />
                     <Route path="/sla" element={<SLADashboard />} />
-                    <Route path="/domeggook" element={<ProtectedRoute><DomeggookSync /></ProtectedRoute>} />
+                    <Route path="/domeggook" element={<AdminRoute><DomeggookSync /></AdminRoute>} />
                   </Routes>
                 </Layout>
               } />
