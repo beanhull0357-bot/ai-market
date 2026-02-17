@@ -13,7 +13,7 @@ export const Auth: React.FC = () => {
     const [otpCode, setOtpCode] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const { signIn, sendOtp, verifyOtp } = useAuth();
+    const { signIn, sendOtp, verifyOtp, signOut } = useAuth();
     const { t } = useLanguage();
     const navigate = useNavigate();
 
@@ -22,7 +22,7 @@ export const Auth: React.FC = () => {
         setError('');
         setLoading(true);
 
-        // Step 1: Verify password
+        // Step 1: Verify password (creates session temporarily)
         const { error: signInError } = await signIn(email, password);
         if (signInError) {
             setError(signInError);
@@ -30,7 +30,11 @@ export const Auth: React.FC = () => {
             return;
         }
 
-        // Step 2: Send OTP to email
+        // Step 2: Sign out immediately — we only verified the password
+        // The real session will be created by OTP verification
+        await signOut();
+
+        // Step 3: Send OTP code to email
         const { error: otpError } = await sendOtp(email);
         if (otpError) {
             setError(otpError);
