@@ -2,6 +2,30 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from './supabaseClient';
 import { ProductPack, Order, AgentReview } from './types';
 
+// ---- Input Validation Helpers ----
+
+/** Sanitize string input: trim, enforce max length, strip control characters */
+function sanitizeString(input: string, maxLength: number = 500): string {
+    return input.trim().slice(0, maxLength).replace(/[\x00-\x1F\x7F]/g, '');
+}
+
+/** Validate positive integer */
+function validatePositiveInt(value: number, fieldName: string): number {
+    const n = Math.floor(value);
+    if (!Number.isFinite(n) || n < 0) {
+        throw new Error(`${fieldName} must be a non-negative integer`);
+    }
+    return n;
+}
+
+/** Validate ID format (alphanumeric, dashes, underscores) */
+function validateId(id: string, fieldName: string): string {
+    const sanitized = id.trim();
+    if (!sanitized || sanitized.length > 100 || !/^[a-zA-Z0-9_\-]+$/.test(sanitized)) {
+        throw new Error(`Invalid ${fieldName} format`);
+    }
+    return sanitized;
+}
 // ---- Helpers: DB row → Frontend type ----
 
 function rowToProduct(row: any): ProductPack {
@@ -96,18 +120,29 @@ export function useProducts() {
     useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
     const addProduct = async (product: ProductPack) => {
+        // Validate inputs before sending to DB
+        const sku = sanitizeString(product.sku, 50);
+        const title = sanitizeString(product.title, 200);
+        const price = validatePositiveInt(product.offer.price, 'price');
+        const stockQty = product.offer.stockQty != null ? validatePositiveInt(product.offer.stockQty, 'stockQty') : null;
+
+        if (!sku || !title) {
+            console.error('SKU and title are required');
+            return false;
+        }
+
         const { error } = await supabase.from('products').insert({
-            sku: product.sku,
-            category: product.category,
-            title: product.title,
-            brand: product.identifiers.brand,
-            gtin: product.identifiers.gtin || null,
-            price: product.offer.price,
-            currency: product.offer.currency,
+            sku,
+            category: sanitizeString(product.category, 50),
+            title,
+            brand: sanitizeString(product.identifiers.brand, 100),
+            gtin: product.identifiers.gtin ? sanitizeString(product.identifiers.gtin, 50) : null,
+            price,
+            currency: sanitizeString(product.offer.currency, 10),
             stock_status: product.offer.stockStatus,
-            stock_qty: product.offer.stockQty ?? null,
-            ship_by_days: product.offer.shipByDays,
-            eta_days: product.offer.etaDays,
+            stock_qty: stockQty,
+            ship_by_days: validatePositiveInt(product.offer.shipByDays, 'shipByDays'),
+            eta_days: validatePositiveInt(product.offer.etaDays, 'etaDays'),
             return_days: product.policies.returnDays,
             return_fee: product.policies.returnFee,
             return_exceptions: product.policies.returnExceptions,
@@ -342,7 +377,8 @@ export function useAgents(ownerId?: string) {
     useEffect(() => { fetchPendingAgents(); }, [fetchPendingAgents]);
 
     const approveAgent = async (agentId: string) => {
-        const { data, error } = await supabase.rpc('approve_pending_agent', { p_agent_id: agentId });
+        const validId = validateId(agentId, 'agentId');
+        const { data, error } = await supabase.rpc('approve_pending_agent', { p_agent_id: validId });
         if (error) {
             console.error('Error approving agent:', error);
             return null;
@@ -353,7 +389,8 @@ export function useAgents(ownerId?: string) {
     };
 
     const rejectAgent = async (agentId: string) => {
-        const { data, error } = await supabase.rpc('reject_pending_agent', { p_agent_id: agentId });
+        const validId = validateId(agentId, 'agentId');
+        const { data, error } = await supabase.rpc('reject_pending_agent', { p_agent_id: validId });
         if (error) {
             console.error('Error rejecting agent:', error);
             return null;
@@ -363,6 +400,12 @@ export function useAgents(ownerId?: string) {
     };
 
     const createAgent = async (name: string, ownerId: string, policyId?: string) => {
+        const validName = sanitizeString(name, 100);
+        const validOwnerId = validateId(ownerId, 'ownerId');
+        if (!validName) {
+            console.error('Agent name is required');
+            return null;
+        }
         const agentId = `AGT-${Date.now().toString(36).toUpperCase()}`;
         const apiKey = generateApiKey();
 

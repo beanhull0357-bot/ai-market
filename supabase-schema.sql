@@ -120,11 +120,40 @@ ALTER TABLE agent_policies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE agent_reviews ENABLE ROW LEVEL SECURITY;
 
--- Allow public read/write for MVP (will restrict later with auth)
-CREATE POLICY "Allow all for products" ON products FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for agent_policies" ON agent_policies FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for orders" ON orders FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for agent_reviews" ON agent_reviews FOR ALL USING (true) WITH CHECK (true);
+-- Products: public read, authenticated write
+CREATE POLICY "Public read products" ON products
+  FOR SELECT USING (true);
+CREATE POLICY "Authenticated manage products" ON products
+  FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+CREATE POLICY "Authenticated update products" ON products
+  FOR UPDATE USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL);
+CREATE POLICY "Authenticated delete products" ON products
+  FOR DELETE USING (auth.uid() IS NOT NULL);
+
+-- Agent Policies: public read, owner manages
+CREATE POLICY "Public read agent_policies" ON agent_policies
+  FOR SELECT USING (true);
+CREATE POLICY "Users manage own policies" ON agent_policies
+  FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+CREATE POLICY "Users update own policies" ON agent_policies
+  FOR UPDATE USING (user_id = auth.uid() OR auth.uid() IS NOT NULL)
+  WITH CHECK (auth.uid() IS NOT NULL);
+CREATE POLICY "Users delete own policies" ON agent_policies
+  FOR DELETE USING (user_id = auth.uid() OR auth.uid() IS NOT NULL);
+
+-- Orders: authenticated only
+CREATE POLICY "Authenticated read orders" ON orders
+  FOR SELECT USING (auth.uid() IS NOT NULL);
+CREATE POLICY "Authenticated insert orders" ON orders
+  FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+CREATE POLICY "Authenticated update orders" ON orders
+  FOR UPDATE USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL);
+
+-- Reviews: public read, authenticated write
+CREATE POLICY "Public read reviews" ON agent_reviews
+  FOR SELECT USING (true);
+CREATE POLICY "Authenticated insert reviews" ON agent_reviews
+  FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
 
 -- ============================================
 -- Seed: Insert initial mock data

@@ -51,6 +51,11 @@ DECLARE
     v_key TEXT := 'agk_';
     i INTEGER;
 BEGIN
+    -- Auth check: require authenticated user for admin actions
+    IF auth.uid() IS NULL THEN
+        RETURN json_build_object('success', false, 'error', 'AUTH_REQUIRED', 'message', 'Authentication required for admin actions');
+    END IF;
+
     -- Find pending agent
     SELECT * INTO v_agent FROM agents WHERE agent_id = p_agent_id AND status = 'PENDING_APPROVAL';
 
@@ -88,6 +93,11 @@ AS $$
 DECLARE
     v_agent RECORD;
 BEGIN
+    -- Auth check: require authenticated user for admin actions
+    IF auth.uid() IS NULL THEN
+        RETURN json_build_object('success', false, 'error', 'AUTH_REQUIRED', 'message', 'Authentication required for admin actions');
+    END IF;
+
     SELECT * INTO v_agent FROM agents WHERE agent_id = p_agent_id AND status = 'PENDING_APPROVAL';
 
     IF NOT FOUND THEN
@@ -550,7 +560,12 @@ CREATE TABLE IF NOT EXISTS checkout_sessions (
 
 ALTER TABLE checkout_sessions ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all for checkout_sessions" ON checkout_sessions;
-CREATE POLICY "Allow all for checkout_sessions" ON checkout_sessions FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Authenticated read checkout_sessions" ON checkout_sessions
+  FOR SELECT USING (auth.uid() IS NOT NULL);
+CREATE POLICY "Authenticated manage checkout_sessions" ON checkout_sessions
+  FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+CREATE POLICY "Authenticated update checkout_sessions" ON checkout_sessions
+  FOR UPDATE USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL);
 
 -- ============================================
 -- 7. UCP: Create Checkout Session
@@ -815,7 +830,7 @@ CREATE TABLE IF NOT EXISTS agent_webhook_subscriptions (
 
 ALTER TABLE agent_webhook_subscriptions ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all for agent_webhook_subscriptions" ON agent_webhook_subscriptions;
-CREATE POLICY "Allow all for agent_webhook_subscriptions" ON agent_webhook_subscriptions FOR ALL USING (true) WITH CHECK (true);
+-- NO direct table access — HMAC secrets protected. Access only via SECURITY DEFINER RPCs.
 
 -- 9a. Register webhook subscription
 CREATE OR REPLACE FUNCTION agent_register_webhook(
@@ -906,7 +921,8 @@ CREATE TABLE IF NOT EXISTS webhook_delivery_log (
 
 ALTER TABLE webhook_delivery_log ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all for webhook_delivery_log" ON webhook_delivery_log;
-CREATE POLICY "Allow all for webhook_delivery_log" ON webhook_delivery_log FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Authenticated read webhook_log" ON webhook_delivery_log
+  FOR SELECT USING (auth.uid() IS NOT NULL);
 
 CREATE INDEX IF NOT EXISTS idx_webhook_log_sub ON webhook_delivery_log(subscription_id);
 CREATE INDEX IF NOT EXISTS idx_webhook_log_time ON webhook_delivery_log(delivered_at DESC);
@@ -1073,7 +1089,8 @@ CREATE TABLE IF NOT EXISTS order_events (
 
 ALTER TABLE order_events ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all for order_events" ON order_events;
-CREATE POLICY "Allow all for order_events" ON order_events FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Authenticated read order_events" ON order_events
+  FOR SELECT USING (auth.uid() IS NOT NULL);
 
 CREATE INDEX IF NOT EXISTS idx_order_events_created ON order_events(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_order_events_order_id ON order_events(order_id);
@@ -1165,7 +1182,14 @@ CREATE TABLE IF NOT EXISTS agent_offers (
 
 ALTER TABLE agent_offers ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all for agent_offers" ON agent_offers;
-CREATE POLICY "Allow all for agent_offers" ON agent_offers FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Public read agent_offers" ON agent_offers
+  FOR SELECT USING (true);
+CREATE POLICY "Authenticated manage agent_offers" ON agent_offers
+  FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+CREATE POLICY "Authenticated update agent_offers" ON agent_offers
+  FOR UPDATE USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL);
+CREATE POLICY "Authenticated delete agent_offers" ON agent_offers
+  FOR DELETE USING (auth.uid() IS NOT NULL);
 
 -- 11a. Get active offers feed
 CREATE OR REPLACE FUNCTION get_agent_offers(
@@ -1245,7 +1269,8 @@ CREATE TABLE IF NOT EXISTS agent_activity_log (
 
 ALTER TABLE agent_activity_log ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all for agent_activity_log" ON agent_activity_log;
-CREATE POLICY "Allow all for agent_activity_log" ON agent_activity_log FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Authenticated read activity_log" ON agent_activity_log
+  FOR SELECT USING (auth.uid() IS NOT NULL);
 
 CREATE INDEX IF NOT EXISTS idx_activity_log_time ON agent_activity_log(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_activity_log_role ON agent_activity_log(agent_role);
@@ -1324,7 +1349,8 @@ CREATE TABLE IF NOT EXISTS product_candidates (
 
 ALTER TABLE product_candidates ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all for product_candidates" ON product_candidates;
-CREATE POLICY "Allow all for product_candidates" ON product_candidates FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Authenticated manage candidates" ON product_candidates
+  FOR ALL USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL);
 
 CREATE INDEX IF NOT EXISTS idx_candidates_status ON product_candidates(status);
 
@@ -1344,7 +1370,12 @@ CREATE TABLE IF NOT EXISTS pricing_rules (
 
 ALTER TABLE pricing_rules ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all for pricing_rules" ON pricing_rules;
-CREATE POLICY "Allow all for pricing_rules" ON pricing_rules FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Public read pricing_rules" ON pricing_rules
+  FOR SELECT USING (true);
+CREATE POLICY "Authenticated manage pricing_rules" ON pricing_rules
+  FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+CREATE POLICY "Authenticated update pricing_rules" ON pricing_rules
+  FOR UPDATE USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL);
 
 -- Seed pricing rules
 INSERT INTO pricing_rules (category, target_margin, min_margin, max_price, rounding) VALUES
@@ -1407,7 +1438,7 @@ CREATE TABLE IF NOT EXISTS notification_config (
 
 ALTER TABLE notification_config ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all for notification_config" ON notification_config;
-CREATE POLICY "Allow all for notification_config" ON notification_config FOR ALL USING (true) WITH CHECK (true);
+-- NO direct table access — Telegram bot token protected. Access only via SECURITY DEFINER RPCs.
 
 -- 15a. Send Telegram message
 CREATE OR REPLACE FUNCTION notify_admin_telegram(p_message TEXT)
@@ -1797,7 +1828,8 @@ CREATE TABLE IF NOT EXISTS decision_receipts (
 
 ALTER TABLE decision_receipts ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all for decision_receipts" ON decision_receipts;
-CREATE POLICY "Allow all for decision_receipts" ON decision_receipts FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Authenticated read receipts" ON decision_receipts
+  FOR SELECT USING (auth.uid() IS NOT NULL);
 
 CREATE INDEX IF NOT EXISTS idx_receipts_order ON decision_receipts(order_id);
 
@@ -1896,7 +1928,8 @@ CREATE TABLE IF NOT EXISTS sandbox_orders (
 
 ALTER TABLE sandbox_orders ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all for sandbox_orders" ON sandbox_orders;
-CREATE POLICY "Allow all for sandbox_orders" ON sandbox_orders FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Authenticated read sandbox" ON sandbox_orders
+  FOR SELECT USING (auth.uid() IS NOT NULL);
 
 -- Sandbox order creation (no real stock deduction)
 CREATE OR REPLACE FUNCTION sandbox_create_order(
@@ -1964,7 +1997,12 @@ CREATE TABLE IF NOT EXISTS sla_metrics (
 
 ALTER TABLE sla_metrics ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all for sla_metrics" ON sla_metrics;
-CREATE POLICY "Allow all for sla_metrics" ON sla_metrics FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Public read sla_metrics" ON sla_metrics
+  FOR SELECT USING (true);
+CREATE POLICY "Authenticated manage sla_metrics" ON sla_metrics
+  FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+CREATE POLICY "Authenticated update sla_metrics" ON sla_metrics
+  FOR UPDATE USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL);
 
 -- Calculate daily SLA snapshot
 CREATE OR REPLACE FUNCTION calculate_daily_sla()
@@ -2064,7 +2102,8 @@ CREATE TABLE IF NOT EXISTS negotiations (
 
 ALTER TABLE negotiations ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all for negotiations" ON negotiations;
-CREATE POLICY "Allow all for negotiations" ON negotiations FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Authenticated read negotiations" ON negotiations
+  FOR SELECT USING (auth.uid() IS NOT NULL);
 
 -- Agent submits negotiation request
 CREATE OR REPLACE FUNCTION agent_negotiate(
@@ -2196,7 +2235,8 @@ CREATE TABLE IF NOT EXISTS loyalty_rewards (
 
 ALTER TABLE loyalty_rewards ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all for loyalty_rewards" ON loyalty_rewards;
-CREATE POLICY "Allow all for loyalty_rewards" ON loyalty_rewards FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Authenticated read rewards" ON loyalty_rewards
+  FOR SELECT USING (auth.uid() IS NOT NULL);
 
 -- Recalculate agent tier and issue rewards
 CREATE OR REPLACE FUNCTION update_agent_loyalty(p_agent_id TEXT)
@@ -2285,7 +2325,8 @@ CREATE TABLE IF NOT EXISTS agent_referrals (
 
 ALTER TABLE agent_referrals ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all for agent_referrals" ON agent_referrals;
-CREATE POLICY "Allow all for agent_referrals" ON agent_referrals FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Authenticated read referrals" ON agent_referrals
+  FOR SELECT USING (auth.uid() IS NOT NULL);
 
 -- Generate referral code
 CREATE OR REPLACE FUNCTION agent_get_referral_code(p_api_key TEXT)
@@ -2359,11 +2400,13 @@ $$;
 
 
 -- ============================================
--- GRANT ALL PERMISSIONS
+-- GRANT PERMISSIONS (Security-hardened)
+-- Public API functions: anon + authenticated
+-- Admin/Internal functions: authenticated only
 -- ============================================
+
+-- Public Agent API (uses internal API key auth via SECURITY DEFINER)
 GRANT EXECUTE ON FUNCTION agent_self_register(TEXT, TEXT[], TEXT) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION approve_pending_agent(TEXT) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION reject_pending_agent(TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION authenticate_agent(TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION agent_create_order(TEXT, TEXT, INTEGER) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION agent_create_review(TEXT, TEXT, TEXT, REAL, REAL, INTEGER, JSONB) TO anon, authenticated;
@@ -2374,29 +2417,32 @@ GRANT EXECUTE ON FUNCTION ucp_complete_session(TEXT, TEXT) TO anon, authenticate
 GRANT EXECUTE ON FUNCTION agent_register_webhook(TEXT, TEXT, TEXT[]) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION agent_unregister_webhook(TEXT, UUID) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION get_order_events(TIMESTAMPTZ, TEXT, INTEGER) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION log_order_event(TEXT, TEXT, JSONB) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION get_agent_offers(TEXT, TEXT) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION restore_session_stock(TEXT) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION auto_void_expired_sessions() TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION dispatch_webhooks(TEXT, JSONB) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION test_webhook_dispatch(TEXT) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION log_agent_activity(TEXT, TEXT, TEXT, JSONB, INTEGER, TEXT) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION get_agent_activity_log(INTEGER, TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION calculate_price(INTEGER, TEXT) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION notify_admin_telegram(TEXT) TO anon, authenticated;
--- New features
-GRANT EXECUTE ON FUNCTION recalculate_agent_trust(TEXT) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION recalculate_all_agent_trust() TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION calculate_product_readiness(TEXT) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION recalculate_all_product_readiness() TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION generate_decision_receipt(TEXT, TEXT, TEXT) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION get_decision_receipt(TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION get_agent_activity_log(INTEGER, TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION sandbox_create_order(TEXT, TEXT, INTEGER) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION calculate_daily_sla() TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION get_sla_dashboard(INTEGER) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION agent_negotiate(TEXT, TEXT, INTEGER, INTEGER) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION agent_accept_negotiation(TEXT, TEXT) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION update_agent_loyalty(TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION get_decision_receipt(TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION get_agent_rewards(TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION agent_get_referral_code(TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION agent_use_referral(TEXT, TEXT) TO anon, authenticated;
+
+-- Admin/Internal functions: authenticated ONLY (no anon)
+GRANT EXECUTE ON FUNCTION approve_pending_agent(TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION reject_pending_agent(TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION notify_admin_telegram(TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION dispatch_webhooks(TEXT, JSONB) TO authenticated;
+GRANT EXECUTE ON FUNCTION test_webhook_dispatch(TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION log_agent_activity(TEXT, TEXT, TEXT, JSONB, INTEGER, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION log_order_event(TEXT, TEXT, JSONB) TO authenticated;
+GRANT EXECUTE ON FUNCTION restore_session_stock(TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION auto_void_expired_sessions() TO authenticated;
+GRANT EXECUTE ON FUNCTION recalculate_agent_trust(TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION recalculate_all_agent_trust() TO authenticated;
+GRANT EXECUTE ON FUNCTION calculate_product_readiness(TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION recalculate_all_product_readiness() TO authenticated;
+GRANT EXECUTE ON FUNCTION generate_decision_receipt(TEXT, TEXT, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION calculate_daily_sla() TO authenticated;
+GRANT EXECUTE ON FUNCTION update_agent_loyalty(TEXT) TO authenticated;

@@ -40,10 +40,9 @@ CREATE POLICY "Users manage own agents" ON agents
   USING (owner_id = auth.uid())
   WITH CHECK (owner_id = auth.uid());
 
--- Also allow anon access for MVP (so non-logged-in users can still demo)
-CREATE POLICY "Allow anon read agents" ON agents
-  FOR SELECT
-  USING (true);
+-- Authenticated users can read agents (prevents api_key exposure to anon)
+CREATE POLICY "Authenticated read agents" ON agents
+  FOR SELECT USING (auth.uid() IS NOT NULL);
 
 -- Allow anon insert for self-registration (PENDING_APPROVAL only)
 CREATE POLICY "Allow anon self-register" ON agents

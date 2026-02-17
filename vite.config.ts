@@ -8,12 +8,12 @@ export default defineConfig(({ mode }) => {
     base: '/ai-market/',
     server: {
       port: 3000,
-      host: '0.0.0.0',
+      host: 'localhost',
     },
     plugins: [react()],
     define: {
-      'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
+      // GEMINI_API_KEY removed — must not be exposed in client bundle.
+      // Use Supabase Edge Functions or a backend proxy for AI API calls.
     },
     resolve: {
       alias: {
