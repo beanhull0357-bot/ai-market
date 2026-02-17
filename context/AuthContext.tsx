@@ -12,8 +12,6 @@ interface AuthContextType {
     loading: boolean;
     isAdmin: boolean;
     signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-    sendOtp: (email: string) => Promise<{ error: string | null }>;
-    verifyOtp: (email: string, token: string) => Promise<{ error: string | null }>;
     signOut: () => Promise<void>;
 }
 
@@ -64,23 +62,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return { error: error?.message || null };
     };
 
-    const sendOtp = async (email: string) => {
-        const { error } = await supabase.auth.signInWithOtp({
-            email,
-            options: { shouldCreateUser: false },
-        });
-        return { error: error?.message || null };
-    };
-
-    const verifyOtp = async (email: string, token: string) => {
-        const { error } = await supabase.auth.verifyOtp({
-            email,
-            token,
-            type: 'email',
-        });
-        return { error: error?.message || null };
-    };
-
     const signOut = async () => {
         await supabase.auth.signOut();
         setUser(null);
@@ -92,8 +73,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             loading,
             isAdmin: user?.role === 'admin',
             signIn,
-            sendOtp,
-            verifyOtp,
             signOut,
         }}>
             {children}
