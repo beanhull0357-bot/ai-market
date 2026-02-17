@@ -22,28 +22,36 @@ export const Auth: React.FC = () => {
         setError('');
         setLoading(true);
 
-        // Step 1: Verify password (creates session temporarily)
-        const { error: signInError } = await signIn(email, password);
-        if (signInError) {
-            setError(signInError);
+        try {
+            // Step 1: Verify password
+            const { error: signInError } = await signIn(email, password);
+            if (signInError) {
+                setError(signInError);
+                setLoading(false);
+                return;
+            }
+
+            // Step 2: Sign out — only verified password, session not needed yet
+            await signOut();
+
+            // Step 3: Small delay to let session fully clear
+            await new Promise(r => setTimeout(r, 500));
+
+            // Step 4: Send OTP code to email
+            const { error: otpError } = await sendOtp(email);
+            if (otpError) {
+                setError(otpError);
+                setLoading(false);
+                return;
+            }
+
+            setStep('otp');
+        } catch (err: any) {
+            console.error('Login error:', err);
+            setError(err?.message || 'Login failed. Please try again.');
+        } finally {
             setLoading(false);
-            return;
         }
-
-        // Step 2: Sign out immediately — we only verified the password
-        // The real session will be created by OTP verification
-        await signOut();
-
-        // Step 3: Send OTP code to email
-        const { error: otpError } = await sendOtp(email);
-        if (otpError) {
-            setError(otpError);
-            setLoading(false);
-            return;
-        }
-
-        setStep('otp');
-        setLoading(false);
     };
 
     const handleOtpSubmit = async (e: React.FormEvent) => {
@@ -51,15 +59,20 @@ export const Auth: React.FC = () => {
         setError('');
         setLoading(true);
 
-        const { error: verifyError } = await verifyOtp(email, otpCode);
-        if (verifyError) {
-            setError(verifyError);
+        try {
+            const { error: verifyError } = await verifyOtp(email, otpCode);
+            if (verifyError) {
+                setError(verifyError);
+                setLoading(false);
+                return;
+            }
+            navigate('/');
+        } catch (err: any) {
+            console.error('OTP verify error:', err);
+            setError(err?.message || 'Verification failed. Please try again.');
+        } finally {
             setLoading(false);
-            return;
         }
-
-        navigate('/');
-        setLoading(false);
     };
 
     return (
