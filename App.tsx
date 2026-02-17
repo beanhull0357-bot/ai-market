@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { HashRouter, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { Landing } from './pages/Landing';
 import { AgentConsole } from './pages/AgentConsole';
 import { AdminQueue } from './pages/AdminQueue';
@@ -333,7 +333,7 @@ export default function App() {
     <LanguageProvider>
       <AuthProvider>
         <ToastProvider>
-          <HashRouter>
+          <BrowserRouter>
             <Routes>
               <Route path="/auth" element={<Auth />} />
               <Route path="*" element={
@@ -358,7 +358,7 @@ export default function App() {
                 </Layout>
               } />
             </Routes>
-          </HashRouter>
+          </BrowserRouter>
         </ToastProvider>
       </AuthProvider>
     </LanguageProvider>
