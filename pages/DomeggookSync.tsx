@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 import { useLanguage } from '../context/LanguageContext';
-import { Search, Download, Package, ExternalLink, Check, Loader2, AlertCircle, ChevronLeft, ChevronRight, Store } from 'lucide-react';
+import { Search, Download, Package, ExternalLink, Check, Loader2, AlertCircle, ChevronLeft, ChevronRight, Store, ShieldCheck, TriangleAlert, Info, ChevronDown, ChevronUp } from 'lucide-react';
 
 // ─── Types ───
 interface DomeItem {
@@ -90,6 +90,15 @@ async function getItemDetail(itemNo: string): Promise<DomeDetailResponse> {
     return data;
 }
 
+// ─── Types for validation ───
+interface ValidationIssue {
+    product_sku: string;
+    product_title: string;
+    issue_level: 'critical' | 'warning' | 'info';
+    issue_field: string;
+    issue_message: string;
+}
+
 // ─── Main Component ───
 export function DomeggookSync() {
     const { language } = useLanguage();
@@ -105,6 +114,11 @@ export function DomeggookSync() {
     const [importing, setImporting] = useState<Set<string>>(new Set());
     const [imported, setImported] = useState<Set<string>>(new Set());
     const [importedSkus, setImportedSkus] = useState<Set<string>>(new Set());
+
+    // Data Quality Audit state
+    const [auditResults, setAuditResults] = useState<ValidationIssue[] | null>(null);
+    const [auditLoading, setAuditLoading] = useState(false);
+    const [auditOpen, setAuditOpen] = useState(false);
 
     // Load already imported source_ids on mount
     React.useEffect(() => {
@@ -236,20 +250,158 @@ export function DomeggookSync() {
         return n.toLocaleString();
     };
 
+    const runAudit = async () => {
+        setAuditLoading(true);
+        setAuditOpen(true);
+        try {
+            const { data, error: rpcError } = await supabase.rpc('validate_products');
+            if (rpcError) throw rpcError;
+            setAuditResults(data || []);
+        } catch (err: any) {
+            console.error('Audit failed:', err);
+            setError(err.message || 'Audit failed');
+        } finally {
+            setAuditLoading(false);
+        }
+    };
+
+    const auditCritical = auditResults?.filter(r => r.issue_level === 'critical') || [];
+    const auditWarning = auditResults?.filter(r => r.issue_level === 'warning') || [];
+    const auditInfo = auditResults?.filter(r => r.issue_level === 'info') || [];
+
     return (
         <div style={{ maxWidth: 1200, margin: '0 auto', padding: '32px 20px' }}>
             {/* Header */}
             <div style={{ marginBottom: 32 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                    <Store size={24} style={{ color: 'var(--accent-green)' }} />
-                    <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
-                        {t('Domeggook Sync', '도매꼭 연동')}
-                    </h1>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <Store size={24} style={{ color: 'var(--accent-green)' }} />
+                        <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+                            {t('Domeggook Sync', '도매꼭 연동')}
+                        </h1>
+                    </div>
+                    <button
+                        onClick={runAudit}
+                        disabled={auditLoading}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: 6,
+                            padding: '8px 16px', fontSize: 12, fontWeight: 600,
+                            borderRadius: 'var(--radius-sm)',
+                            border: '1px solid var(--border-subtle)',
+                            background: 'var(--bg-card)',
+                            color: 'var(--text-secondary)',
+                            cursor: auditLoading ? 'not-allowed' : 'pointer',
+                        }}
+                    >
+                        {auditLoading ? <Loader2 size={14} className="spin" /> : <ShieldCheck size={14} />}
+                        {t('Data Quality Audit', '데이터 품질 점검')}
+                    </button>
                 </div>
                 <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: 0 }}>
                     {t('Search and import wholesale products from Domeggook into JSONMart catalog', '도매꼭에서 상품을 검색하고 JSONMart 카탈로그로 가져올 수 있습니다')}
                 </p>
             </div>
+
+            {/* ── Data Quality Audit Results ── */}
+            {auditResults !== null && (
+                <div style={{
+                    marginBottom: 24, background: 'var(--bg-card)',
+                    border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)',
+                    overflow: 'hidden',
+                }}>
+                    <button
+                        onClick={() => setAuditOpen(!auditOpen)}
+                        style={{
+                            width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            padding: '14px 16px', border: 'none', background: 'transparent', cursor: 'pointer',
+                            color: 'var(--text-primary)',
+                        }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <ShieldCheck size={16} style={{ color: auditCritical.length > 0 ? '#ef4444' : '#22c55e' }} />
+                            <span style={{ fontSize: 14, fontWeight: 700 }}>
+                                {t('Data Quality Report', '데이터 품질 리포트')}
+                            </span>
+                            {auditResults.length === 0 ? (
+                                <span style={{
+                                    fontSize: 11, padding: '2px 8px', borderRadius: 99,
+                                    background: 'rgba(34,197,94,0.15)', color: '#22c55e',
+                                }}>
+                                    {t('All Clear', '이상 없음')} ✓
+                                </span>
+                            ) : (
+                                <div style={{ display: 'flex', gap: 6 }}>
+                                    {auditCritical.length > 0 && (
+                                        <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 99, background: 'rgba(239,68,68,0.15)', color: '#ef4444' }}>
+                                            🔴 {auditCritical.length} critical
+                                        </span>
+                                    )}
+                                    {auditWarning.length > 0 && (
+                                        <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 99, background: 'rgba(234,179,8,0.15)', color: '#eab308' }}>
+                                            🟡 {auditWarning.length} warning
+                                        </span>
+                                    )}
+                                    {auditInfo.length > 0 && (
+                                        <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 99, background: 'rgba(100,100,100,0.15)', color: '#888' }}>
+                                            ⚪ {auditInfo.length} info
+                                        </span>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                        {auditOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                    </button>
+
+                    {auditOpen && auditResults.length > 0 && (
+                        <div style={{ borderTop: '1px solid var(--border-subtle)', padding: '0' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                                <thead>
+                                    <tr style={{ background: 'var(--bg-surface)' }}>
+                                        <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--text-tertiary)' }}>
+                                            {t('Level', '수준')}
+                                        </th>
+                                        <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--text-tertiary)' }}>
+                                            SKU
+                                        </th>
+                                        <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--text-tertiary)' }}>
+                                            {t('Product', '상품')}
+                                        </th>
+                                        <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--text-tertiary)' }}>
+                                            {t('Field', '필드')}
+                                        </th>
+                                        <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--text-tertiary)' }}>
+                                            {t('Issue', '이슈')}
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {[...auditCritical, ...auditWarning, ...auditInfo].map((row, i) => (
+                                        <tr key={i} style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                                            <td style={{ padding: '8px 12px' }}>
+                                                {row.issue_level === 'critical' && <span style={{ color: '#ef4444', display: 'flex', alignItems: 'center', gap: 4 }}><TriangleAlert size={12} /> Critical</span>}
+                                                {row.issue_level === 'warning' && <span style={{ color: '#eab308', display: 'flex', alignItems: 'center', gap: 4 }}><AlertCircle size={12} /> Warning</span>}
+                                                {row.issue_level === 'info' && <span style={{ color: '#888', display: 'flex', alignItems: 'center', gap: 4 }}><Info size={12} /> Info</span>}
+                                            </td>
+                                            <td style={{ padding: '8px 12px', color: 'var(--text-secondary)', fontFamily: 'monospace', fontSize: 11 }}>
+                                                {row.product_sku}
+                                            </td>
+                                            <td style={{ padding: '8px 12px', color: 'var(--text-primary)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                {row.product_title?.slice(0, 30)}
+                                            </td>
+                                            <td style={{ padding: '8px 12px', color: 'var(--accent-blue)', fontFamily: 'monospace', fontSize: 11 }}>
+                                                {row.issue_field}
+                                            </td>
+                                            <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>
+                                                {row.issue_message}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* Search Bar */}
             <div style={{
