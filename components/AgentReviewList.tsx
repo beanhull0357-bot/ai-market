@@ -11,7 +11,7 @@ export const AgentReviewList: React.FC<AgentReviewListProps> = ({ reviews }) => 
   const { t } = useLanguage();
 
   const getVerdictStyle = (verdict: string) => {
-    switch(verdict) {
+    switch (verdict) {
       case 'ENDORSE': return 'text-terminal-green border-terminal-green bg-green-900/10';
       case 'WARN': return 'text-terminal-yellow border-terminal-yellow bg-yellow-900/10';
       case 'BLOCKLIST': return 'text-terminal-red border-terminal-red bg-red-900/10';
@@ -20,7 +20,7 @@ export const AgentReviewList: React.FC<AgentReviewListProps> = ({ reviews }) => 
   };
 
   const getVerdictIcon = (verdict: string) => {
-    switch(verdict) {
+    switch (verdict) {
       case 'ENDORSE': return <CheckCircle size={14} />;
       case 'WARN': return <AlertTriangle size={14} />;
       case 'BLOCKLIST': return <Ban size={14} />;
@@ -41,42 +41,41 @@ export const AgentReviewList: React.FC<AgentReviewListProps> = ({ reviews }) => 
             </div>
             <span className="text-gray-600">{new Date(rev.timestamp).toISOString().split('T')[0]}</span>
           </div>
-          
-          <div className="grid grid-cols-3 gap-2 mb-2 bg-gray-900/50 p-2 rounded">
-            <div className="flex items-center gap-2 text-gray-400">
-               <Scale size={12} />
-               <span>{t('review.compliance')}:</span>
-               <span className={rev.metrics.specCompliance >= 0.98 ? 'text-green-400' : 'text-red-400'}>
-                 {(rev.metrics.specCompliance * 100).toFixed(0)}%
-               </span>
+
+          <div className="flex flex-wrap gap-x-4 gap-y-1 mb-2 bg-gray-900/50 p-2 rounded">
+            <div className="flex items-center gap-1 text-gray-400 whitespace-nowrap">
+              <Scale size={12} />
+              <span>{t('review.compliance')}:</span>
+              <span className={rev.metrics.specCompliance >= 0.98 ? 'text-green-400' : 'text-red-400'}>
+                {(rev.metrics.specCompliance * 100).toFixed(0)}%
+              </span>
             </div>
-            <div className="flex items-center gap-2 text-gray-400">
-               <Server size={12} />
-               <span>{t('review.latency')}:</span>
-               <span className={rev.metrics.apiLatencyMs < 500 ? 'text-green-400' : 'text-yellow-400'}>
-                 {rev.metrics.apiLatencyMs}ms
-               </span>
+            <div className="flex items-center gap-1 text-gray-400 whitespace-nowrap">
+              <Server size={12} />
+              <span>{t('review.latency')}:</span>
+              <span className={rev.metrics.apiLatencyMs < 500 ? 'text-green-400' : 'text-yellow-400'}>
+                {rev.metrics.apiLatencyMs}ms
+              </span>
             </div>
-            <div className="flex items-center gap-2 text-gray-400">
-               <Clock size={12} />
-               <span>{t('review.delta')}:</span>
-               <span className={rev.metrics.fulfillmentDelta === 0 ? 'text-green-400' : 'text-red-400'}>
-                 {rev.metrics.fulfillmentDelta}h
-               </span>
+            <div className="flex items-center gap-1 text-gray-400 whitespace-nowrap">
+              <Clock size={12} />
+              <span>{t('review.delta')}:</span>
+              <span className={rev.metrics.fulfillmentDelta === 0 ? 'text-green-400' : 'text-red-400'}>
+                {rev.metrics.fulfillmentDelta}h
+              </span>
             </div>
           </div>
 
           <div className="space-y-1">
             {rev.structuredLog.map((log, i) => (
               <div key={i} className="flex gap-2">
-                 <span className={`w-12 text-center text-[10px] uppercase rounded ${
-                   log.level === 'INFO' ? 'bg-gray-800 text-gray-400' :
-                   log.level === 'WARN' ? 'bg-yellow-900/30 text-yellow-500' : 'bg-red-900/30 text-red-500'
-                 }`}>
-                   {log.level}
-                 </span>
-                 <span className="text-gray-500">[{log.event}]</span>
-                 <span className="text-gray-300">{log.details}</span>
+                <span className={`w-12 text-center text-[10px] uppercase rounded ${log.level === 'INFO' ? 'bg-gray-800 text-gray-400' :
+                    log.level === 'WARN' ? 'bg-yellow-900/30 text-yellow-500' : 'bg-red-900/30 text-red-500'
+                  }`}>
+                  {log.level}
+                </span>
+                <span className="text-gray-500">[{log.event}]</span>
+                <span className="text-gray-300">{log.details}</span>
               </div>
             ))}
           </div>
