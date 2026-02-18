@@ -17,7 +17,17 @@ import { OrderManager } from './pages/OrderManager';
 import { LiveFeed } from './pages/LiveFeed';
 import { SLADashboard } from './pages/SLADashboard';
 import { AgentQA } from './pages/AgentQA';
-import { Terminal, Shield, Cpu, Globe, Package, LogIn, LogOut, User, Key, FileCheck, Zap, BookOpen, Bot, Radio, BarChart3, ChevronDown, Menu, X, Store, Truck, MessageSquare } from 'lucide-react';
+import { AgentAnalytics } from './pages/AgentAnalytics';
+import { MCPIntegration } from './pages/MCPIntegration';
+import { OrderTracking } from './pages/OrderTracking';
+import { Promotions } from './pages/Promotions';
+import { AgentGroups } from './pages/AgentGroups';
+import { AgentSandbox } from './pages/AgentSandbox';
+import { ProductCompare } from './pages/ProductCompare';
+import { AutoReorder } from './pages/AutoReorder';
+import { AgentReputation } from './pages/AgentReputation';
+import { NotificationBell } from './components/NotificationBell';
+import { Terminal, Shield, Cpu, Globe, Package, LogIn, LogOut, User, Key, FileCheck, Zap, BookOpen, Bot, Radio, BarChart3, ChevronDown, Menu, X, Store, Truck, MessageSquare, Tag, Users, FlaskConical, GitCompare, RefreshCw } from 'lucide-react';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -144,6 +154,12 @@ const LanguageToggle: React.FC = () => {
   );
 };
 
+/* ━━━ Notification Bell Wrapper ━━━ */
+const NotificationBellWrapper: React.FC = () => {
+  const navigate = useNavigate();
+  return <NotificationBell navigate={navigate} />;
+};
+
 /* ━━━ User Status ━━━ */
 const UserStatus: React.FC = () => {
   const { user, signOut } = useAuth();
@@ -196,11 +212,14 @@ function MobileMenu({ onClose }: { onClose: () => void }) {
         ...(isAdmin ? [
           { to: '/agents', icon: <Key size={15} />, label: t('nav.agentManager') },
           { to: '/policies', icon: <FileCheck size={15} />, label: t('nav.policies') },
+          { to: '/agent-groups', icon: <Users size={15} />, label: 'Agent Groups' },
         ] : []),
         { to: '/playground', icon: <Zap size={15} />, label: t('nav.playground') },
+        { to: '/sandbox', icon: <FlaskConical size={15} />, label: 'Sandbox' },
         { to: '/agent/docs', icon: <BookOpen size={15} />, label: t('nav.docs') },
         ...(isAdmin ? [
           { to: '/agent-qa', icon: <MessageSquare size={15} />, label: 'Agent Q&A' },
+          { to: '/agent-reputation', icon: <Shield size={15} />, label: 'Reputation' },
         ] : []),
       ],
     },
@@ -208,9 +227,17 @@ function MobileMenu({ onClose }: { onClose: () => void }) {
       label: t('nav.ai'), items: [
         ...(isAdmin ? [
           { to: '/ai-ops', icon: <Bot size={15} />, label: t('nav.aiOps') },
+          { to: '/analytics', icon: <BarChart3 size={15} />, label: 'Analytics' },
         ] : []),
         { to: '/live', icon: <Radio size={15} />, label: t('nav.live') },
         { to: '/sla', icon: <BarChart3 size={15} />, label: t('nav.sla') },
+        { to: '/mcp', icon: <Cpu size={15} />, label: 'MCP' },
+        { to: '/compare', icon: <GitCompare size={15} />, label: 'Compare' },
+        ...(isAdmin ? [
+          { to: '/promotions', icon: <Tag size={15} />, label: 'Promotions' },
+          { to: '/auto-reorder', icon: <RefreshCw size={15} />, label: 'Auto Reorder' },
+          { to: '/tracking', icon: <Truck size={15} />, label: 'Tracking' },
+        ] : []),
       ],
     },
   ];
@@ -266,19 +293,30 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     ...(isAdmin ? [
       { to: '/agents', icon: <Key size={13} />, label: t('agents.title') },
       { to: '/policies', icon: <FileCheck size={13} />, label: t('policies.title') },
+      { to: '/agent-groups', icon: <Users size={13} />, label: 'Groups' },
     ] : []),
     { to: '/playground', icon: <Zap size={13} />, label: t('playground.navTitle') },
+    { to: '/sandbox', icon: <FlaskConical size={13} />, label: 'Sandbox' },
     { to: '/agent/docs', icon: <BookOpen size={13} />, label: t('nav.docs') },
     ...(isAdmin ? [
-      { to: '/agent-qa', icon: <MessageSquare size={13} />, label: 'Agent Q&A' },
+      { to: '/agent-qa', icon: <MessageSquare size={13} />, label: 'Q&A' },
+      { to: '/agent-reputation', icon: <Shield size={13} />, label: 'Reputation' },
     ] : []),
   ];
   const aiItems: NavItem[] = [
     ...(isAdmin ? [
       { to: '/ai-ops', icon: <Bot size={13} />, label: t('nav.aiOps') },
+      { to: '/analytics', icon: <BarChart3 size={13} />, label: 'Analytics' },
     ] : []),
     { to: '/live', icon: <Radio size={13} />, label: t('nav.live') },
     { to: '/sla', icon: <BarChart3 size={13} />, label: t('nav.sla') },
+    { to: '/mcp', icon: <Cpu size={13} />, label: 'MCP' },
+    { to: '/compare', icon: <GitCompare size={13} />, label: 'Compare' },
+    ...(isAdmin ? [
+      { to: '/promotions', icon: <Tag size={13} />, label: 'Promotions' },
+      { to: '/auto-reorder', icon: <RefreshCw size={13} />, label: 'Reorder' },
+      { to: '/tracking', icon: <Truck size={13} />, label: 'Tracking' },
+    ] : []),
   ];
 
   return (
@@ -307,6 +345,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
         {/* Right Side */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <NotificationBellWrapper />
           <LanguageToggle />
           <UserStatus />
           {/* Mobile Toggle */}
@@ -364,6 +403,15 @@ export default function App() {
                     <Route path="/domeggook" element={<AdminRoute><DomeggookSync /></AdminRoute>} />
                     <Route path="/orders" element={<AdminRoute><OrderManager /></AdminRoute>} />
                     <Route path="/agent-qa" element={<AdminRoute><AgentQA /></AdminRoute>} />
+                    <Route path="/analytics" element={<AdminRoute><AgentAnalytics /></AdminRoute>} />
+                    <Route path="/mcp" element={<MCPIntegration />} />
+                    <Route path="/tracking" element={<AdminRoute><OrderTracking /></AdminRoute>} />
+                    <Route path="/promotions" element={<AdminRoute><Promotions /></AdminRoute>} />
+                    <Route path="/agent-groups" element={<AdminRoute><AgentGroups /></AdminRoute>} />
+                    <Route path="/sandbox" element={<AgentSandbox />} />
+                    <Route path="/compare" element={<ProductCompare />} />
+                    <Route path="/auto-reorder" element={<AdminRoute><AutoReorder /></AdminRoute>} />
+                    <Route path="/agent-reputation" element={<AdminRoute><AgentReputation /></AdminRoute>} />
                   </Routes>
                 </Layout>
               } />
