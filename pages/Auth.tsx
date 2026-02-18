@@ -17,18 +17,23 @@ export const Auth: React.FC = () => {
         e.preventDefault();
         setError('');
         setLoading(true);
+        console.log('[Auth Page] handleSubmit start');
 
         try {
+            console.log('[Auth Page] calling signIn...');
             const { error: signInError } = await signIn(email, password);
+            console.log('[Auth Page] signIn returned:', signInError);
             if (signInError) {
                 setError(signInError);
             } else {
+                console.log('[Auth Page] navigating to /');
                 navigate('/');
             }
         } catch (err: any) {
-            console.error('Login error:', err);
+            console.error('[Auth Page] caught error:', err);
             setError(err?.message || 'Login failed.');
         } finally {
+            console.log('[Auth Page] finally - setLoading(false)');
             setLoading(false);
         }
     };
