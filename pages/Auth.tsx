@@ -1,19 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { LogIn, AlertCircle, Terminal, Loader } from 'lucide-react';
 
-const BUILD_VERSION = 'v4-password-only';
+const BUILD_VERSION = 'v5-fix-relogin';
 
 export const Auth: React.FC = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const { signIn } = useAuth();
+    const { signIn, user } = useAuth();
     const { t } = useLanguage();
     const navigate = useNavigate();
+
+    // If already logged in, redirect to home
+    useEffect(() => {
+        if (user) {
+            navigate('/');
+        }
+    }, [user, navigate]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

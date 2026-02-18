@@ -17,14 +17,22 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Fetch role with timeout to prevent hanging
 async function fetchUserRole(): Promise<'admin' | 'viewer'> {
     try {
-        const { data, error } = await supabase.rpc('get_my_role');
-        console.log('[Auth] fetchUserRole result:', { data, error: error?.message });
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+
+        const { data, error } = await supabase.rpc('get_my_role', {}, {
+            signal: controller.signal as any,
+        } as any);
+
+        clearTimeout(timeout);
+        console.log('[Auth] fetchUserRole:', { data, error: error?.message });
         if (error || !data) return 'viewer';
         return data === 'admin' ? 'admin' : 'viewer';
     } catch (e) {
-        console.warn('[Auth] fetchUserRole exception, defaulting to viewer:', e);
+        console.warn('[Auth] fetchUserRole failed, defaulting to viewer:', e);
         return 'viewer';
     }
 }
@@ -34,36 +42,49 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        let isMounted = true;
+
         // Check current session
         supabase.auth.getSession().then(async ({ data: { session } }) => {
-            console.log('[Auth] getSession:', session ? 'has session' : 'no session');
+            if (!isMounted) return;
+            console.log('[Auth] getSession:', session ? `has session (${session.user.email})` : 'no session');
             if (session?.user) {
                 const role = await fetchUserRole();
-                setUser({
-                    id: session.user.id,
-                    email: session.user.email || '',
-                    role,
-                });
+                if (isMounted) {
+                    setUser({
+                        id: session.user.id,
+                        email: session.user.email || '',
+                        role,
+                    });
+                }
             }
-            setLoading(false);
+            if (isMounted) setLoading(false);
         });
 
-        // Listen for auth changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+        // Listen for auth changes — DON'T await loadUser to avoid blocking signInWithPassword
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
             console.log('[Auth] onAuthStateChange:', _event, session?.user?.email);
             if (session?.user) {
-                const role = await fetchUserRole();
-                setUser({
-                    id: session.user.id,
-                    email: session.user.email || '',
-                    role,
+                const sessionUser = session.user;
+                // Fire and forget — don't block the auth state change
+                fetchUserRole().then(role => {
+                    if (isMounted) {
+                        setUser({
+                            id: sessionUser.id,
+                            email: sessionUser.email || '',
+                            role,
+                        });
+                    }
                 });
             } else {
-                setUser(null);
+                if (isMounted) setUser(null);
             }
         });
 
-        return () => subscription.unsubscribe();
+        return () => {
+            isMounted = false;
+            subscription.unsubscribe();
+        };
     }, []);
 
     const signIn = async (email: string, password: string) => {
@@ -74,6 +95,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
 
     const signOut = async () => {
+        console.log('[Auth] signOut');
         await supabase.auth.signOut();
         setUser(null);
     };
