@@ -616,3 +616,116 @@ export function usePolicies() {
     return { policies, loading, fetchPolicies, createPolicy, updatePolicy, deletePolicy };
 }
 
+// ---- Agent Q&A hook ----
+import { AgentQuestion, QuestionStatus } from './types';
+
+export interface AgentQuestionRow {
+    ticket_id: string;
+    agent_id: string;
+    sku: string | null;
+    category: string;
+    question: string;
+    status: string;
+    answer: string | null;
+    structured_data: any;
+    answered_by: string | null;
+    created_at: string;
+    answered_at: string | null;
+}
+
+function rowToQuestion(row: AgentQuestionRow): AgentQuestion {
+    return {
+        ticketId: row.ticket_id,
+        agentId: row.agent_id,
+        sku: row.sku,
+        category: row.category as AgentQuestion['category'],
+        question: row.question,
+        status: row.status as QuestionStatus,
+        answer: row.answer,
+        structuredData: row.structured_data || {},
+        answeredBy: row.answered_by as AgentQuestion['answeredBy'],
+        createdAt: row.created_at,
+        answeredAt: row.answered_at,
+    };
+}
+
+export function useAgentQuestions(filterStatus?: QuestionStatus) {
+    const [questions, setQuestions] = useState<AgentQuestion[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    const fetchQuestions = useCallback(async () => {
+        setLoading(true);
+        try {
+            let query = supabase
+                .from('agent_questions')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (filterStatus) {
+                query = query.eq('status', filterStatus);
+            }
+
+            const { data, error } = await query;
+            if (error) throw error;
+            setQuestions((data || []).map(rowToQuestion));
+        } catch (err) {
+            console.error('Failed to fetch questions:', err);
+        } finally {
+            setLoading(false);
+        }
+    }, [filterStatus]);
+
+    useEffect(() => {
+        fetchQuestions();
+
+        // Realtime subscription
+        const channel = supabase
+            .channel('agent_questions_changes')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'agent_questions' }, () => {
+                fetchQuestions();
+            })
+            .subscribe();
+
+        return () => { supabase.removeChannel(channel); };
+    }, [fetchQuestions]);
+
+    const answerQuestion = async (ticketId: string, answer: string, structuredData: Record<string, any> = {}) => {
+        try {
+            const { error } = await supabase
+                .from('agent_questions')
+                .update({
+                    answer: sanitizeString(answer, 2000),
+                    structured_data: structuredData,
+                    status: 'ANSWERED',
+                    answered_by: 'ADMIN',
+                    answered_at: new Date().toISOString(),
+                })
+                .eq('ticket_id', ticketId);
+
+            if (error) throw error;
+            await fetchQuestions();
+            return true;
+        } catch (err) {
+            console.error('Failed to answer question:', err);
+            return false;
+        }
+    };
+
+    const closeQuestion = async (ticketId: string) => {
+        try {
+            const { error } = await supabase
+                .from('agent_questions')
+                .update({ status: 'CLOSED' })
+                .eq('ticket_id', ticketId);
+
+            if (error) throw error;
+            await fetchQuestions();
+            return true;
+        } catch (err) {
+            console.error('Failed to close question:', err);
+            return false;
+        }
+    };
+
+    return { questions, loading, fetchQuestions, answerQuestion, closeQuestion };
+}

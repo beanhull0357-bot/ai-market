@@ -16,7 +16,8 @@ import { DomeggookSync } from './pages/DomeggookSync';
 import { OrderManager } from './pages/OrderManager';
 import { LiveFeed } from './pages/LiveFeed';
 import { SLADashboard } from './pages/SLADashboard';
-import { Terminal, Shield, Cpu, Globe, Package, LogIn, LogOut, User, Key, FileCheck, Zap, BookOpen, Bot, Radio, BarChart3, ChevronDown, Menu, X, Store, Truck } from 'lucide-react';
+import { AgentQA } from './pages/AgentQA';
+import { Terminal, Shield, Cpu, Globe, Package, LogIn, LogOut, User, Key, FileCheck, Zap, BookOpen, Bot, Radio, BarChart3, ChevronDown, Menu, X, Store, Truck, MessageSquare } from 'lucide-react';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -198,6 +199,9 @@ function MobileMenu({ onClose }: { onClose: () => void }) {
         ] : []),
         { to: '/playground', icon: <Zap size={15} />, label: t('nav.playground') },
         { to: '/agent/docs', icon: <BookOpen size={15} />, label: t('nav.docs') },
+        ...(isAdmin ? [
+          { to: '/agent-qa', icon: <MessageSquare size={15} />, label: 'Agent Q&A' },
+        ] : []),
       ],
     },
     {
@@ -265,6 +269,9 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     ] : []),
     { to: '/playground', icon: <Zap size={13} />, label: t('playground.navTitle') },
     { to: '/agent/docs', icon: <BookOpen size={13} />, label: t('nav.docs') },
+    ...(isAdmin ? [
+      { to: '/agent-qa', icon: <MessageSquare size={13} />, label: 'Agent Q&A' },
+    ] : []),
   ];
   const aiItems: NavItem[] = [
     ...(isAdmin ? [
@@ -356,6 +363,7 @@ export default function App() {
                     <Route path="/sla" element={<SLADashboard />} />
                     <Route path="/domeggook" element={<AdminRoute><DomeggookSync /></AdminRoute>} />
                     <Route path="/orders" element={<AdminRoute><OrderManager /></AdminRoute>} />
+                    <Route path="/agent-qa" element={<AdminRoute><AgentQA /></AdminRoute>} />
                   </Routes>
                 </Layout>
               } />

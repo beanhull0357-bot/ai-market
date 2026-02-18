@@ -91,3 +91,20 @@ export interface AgentReview {
   }[];
   verdict: ReviewVerdict;
 }
+
+export type QuestionCategory = 'SPEC' | 'COMPATIBILITY' | 'BULK_PRICING' | 'SHIPPING' | 'RESTOCK' | 'POLICY' | 'OTHER';
+export type QuestionStatus = 'PENDING' | 'ANSWERED' | 'CLOSED';
+
+export interface AgentQuestion {
+  ticketId: string;
+  agentId: string;
+  sku: string | null;
+  category: QuestionCategory;
+  question: string;
+  status: QuestionStatus;
+  answer: string | null;
+  structuredData: Record<string, any>;
+  answeredBy: 'ADMIN' | 'AUTO' | null;
+  createdAt: string;
+  answeredAt: string | null;
+}
