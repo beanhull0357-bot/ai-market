@@ -4,6 +4,8 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { LogIn, AlertCircle, Terminal, Loader } from 'lucide-react';
 
+const BUILD_VERSION = 'v4-password-only';
+
 export const Auth: React.FC = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -17,48 +19,56 @@ export const Auth: React.FC = () => {
         e.preventDefault();
         setError('');
         setLoading(true);
-        console.log('[Auth Page] handleSubmit start');
 
         try {
-            console.log('[Auth Page] calling signIn...');
-            const { error: signInError } = await signIn(email, password);
-            console.log('[Auth Page] signIn returned:', signInError);
-            if (signInError) {
-                setError(signInError);
+            const result = await signIn(email, password);
+            if (result.error) {
+                setError(result.error);
             } else {
-                console.log('[Auth Page] navigating to /');
                 navigate('/');
             }
         } catch (err: any) {
-            console.error('[Auth Page] caught error:', err);
             setError(err?.message || 'Login failed.');
         } finally {
-            console.log('[Auth Page] finally - setLoading(false)');
             setLoading(false);
         }
     };
 
     return (
-        <div className="min-h-screen bg-terminal-bg text-terminal-text font-mono flex items-center justify-center p-6">
-            <div className="w-full max-w-md">
+        <div style={{
+            minHeight: '100vh',
+            backgroundColor: '#0c0c0c',
+            color: '#cccccc',
+            fontFamily: '"JetBrains Mono", monospace',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '24px',
+        }}>
+            <div style={{ width: '100%', maxWidth: '400px' }}>
                 {/* Header */}
-                <div className="text-center mb-8">
-                    <div className="flex items-center justify-center gap-2 mb-4">
-                        <Terminal className="text-terminal-green" size={28} />
-                        <span className="text-2xl font-bold text-white">
-                            <span className="text-terminal-green">{'{'}</span>
+                <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '16px' }}>
+                        <Terminal color="#22c55e" size={28} />
+                        <span style={{ fontSize: '24px', fontWeight: 700, color: 'white' }}>
+                            <span style={{ color: '#22c55e' }}>{'{'}</span>
                             JSONMart
-                            <span className="text-terminal-green">{'}'}</span>
+                            <span style={{ color: '#22c55e' }}>{'}'}</span>
                         </span>
                     </div>
-                    <p className="text-gray-500 text-sm">{t('auth.signInSubtitle')}</p>
+                    <p style={{ color: '#666', fontSize: '14px' }}>{t('auth.signInSubtitle')}</p>
                 </div>
 
                 {/* Form */}
-                <div className="bg-gray-900 border border-gray-800 rounded-lg p-6">
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <div>
-                            <label className="block text-xs text-gray-500 uppercase mb-2">
+                <div style={{
+                    backgroundColor: '#111',
+                    border: '1px solid #333',
+                    borderRadius: '8px',
+                    padding: '24px',
+                }}>
+                    <form onSubmit={handleSubmit}>
+                        <div style={{ marginBottom: '16px' }}>
+                            <label style={{ display: 'block', fontSize: '11px', color: '#666', textTransform: 'uppercase', marginBottom: '8px' }}>
                                 {t('auth.email')}
                             </label>
                             <input
@@ -66,12 +76,22 @@ export const Auth: React.FC = () => {
                                 required
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                className="w-full bg-black border border-gray-700 rounded p-3 text-white text-sm focus:border-terminal-green outline-none transition-colors"
+                                style={{
+                                    width: '100%',
+                                    backgroundColor: '#000',
+                                    border: '1px solid #444',
+                                    borderRadius: '4px',
+                                    padding: '12px',
+                                    color: 'white',
+                                    fontSize: '14px',
+                                    outline: 'none',
+                                    boxSizing: 'border-box',
+                                }}
                                 placeholder="admin@jsonmart.io"
                             />
                         </div>
-                        <div>
-                            <label className="block text-xs text-gray-500 uppercase mb-2">
+                        <div style={{ marginBottom: '16px' }}>
+                            <label style={{ display: 'block', fontSize: '11px', color: '#666', textTransform: 'uppercase', marginBottom: '8px' }}>
                                 {t('auth.password')}
                             </label>
                             <input
@@ -80,13 +100,34 @@ export const Auth: React.FC = () => {
                                 minLength={6}
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                className="w-full bg-black border border-gray-700 rounded p-3 text-white text-sm focus:border-terminal-green outline-none transition-colors"
+                                style={{
+                                    width: '100%',
+                                    backgroundColor: '#000',
+                                    border: '1px solid #444',
+                                    borderRadius: '4px',
+                                    padding: '12px',
+                                    color: 'white',
+                                    fontSize: '14px',
+                                    outline: 'none',
+                                    boxSizing: 'border-box',
+                                }}
                                 placeholder="••••••••"
                             />
                         </div>
 
                         {error && (
-                            <div className="flex items-center gap-2 text-red-400 text-xs bg-red-900/10 border border-red-900/30 rounded p-3">
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                color: '#f87171',
+                                fontSize: '12px',
+                                backgroundColor: 'rgba(239,68,68,0.1)',
+                                border: '1px solid rgba(239,68,68,0.3)',
+                                borderRadius: '4px',
+                                padding: '12px',
+                                marginBottom: '16px',
+                            }}>
                                 <AlertCircle size={14} />
                                 {error}
                             </div>
@@ -95,10 +136,22 @@ export const Auth: React.FC = () => {
                         <button
                             type="submit"
                             disabled={loading}
-                            className={`w-full py-3 font-bold rounded flex items-center justify-center gap-2 transition-colors ${loading
-                                ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                                : 'bg-terminal-green text-black hover:bg-green-400'
-                                }`}
+                            style={{
+                                width: '100%',
+                                padding: '12px',
+                                fontWeight: 700,
+                                borderRadius: '4px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '8px',
+                                border: 'none',
+                                cursor: loading ? 'not-allowed' : 'pointer',
+                                backgroundColor: loading ? '#444' : '#22c55e',
+                                color: loading ? '#888' : '#000',
+                                fontSize: '14px',
+                                transition: 'all 150ms',
+                            }}
                         >
                             {loading ? (
                                 <Loader className="animate-spin" size={16} />
@@ -110,8 +163,13 @@ export const Auth: React.FC = () => {
                     </form>
                 </div>
 
-                <p className="text-center text-xs text-gray-600 mt-6">
+                <p style={{ textAlign: 'center', fontSize: '12px', color: '#444', marginTop: '24px' }}>
                     {t('auth.footer')}
+                </p>
+
+                {/* Version indicator - for debugging */}
+                <p style={{ textAlign: 'center', fontSize: '10px', color: '#333', marginTop: '8px' }}>
+                    {BUILD_VERSION}
                 </p>
             </div>
         </div>
