@@ -1,4 +1,4 @@
-export type Category = 'CONSUMABLES' | 'MRO';
+export type Category = 'CONSUMABLES' | 'MRO' | 'OFFICE' | 'IT_EQUIPMENT' | 'KITCHEN' | 'SAFETY' | 'HYGIENE';
 
 export interface ProductPack {
   sku: string;
@@ -37,13 +37,13 @@ export interface AgentPolicy {
   minSellerTrust: number;
 }
 
-export type OrderStatus = 
-  | 'ORDER_CREATED' 
-  | 'PAYMENT_AUTHORIZED' 
-  | 'PROCUREMENT_PENDING' 
-  | 'PROCUREMENT_SENT' 
-  | 'SHIPPED' 
-  | 'DELIVERED' 
+export type OrderStatus =
+  | 'ORDER_CREATED'
+  | 'PAYMENT_AUTHORIZED'
+  | 'PROCUREMENT_PENDING'
+  | 'PROCUREMENT_SENT'
+  | 'SHIPPED'
+  | 'DELIVERED'
   | 'VOIDED';
 
 export interface Order {
