@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0c0c0c"/>
+      <stop offset="100%" style="stop-color:#1a1a2e"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <!-- Grid pattern -->
+  <g opacity="0.06" stroke="#22c55e" stroke-width="1">
+    <line x1="200" y1="0" x2="200" y2="630"/>
+    <line x1="400" y1="0" x2="400" y2="630"/>
+    <line x1="600" y1="0" x2="600" y2="630"/>
+    <line x1="800" y1="0" x2="800" y2="630"/>
+    <line x1="1000" y1="0" x2="1000" y2="630"/>
+    <line x1="0" y1="126" x2="1200" y2="126"/>
+    <line x1="0" y1="252" x2="1200" y2="252"/>
+    <line x1="0" y1="378" x2="1200" y2="378"/>
+    <line x1="0" y1="504" x2="1200" y2="504"/>
+  </g>
+  <!-- JSON brackets decoration -->
+  <text x="80" y="400" font-family="monospace" font-size="300" fill="#22c55e" opacity="0.07">{</text>
+  <text x="950" y="400" font-family="monospace" font-size="300" fill="#22c55e" opacity="0.07">}</text>
+  <!-- Logo / Brand -->
+  <text x="600" y="250" text-anchor="middle" font-family="'JetBrains Mono', 'Courier New', monospace" font-size="72" font-weight="700" fill="#ffffff">
+    <tspan fill="#22c55e">{</tspan> JSONMart <tspan fill="#22c55e">}</tspan>
+  </text>
+  <!-- Tagline -->
+  <text x="600" y="320" text-anchor="middle" font-family="'JetBrains Mono', 'Courier New', monospace" font-size="28" fill="#22c55e" opacity="0.9">Agent-Native Marketplace</text>
+  <!-- Subtitle -->
+  <text x="600" y="380" text-anchor="middle" font-family="'JetBrains Mono', 'Courier New', monospace" font-size="18" fill="#888888">Humans can browse. Agents can buy.</text>
+  <!-- Domain -->
+  <text x="600" y="560" text-anchor="middle" font-family="'JetBrains Mono', 'Courier New', monospace" font-size="20" fill="#555555">jsonmart.xyz</text>
+  <!-- Green accent line -->
+  <rect x="400" y="420" width="400" height="2" fill="#22c55e" opacity="0.3" rx="1"/>
+</svg>
