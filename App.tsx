@@ -26,8 +26,12 @@ import { AgentSandbox } from './pages/AgentSandbox';
 import { ProductCompare } from './pages/ProductCompare';
 import { AutoReorder } from './pages/AutoReorder';
 import { AgentReputation } from './pages/AgentReputation';
+import { AdminDashboard } from './pages/AdminDashboard';
+import { AgentActivityLog } from './pages/AgentActivityLog';
+import { DataExport } from './pages/DataExport';
+import { WebhookConfig } from './pages/WebhookConfig';
 import { NotificationBell } from './components/NotificationBell';
-import { Terminal, Shield, Cpu, Globe, Package, LogIn, LogOut, User, Key, FileCheck, Zap, BookOpen, Bot, Radio, BarChart3, ChevronDown, Menu, X, Store, Truck, MessageSquare, Tag, Users, FlaskConical, GitCompare, RefreshCw } from 'lucide-react';
+import { Terminal, Shield, Cpu, Globe, Package, LogIn, LogOut, User, Key, FileCheck, Zap, BookOpen, Bot, Radio, BarChart3, ChevronDown, Menu, X, Store, Truck, MessageSquare, Tag, Users, FlaskConical, GitCompare, RefreshCw, Activity, Download, Webhook, LayoutDashboard } from 'lucide-react';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -282,10 +286,12 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const commerceItems: NavItem[] = [
     { to: '/', icon: <Terminal size={13} />, label: t('nav.humanMode') },
     ...(isAdmin ? [
+      { to: '/dashboard', icon: <LayoutDashboard size={13} />, label: 'Dashboard' },
       { to: '/inventory', icon: <Package size={13} />, label: t('nav.inventory') },
       { to: '/admin-queue', icon: <Shield size={13} />, label: t('nav.adminQueue') },
       { to: '/domeggook', icon: <Store size={13} />, label: t('nav.domeggook') },
       { to: '/orders', icon: <Truck size={13} />, label: t('nav.orders') },
+      { to: '/export', icon: <Download size={13} />, label: 'Export' },
     ] : []),
   ];
   const agentItems: NavItem[] = [
@@ -316,6 +322,8 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       { to: '/promotions', icon: <Tag size={13} />, label: 'Promotions' },
       { to: '/auto-reorder', icon: <RefreshCw size={13} />, label: 'Reorder' },
       { to: '/tracking', icon: <Truck size={13} />, label: 'Tracking' },
+      { to: '/activity-log', icon: <Activity size={13} />, label: 'Log' },
+      { to: '/webhooks', icon: <Webhook size={13} />, label: 'Webhooks' },
     ] : []),
   ];
 
@@ -412,6 +420,10 @@ export default function App() {
                     <Route path="/compare" element={<ProductCompare />} />
                     <Route path="/auto-reorder" element={<AdminRoute><AutoReorder /></AdminRoute>} />
                     <Route path="/agent-reputation" element={<AdminRoute><AgentReputation /></AdminRoute>} />
+                    <Route path="/dashboard" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+                    <Route path="/activity-log" element={<AdminRoute><AgentActivityLog /></AdminRoute>} />
+                    <Route path="/export" element={<AdminRoute><DataExport /></AdminRoute>} />
+                    <Route path="/webhooks" element={<AdminRoute><WebhookConfig /></AdminRoute>} />
                   </Routes>
                 </Layout>
               } />
