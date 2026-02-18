@@ -270,7 +270,7 @@ export function DomeggookSync() {
     const auditInfo = auditResults?.filter(r => r.issue_level === 'info') || [];
 
     return (
-        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '32px 20px' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: 'clamp(16px, 4vw, 32px) clamp(12px, 3vw, 20px)' }}>
             {/* Header */}
             <div style={{ marginBottom: 32 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -353,7 +353,7 @@ export function DomeggookSync() {
                     </button>
 
                     {auditOpen && auditResults.length > 0 && (
-                        <div style={{ borderTop: '1px solid var(--border-subtle)', padding: '0' }}>
+                        <div style={{ borderTop: '1px solid var(--border-subtle)', padding: '0' }} className="table-scroll">
                             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                                 <thead>
                                     <tr style={{ background: 'var(--bg-surface)' }}>
@@ -504,7 +504,7 @@ export function DomeggookSync() {
             {/* Product Grid */}
             {items.length > 0 && (
                 <div style={{
-                    display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                    display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(240px, 100%), 1fr))',
                     gap: 12, marginBottom: 24,
                 }}>
                     {items.map(item => {
@@ -694,7 +694,7 @@ export function DomeggookSync() {
             {/* Loading skeleton */}
             {loading && items.length === 0 && (
                 <div style={{
-                    display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                    display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(240px, 100%), 1fr))',
                     gap: 12,
                 }}>
                     {Array.from({ length: 6 }).map((_, i) => (

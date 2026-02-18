@@ -282,7 +282,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         background: 'rgba(9,9,11,0.85)', backdropFilter: 'blur(12px)',
         position: 'fixed', top: 0, width: '100%', zIndex: 50,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '0 20px',
+        padding: '0 clamp(10px, 3vw, 20px)',
       }}>
         {/* Logo */}
         <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 2, fontWeight: 800, color: 'var(--text-primary)', textDecoration: 'none', fontSize: 15, letterSpacing: -0.5 }}>

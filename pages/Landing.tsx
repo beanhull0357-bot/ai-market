@@ -34,7 +34,7 @@ export const Landing: React.FC = () => {
     <div style={{ minHeight: '100vh', background: 'var(--bg-root)', color: 'var(--text-secondary)', fontFamily: 'var(--font-sans)' }}>
 
       {/* ━━━ Hero ━━━ */}
-      <div style={{ position: 'relative', overflow: 'hidden', padding: '80px 24px 60px', textAlign: 'center' }}>
+      <div style={{ position: 'relative', overflow: 'hidden', padding: 'clamp(40px, 10vw, 80px) clamp(12px, 4vw, 24px) clamp(32px, 8vw, 60px)', textAlign: 'center' }}>
         {/* Background mesh gradient */}
         <div style={{
           position: 'absolute', inset: 0, opacity: 0.12,
@@ -103,7 +103,8 @@ export const Landing: React.FC = () => {
 
           {/* Live Stats */}
           <div style={{
-            display: 'inline-flex', gap: 32, padding: '16px 32px', borderRadius: 'var(--radius-lg)',
+            display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 'clamp(12px, 4vw, 32px)',
+            padding: '16px clamp(12px, 3vw, 32px)', borderRadius: 'var(--radius-lg)',
             background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', backdropFilter: 'blur(12px)',
           }}>
             {[
@@ -125,7 +126,7 @@ export const Landing: React.FC = () => {
       </div>
 
       {/* ━━━ Trust Badges ━━━ */}
-      <div style={{ display: 'flex', justifyContent: 'center', gap: 20, padding: '0 24px 48px', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 'clamp(8px, 2vw, 20px)', padding: '0 clamp(12px, 4vw, 24px) 48px', flexWrap: 'wrap' }}>
         {[
           { icon: <ShieldCheck size={14} />, label: 'ACP Compatible', color: 'var(--accent-green)' },
           { icon: <Radio size={14} />, label: '99.5% SLA', color: 'var(--accent-cyan)' },
@@ -144,7 +145,7 @@ export const Landing: React.FC = () => {
       </div>
 
       {/* ━━━ Feature Cards ━━━ */}
-      <div style={{ maxWidth: 900, margin: '0 auto', padding: '0 24px 64px' }}>
+      <div style={{ maxWidth: 900, margin: '0 auto', padding: '0 clamp(12px, 4vw, 24px) 64px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }} className="grid-responsive-4">
           {[
             { icon: <Code2 size={24} />, title: t('landing.feature1Title'), desc: t('landing.feature1Desc'), color: 'var(--accent-cyan)' },
@@ -161,7 +162,7 @@ export const Landing: React.FC = () => {
       </div>
 
       {/* ━━━ Catalog Preview ━━━ */}
-      <div id="store-as-code" style={{ maxWidth: 900, margin: '0 auto', padding: '0 24px 64px' }}>
+      <div id="store-as-code" style={{ maxWidth: 900, margin: '0 auto', padding: '0 clamp(12px, 4vw, 24px) 64px' }}>
         <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 48 }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }} className="grid-responsive-4">
             <div>

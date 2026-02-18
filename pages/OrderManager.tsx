@@ -214,7 +214,7 @@ export function OrderManager() {
     ];
 
     return (
-        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '32px 20px' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: 'clamp(16px, 4vw, 32px) clamp(12px, 3vw, 20px)' }}>
             {/* Header */}
             <div style={{ marginBottom: 24 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -252,9 +252,8 @@ export function OrderManager() {
 
             {/* Filter Tabs */}
             <div style={{
-                display: 'flex', gap: 4, marginBottom: 20,
+                display: 'flex', gap: 4, marginBottom: 20, flexWrap: 'wrap',
                 padding: 4, background: 'var(--bg-surface)', borderRadius: 'var(--radius-md)',
-                width: 'fit-content',
             }}>
                 {filterTabs.map(tab => (
                     <button
@@ -295,143 +294,145 @@ export function OrderManager() {
                 background: 'var(--bg-card)', border: '1px solid var(--border-subtle)',
                 borderRadius: 'var(--radius-md)', overflow: 'hidden',
             }}>
-                {loading ? (
-                    <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>
-                        <Loader2 size={20} className="spin" style={{ marginBottom: 8 }} />
-                        <div style={{ fontSize: 13 }}>{t('Loading orders...', '주문 불러오는 중...')}</div>
-                    </div>
-                ) : orders.length === 0 ? (
-                    <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>
-                        <Package size={32} style={{ marginBottom: 8, opacity: 0.3 }} />
-                        <div style={{ fontSize: 13 }}>{t('No orders found', '주문이 없습니다')}</div>
-                    </div>
-                ) : (
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                        <thead>
-                            <tr style={{ background: 'var(--bg-surface)' }}>
-                                <th style={{ padding: '10px 12px', textAlign: 'left', width: 32 }}>
-                                    <input
-                                        type="checkbox"
-                                        checked={selected.size === orders.length && orders.length > 0}
-                                        onChange={selectAll}
-                                        style={{ cursor: 'pointer' }}
-                                    />
-                                </th>
-                                <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--text-tertiary)' }}>
-                                    {t('Order ID', '주문번호')}
-                                </th>
-                                <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--text-tertiary)' }}>
-                                    {t('Items', '상품')}
-                                </th>
-                                <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--text-tertiary)' }}>
-                                    {t('Recipient', '수령자')}
-                                </th>
-                                <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--text-tertiary)' }}>
-                                    {t('Amount', '금액')}
-                                </th>
-                                <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--text-tertiary)' }}>
-                                    {t('Status', '상태')}
-                                </th>
-                                <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--text-tertiary)' }}>
-                                    {t('Date', '날짜')}
-                                </th>
-                                <th style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 600, color: 'var(--text-tertiary)' }}>
-                                    {t('Actions', '관리')}
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {orders.map(order => {
-                                const items = Array.isArray(order.items) ? order.items : [];
-                                const firstItem = items[0];
-                                const product = firstItem ? products.get(firstItem.sku) : null;
+                <div className="table-scroll">
+                    {loading ? (
+                        <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>
+                            <Loader2 size={20} className="spin" style={{ marginBottom: 8 }} />
+                            <div style={{ fontSize: 13 }}>{t('Loading orders...', '주문 불러오는 중...')}</div>
+                        </div>
+                    ) : orders.length === 0 ? (
+                        <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>
+                            <Package size={32} style={{ marginBottom: 8, opacity: 0.3 }} />
+                            <div style={{ fontSize: 13 }}>{t('No orders found', '주문이 없습니다')}</div>
+                        </div>
+                    ) : (
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                            <thead>
+                                <tr style={{ background: 'var(--bg-surface)' }}>
+                                    <th style={{ padding: '10px 12px', textAlign: 'left', width: 32 }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={selected.size === orders.length && orders.length > 0}
+                                            onChange={selectAll}
+                                            style={{ cursor: 'pointer' }}
+                                        />
+                                    </th>
+                                    <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--text-tertiary)' }}>
+                                        {t('Order ID', '주문번호')}
+                                    </th>
+                                    <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--text-tertiary)' }}>
+                                        {t('Items', '상품')}
+                                    </th>
+                                    <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--text-tertiary)' }}>
+                                        {t('Recipient', '수령자')}
+                                    </th>
+                                    <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--text-tertiary)' }}>
+                                        {t('Amount', '금액')}
+                                    </th>
+                                    <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--text-tertiary)' }}>
+                                        {t('Status', '상태')}
+                                    </th>
+                                    <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--text-tertiary)' }}>
+                                        {t('Date', '날짜')}
+                                    </th>
+                                    <th style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 600, color: 'var(--text-tertiary)' }}>
+                                        {t('Actions', '관리')}
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {orders.map(order => {
+                                    const items = Array.isArray(order.items) ? order.items : [];
+                                    const firstItem = items[0];
+                                    const product = firstItem ? products.get(firstItem.sku) : null;
 
-                                return (
-                                    <tr
-                                        key={order.id}
-                                        style={{
-                                            borderTop: '1px solid var(--border-subtle)',
-                                            background: selected.has(order.id) ? 'rgba(59,130,246,0.05)' : 'transparent',
-                                        }}
-                                    >
-                                        <td style={{ padding: '10px 12px' }}>
-                                            <input
-                                                type="checkbox"
-                                                checked={selected.has(order.id)}
-                                                onChange={() => toggleSelect(order.id)}
-                                                style={{ cursor: 'pointer' }}
-                                            />
-                                        </td>
-                                        <td style={{ padding: '10px 12px', fontFamily: 'monospace', fontSize: 11, color: 'var(--text-secondary)' }}>
-                                            {order.order_id?.slice(0, 12)}
-                                        </td>
-                                        <td style={{ padding: '10px 12px', color: 'var(--text-primary)', maxWidth: 200 }}>
-                                            <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                {product?.title?.slice(0, 25) || firstItem?.sku || '-'}
-                                            </div>
-                                            {items.length > 1 && (
-                                                <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>
-                                                    +{items.length - 1} {t('more', '더')}
-                                                </span>
-                                            )}
-                                        </td>
-                                        <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>
-                                            {order.recipient_name || (
-                                                <span style={{ color: '#ef4444', fontSize: 11 }}>
-                                                    {t('Missing', '미입력')}
-                                                </span>
-                                            )}
-                                        </td>
-                                        <td style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                                            ₩{(order.authorized_amount || 0).toLocaleString()}
-                                        </td>
-                                        <td style={{ padding: '10px 12px' }}>
-                                            <StatusBadge status={order.procurement_status || 'pending'} />
-                                        </td>
-                                        <td style={{ padding: '10px 12px', color: 'var(--text-tertiary)', fontSize: 11 }}>
-                                            {new Date(order.created_at).toLocaleDateString('ko-KR')}
-                                        </td>
-                                        <td style={{ padding: '10px 12px', textAlign: 'center' }}>
-                                            {order.procurement_status === 'exported' && (
-                                                <button
-                                                    onClick={() => updateStatus(order.id, 'ordered')}
-                                                    title={t('Mark as ordered', '발주 완료로 변경')}
-                                                    style={{
-                                                        padding: '4px 8px', fontSize: 11, fontWeight: 600,
-                                                        border: '1px solid rgba(168,85,247,0.3)',
-                                                        background: 'rgba(168,85,247,0.1)', color: '#a855f7',
-                                                        borderRadius: 4, cursor: 'pointer',
-                                                    }}
-                                                >
-                                                    {t('Ordered', '발주완료')}
-                                                </button>
-                                            )}
-                                            {order.procurement_status === 'ordered' && (
-                                                <button
-                                                    onClick={() => updateStatus(order.id, 'shipped')}
-                                                    title={t('Mark as shipped', '배송 중으로 변경')}
-                                                    style={{
-                                                        padding: '4px 8px', fontSize: 11, fontWeight: 600,
-                                                        border: '1px solid rgba(34,197,94,0.3)',
-                                                        background: 'rgba(34,197,94,0.1)', color: '#22c55e',
-                                                        borderRadius: 4, cursor: 'pointer',
-                                                    }}
-                                                >
-                                                    {t('Shipped', '배송중')}
-                                                </button>
-                                            )}
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                )}
+                                    return (
+                                        <tr
+                                            key={order.id}
+                                            style={{
+                                                borderTop: '1px solid var(--border-subtle)',
+                                                background: selected.has(order.id) ? 'rgba(59,130,246,0.05)' : 'transparent',
+                                            }}
+                                        >
+                                            <td style={{ padding: '10px 12px' }}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selected.has(order.id)}
+                                                    onChange={() => toggleSelect(order.id)}
+                                                    style={{ cursor: 'pointer' }}
+                                                />
+                                            </td>
+                                            <td style={{ padding: '10px 12px', fontFamily: 'monospace', fontSize: 11, color: 'var(--text-secondary)' }}>
+                                                {order.order_id?.slice(0, 12)}
+                                            </td>
+                                            <td style={{ padding: '10px 12px', color: 'var(--text-primary)', maxWidth: 200 }}>
+                                                <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                    {product?.title?.slice(0, 25) || firstItem?.sku || '-'}
+                                                </div>
+                                                {items.length > 1 && (
+                                                    <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>
+                                                        +{items.length - 1} {t('more', '더')}
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>
+                                                {order.recipient_name || (
+                                                    <span style={{ color: '#ef4444', fontSize: 11 }}>
+                                                        {t('Missing', '미입력')}
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                                                ₩{(order.authorized_amount || 0).toLocaleString()}
+                                            </td>
+                                            <td style={{ padding: '10px 12px' }}>
+                                                <StatusBadge status={order.procurement_status || 'pending'} />
+                                            </td>
+                                            <td style={{ padding: '10px 12px', color: 'var(--text-tertiary)', fontSize: 11 }}>
+                                                {new Date(order.created_at).toLocaleDateString('ko-KR')}
+                                            </td>
+                                            <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                                                {order.procurement_status === 'exported' && (
+                                                    <button
+                                                        onClick={() => updateStatus(order.id, 'ordered')}
+                                                        title={t('Mark as ordered', '발주 완료로 변경')}
+                                                        style={{
+                                                            padding: '4px 8px', fontSize: 11, fontWeight: 600,
+                                                            border: '1px solid rgba(168,85,247,0.3)',
+                                                            background: 'rgba(168,85,247,0.1)', color: '#a855f7',
+                                                            borderRadius: 4, cursor: 'pointer',
+                                                        }}
+                                                    >
+                                                        {t('Ordered', '발주완료')}
+                                                    </button>
+                                                )}
+                                                {order.procurement_status === 'ordered' && (
+                                                    <button
+                                                        onClick={() => updateStatus(order.id, 'shipped')}
+                                                        title={t('Mark as shipped', '배송 중으로 변경')}
+                                                        style={{
+                                                            padding: '4px 8px', fontSize: 11, fontWeight: 600,
+                                                            border: '1px solid rgba(34,197,94,0.3)',
+                                                            background: 'rgba(34,197,94,0.1)', color: '#22c55e',
+                                                            borderRadius: 4, cursor: 'pointer',
+                                                        }}
+                                                    >
+                                                        {t('Shipped', '배송중')}
+                                                    </button>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    )}
+                </div>
             </div>
 
             {/* Summary */}
             <div style={{
-                marginTop: 16, display: 'flex', justifyContent: 'space-between',
+                marginTop: 16, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8,
                 fontSize: 12, color: 'var(--text-tertiary)',
             }}>
                 <span>
@@ -450,3 +451,4 @@ export function OrderManager() {
         </div>
     );
 }
+
