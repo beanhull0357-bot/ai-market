@@ -13,9 +13,10 @@ import { AgentDocs } from './pages/AgentDocs';
 import { MerchantPolicies } from './pages/MerchantPolicies';
 import { AIOps } from './pages/AIOps';
 import { DomeggookSync } from './pages/DomeggookSync';
+import { OrderManager } from './pages/OrderManager';
 import { LiveFeed } from './pages/LiveFeed';
 import { SLADashboard } from './pages/SLADashboard';
-import { Terminal, Shield, Cpu, Globe, Package, LogIn, LogOut, User, Key, FileCheck, Zap, BookOpen, Bot, Radio, BarChart3, ChevronDown, Menu, X, Store } from 'lucide-react';
+import { Terminal, Shield, Cpu, Globe, Package, LogIn, LogOut, User, Key, FileCheck, Zap, BookOpen, Bot, Radio, BarChart3, ChevronDown, Menu, X, Store, Truck } from 'lucide-react';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -253,6 +254,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       { to: '/inventory', icon: <Package size={13} />, label: t('nav.inventory') },
       { to: '/admin-queue', icon: <Shield size={13} />, label: t('nav.adminQueue') },
       { to: '/domeggook', icon: <Store size={13} />, label: t('nav.domeggook') },
+      { to: '/orders', icon: <Truck size={13} />, label: t('nav.orders') },
     ] : []),
   ];
   const agentItems: NavItem[] = [
@@ -353,6 +355,7 @@ export default function App() {
                     <Route path="/live" element={<LiveFeed />} />
                     <Route path="/sla" element={<SLADashboard />} />
                     <Route path="/domeggook" element={<AdminRoute><DomeggookSync /></AdminRoute>} />
+                    <Route path="/orders" element={<AdminRoute><OrderManager /></AdminRoute>} />
                   </Routes>
                 </Layout>
               } />

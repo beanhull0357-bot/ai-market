@@ -21,7 +21,8 @@ export const translations = {
       aiOps: "AI Ops",
       live: "Live",
       sla: "SLA",
-      domeggook: "Domeggook"
+      domeggook: "Domeggook",
+      orders: "Orders"
     },
     landing: {
       systemOnline: "System Online",
@@ -319,7 +320,8 @@ export const translations = {
       aiOps: "AI 운영",
       live: "라이브",
       sla: "SLA",
-      domeggook: "도매꼭 연동"
+      domeggook: "도매꼭 연동",
+      orders: "주문 관리"
     },
     landing: {
       systemOnline: "시스템 정상 작동",
