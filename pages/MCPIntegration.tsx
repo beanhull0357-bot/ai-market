@@ -1,27 +1,71 @@
 import React, { useState } from 'react';
-import { Cpu, Copy, CheckCircle2, Server, Wrench, Database, ArrowRight, Code2, Globe, Zap, ExternalLink } from 'lucide-react';
-import { useLanguage } from '../context/LanguageContext';
+import { Cpu, Copy, CheckCircle2, Server, Wrench, Database, ArrowRight, Globe, ExternalLink, ChevronDown, ChevronUp } from 'lucide-react';
 
-/* ━━━ Tool Card ━━━ */
-function ToolCard({ name, desc, params, color }: {
+/* ━━━ Tool Card (Interactive) ━━━ */
+function ToolCard({ name, desc, params, color, request, response }: {
     key?: string; name: string; desc: string; params: string[]; color: string;
+    request: string; response: string;
 }) {
+    const [expanded, setExpanded] = useState(false);
     return (
-        <div className="glass-card" style={{ padding: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                <Wrench size={14} style={{ color }} />
-                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>{name}</span>
+        <div className="glass-card" style={{ padding: 0, overflow: 'hidden', cursor: 'pointer' }} onClick={() => setExpanded(!expanded)}>
+            <div style={{ padding: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Wrench size={14} style={{ color }} />
+                        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>{name}</span>
+                    </div>
+                    {expanded ? <ChevronUp size={12} style={{ color: 'var(--text-dim)' }} /> : <ChevronDown size={12} style={{ color: 'var(--text-dim)' }} />}
+                </div>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8, lineHeight: 1.5 }}>{desc}</p>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {params.map(p => (
+                        <span key={p} style={{
+                            fontSize: 10, padding: '2px 8px', borderRadius: 'var(--radius-full)',
+                            background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
+                            color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)',
+                        }}>{p}</span>
+                    ))}
+                </div>
             </div>
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8, lineHeight: 1.5 }}>{desc}</p>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {params.map(p => (
-                    <span key={p} style={{
-                        fontSize: 10, padding: '2px 8px', borderRadius: 'var(--radius-full)',
-                        background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
-                        color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)',
-                    }}>{p}</span>
-                ))}
+            {expanded && (
+                <div style={{ borderTop: '1px solid var(--border-subtle)', padding: 16 }} onClick={e => e.stopPropagation()}>
+                    <JsonBlock label="📤 요청 (Request)" code={request} accent={color} />
+                    <JsonBlock label="📥 응답 (Response)" code={response} accent="var(--accent-green)" />
+                </div>
+            )}
+        </div>
+    );
+}
+
+/* ━━━ JSON Block ━━━ */
+function JsonBlock({ label, code, accent }: { label: string; code: string; accent: string }) {
+    const [copied, setCopied] = useState(false);
+    const copy = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(code);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+    return (
+        <div style={{ marginBottom: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-dim)' }}>{label}</span>
+                <button onClick={copy} style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: copied ? 'var(--accent-green)' : 'var(--text-muted)', fontSize: 10,
+                    display: 'flex', alignItems: 'center', gap: 4,
+                }}>
+                    {copied ? <CheckCircle2 size={10} /> : <Copy size={10} />}
+                    {copied ? '복사됨' : '복사'}
+                </button>
             </div>
+            <pre style={{
+                background: 'var(--bg-surface)', border: `1px solid color-mix(in srgb, ${accent} 20%, var(--border-subtle))`,
+                borderRadius: 'var(--radius-md)', padding: 12, fontSize: 11,
+                fontFamily: 'var(--font-mono)', color: accent,
+                overflow: 'auto', lineHeight: 1.6, margin: 0,
+            }}>{code}</pre>
         </div>
     );
 }
@@ -82,12 +126,136 @@ export const MCPIntegration: React.FC = () => {
 }`;
 
     const tools = [
-        { name: 'search_products', desc: '상품 카탈로그 검색. 카테고리, 가격 범위, 재고 상태로 필터링', params: ['query?', 'category?', 'max_price?', 'in_stock_only?'], color: 'var(--accent-cyan)' },
-        { name: 'get_product_detail', desc: 'SKU로 상품 상세 정보 조회. 스펙, 가격, 재고, 신뢰 점수 포함', params: ['sku'], color: 'var(--accent-green)' },
-        { name: 'create_order', desc: '구매 주문 생성. 24시간 결제 유예, 관리자 승인 필요', params: ['sku', 'quantity', 'policy_id?'], color: 'var(--accent-purple)' },
-        { name: 'check_order_status', desc: '주문 상태 확인. 결제, 배송, 풀필먼트 상태 반환', params: ['order_id'], color: 'var(--accent-amber)' },
-        { name: 'compare_products', desc: '여러 상품의 스펙, 가격, 신뢰도를 비교 분석', params: ['sku_list[]'], color: 'var(--accent-red)' },
-        { name: 'ask_question', desc: '상품에 대한 질문 등록. 답변 시 알림', params: ['sku?', 'category', 'question'], color: 'var(--accent-cyan)' },
+        {
+            name: 'search_products', desc: '상품 카탈로그 검색. 카테고리, 가격 범위, 재고 상태로 필터링',
+            params: ['query?', 'category?', 'max_price?', 'in_stock_only?'], color: 'var(--accent-cyan)',
+            request: `{
+  "tool": "search_products",
+  "arguments": {
+    "query": "물티슈",
+    "category": "CONSUMABLES",
+    "max_price": 5000,
+    "in_stock_only": true
+  }
+}`,
+            response: `{
+  "results": [
+    {
+      "sku": "WW-001",
+      "title": "물티슈 80매",
+      "price": 2500,
+      "stock": 150,
+      "category": "CONSUMABLES",
+      "trustScore": 4.2
+    }
+  ],
+  "total": 1
+}`,
+        },
+        {
+            name: 'get_product_detail', desc: 'SKU로 상품 상세 정보 조회. 스펙, 가격, 재고, 신뢰 점수 포함',
+            params: ['sku'], color: 'var(--accent-green)',
+            request: `{
+  "tool": "get_product_detail",
+  "arguments": {
+    "sku": "WW-001"
+  }
+}`,
+            response: `{
+  "sku": "WW-001",
+  "title": "물티슈 80매",
+  "price": 2500,
+  "stock": 150,
+  "category": "CONSUMABLES",
+  "specs": {
+    "sheets": 80,
+    "material": "레이온",
+    "size": "200x150mm"
+  },
+  "trustScore": 4.2,
+  "reviewCount": 12,
+  "freeShipping": true,
+  "returnWindowDays": 14
+}`,
+        },
+        {
+            name: 'create_order', desc: '구매 주문 생성. 24시간 결제 유예, 관리자 승인 필요',
+            params: ['sku', 'quantity', 'policy_id?'], color: 'var(--accent-purple)',
+            request: `{
+  "tool": "create_order",
+  "arguments": {
+    "sku": "WW-001",
+    "quantity": 10,
+    "policy_id": "POL-001"
+  }
+}`,
+            response: `{
+  "orderId": "ORD-20260219-A1B2C",
+  "status": "ORDER_CREATED",
+  "sku": "WW-001",
+  "quantity": 10,
+  "totalPrice": 25000,
+  "paymentDeadline": "2026-02-20T00:50:00Z",
+  "message": "24시간 내 결제 필요"
+}`,
+        },
+        {
+            name: 'check_order_status', desc: '주문 상태 확인. 결제, 배송, 풀필먼트 상태 반환',
+            params: ['order_id'], color: 'var(--accent-amber)',
+            request: `{
+  "tool": "check_order_status",
+  "arguments": {
+    "order_id": "ORD-20260219-A1B2C"
+  }
+}`,
+            response: `{
+  "orderId": "ORD-20260219-A1B2C",
+  "status": "SHIPPED",
+  "events": [
+    { "status": "ORDER_CREATED", "at": "2026-02-19T00:50:00Z" },
+    { "status": "PAYMENT_AUTHORIZED", "at": "2026-02-19T02:30:00Z" },
+    { "status": "SHIPPED", "at": "2026-02-19T14:00:00Z" }
+  ],
+  "estimatedDelivery": "2026-02-21"
+}`,
+        },
+        {
+            name: 'compare_products', desc: '여러 상품의 스펙, 가격, 신뢰도를 비교 분석',
+            params: ['sku_list[]'], color: 'var(--accent-red)',
+            request: `{
+  "tool": "compare_products",
+  "arguments": {
+    "sku_list": ["WW-001", "WW-002", "WW-003"]
+  }
+}`,
+            response: `{
+  "comparison": [
+    { "sku": "WW-001", "price": 2500, "trust": 4.2, "stock": 150 },
+    { "sku": "WW-002", "price": 3200, "trust": 4.5, "stock": 80 },
+    { "sku": "WW-003", "price": 1900, "trust": 3.8, "stock": 200 }
+  ],
+  "recommendation": "WW-002",
+  "reason": "가격 대비 최고 신뢰 점수"
+}`,
+        },
+        {
+            name: 'ask_question', desc: '상품에 대한 질문 등록. 답변 시 알림',
+            params: ['sku?', 'category', 'question'], color: 'var(--accent-cyan)',
+            request: `{
+  "tool": "ask_question",
+  "arguments": {
+    "sku": "WW-001",
+    "category": "SPEC",
+    "question": "이 물티슈는 알코올 성분이 포함되어 있나요?"
+  }
+}`,
+            response: `{
+  "ticketId": "QA-20260219-X7Y8Z",
+  "status": "PENDING",
+  "message": "질문이 등록되었습니다. 답변 시 알림을 보내드립니다.",
+  "estimatedResponseTime": "24시간 이내"
+}`,
+        },
     ];
 
     const resources = [
@@ -128,12 +296,14 @@ export const MCPIntegration: React.FC = () => {
 
             {/* Setup */}
             <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12 }}>⚡ 설정 방법</h2>
-
             <CodeSnippet label="Claude Desktop — claude_desktop_config.json" code={claudeDesktopConfig} />
             <CodeSnippet label="MCP Client 직접 연결" code={mcpConfig} />
 
             {/* Available Tools */}
             <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', margin: '24px 0 12px' }}>🔧 사용 가능한 Tools ({tools.length})</h2>
+            <div style={{ fontSize: 11, color: 'var(--text-dim)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                💡 카드를 클릭하면 요청/응답 JSON 예시를 확인할 수 있습니다
+            </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12, marginBottom: 24 }}>
                 {tools.map(t => <ToolCard key={t.name} {...t} />)}
             </div>
@@ -149,7 +319,7 @@ export const MCPIntegration: React.FC = () => {
                 ))}
             </div>
 
-            {/* Existing endpoints */}
+            {/* Related Links */}
             <div className="glass-card" style={{ padding: 16 }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1 }}>관련 리소스</div>
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
