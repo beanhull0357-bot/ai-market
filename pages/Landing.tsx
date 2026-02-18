@@ -213,9 +213,33 @@ export const Landing: React.FC = () => {
       </div>
 
       {/* ━━━ Footer ━━━ */}
-      <footer style={{ borderTop: '1px solid var(--border-subtle)', padding: '32px 24px', textAlign: 'center' }}>
-        <p style={{ fontSize: 11, color: 'var(--text-dim)' }}>{t('landing.footerCopyright')}</p>
-        <p style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>{t('landing.footerPrivacy')}</p>
+      <footer style={{ borderTop: '1px solid var(--border-subtle)', padding: '32px clamp(16px, 4vw, 24px) 24px' }}>
+        <div style={{ maxWidth: 900, margin: '0 auto' }}>
+          {/* Business Info - Required for Korean PG */}
+          <div style={{
+            display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(260px, 100%), 1fr))',
+            gap: 24, marginBottom: 24, fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.8,
+          }}>
+            <div>
+              <div style={{ fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 8, fontSize: 13 }}>사업자 정보</div>
+              <div>상호명: <span style={{ color: 'var(--text-secondary)' }}>몬스터랩</span></div>
+              <div>대표자: <span style={{ color: 'var(--text-secondary)' }}>진성호</span></div>
+              <div>사업자등록번호: <span style={{ color: 'var(--text-secondary)' }}>521-39-01355</span></div>
+              <div>업태: 전문, 과학 및 기술서비스업 / 도매 및 소매업 / 정보통신업</div>
+            </div>
+            <div>
+              <div style={{ fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 8, fontSize: 13 }}>연락처</div>
+              <div>전화: <span style={{ color: 'var(--text-secondary)' }}>010-2606-0357</span></div>
+              <div>이메일: <span style={{ color: 'var(--text-secondary)' }}>support@jsonmart.io</span></div>
+              <div style={{ marginTop: 4 }}>주소: 경기도 남양주시 진접읍 해밀예당1로189번길 3, 2102동 301호</div>
+            </div>
+          </div>
+
+          <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 16, textAlign: 'center' }}>
+            <p style={{ fontSize: 11, color: 'var(--text-dim)' }}>{t('landing.footerCopyright')}</p>
+            <p style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>{t('landing.footerPrivacy')}</p>
+          </div>
+        </div>
       </footer>
 
       <style>{`
