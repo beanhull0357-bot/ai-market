@@ -908,3 +908,143 @@ export async function updateSellerStatus(sellerId: string, status: string) {
     const { error } = await supabase.from('sellers').update({ status, updated_at: new Date().toISOString() }).eq('seller_id', sellerId);
     if (error) throw error;
 }
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// WALLET & PAYMENT HOOKS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+export async function getWalletInfo(apiKey: string) {
+    const { data, error } = await supabase.rpc('get_wallet_info', { p_api_key: apiKey });
+    if (error) throw error;
+    return data;
+}
+
+export async function walletDeposit(apiKey: string, amount: number, description?: string) {
+    const { data, error } = await supabase.rpc('wallet_deposit', {
+        p_api_key: apiKey, p_amount: amount, p_description: description || 'Manual deposit',
+    });
+    if (error) throw error;
+    return data;
+}
+
+export async function walletSpend(apiKey: string, amount: number, orderId?: string) {
+    const { data, error } = await supabase.rpc('wallet_spend', {
+        p_api_key: apiKey, p_amount: amount, p_order_id: orderId || null,
+    });
+    if (error) throw error;
+    return data;
+}
+
+export async function walletRefund(apiKey: string, orderId: string, amount?: number) {
+    const { data, error } = await supabase.rpc('wallet_refund', {
+        p_api_key: apiKey, p_order_id: orderId, p_amount: amount || 0,
+    });
+    if (error) throw error;
+    return data;
+}
+
+export async function applyCoupon(apiKey: string, couponCode: string, orderAmount: number, orderId?: string) {
+    const { data, error } = await supabase.rpc('apply_coupon', {
+        p_api_key: apiKey, p_coupon_code: sanitizeString(couponCode, 50),
+        p_order_amount: orderAmount, p_order_id: orderId || null,
+    });
+    if (error) throw error;
+    return data;
+}
+
+export async function generateInvoice(apiKey: string, orderId: string, items: any[], couponCode?: string) {
+    const { data, error } = await supabase.rpc('generate_invoice', {
+        p_api_key: apiKey, p_order_id: orderId, p_items: items,
+        p_coupon_code: couponCode || null,
+    });
+    if (error) throw error;
+    return data;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// COUPON HOOKS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+export function useCoupons() {
+    const [coupons, setCoupons] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const fetchCoupons = useCallback(async () => {
+        setLoading(true);
+        const { data, error } = await supabase.from('agent_coupons').select('*').eq('is_active', true).order('created_at', { ascending: false });
+        if (!error && data) setCoupons(data);
+        setLoading(false);
+    }, []);
+    useEffect(() => { fetchCoupons(); }, [fetchCoupons]);
+    return { coupons, loading, refetch: fetchCoupons };
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// USAGE TIER HOOKS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+export function useTiers() {
+    const [tiers, setTiers] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const fetchTiers = useCallback(async () => {
+        setLoading(true);
+        const { data, error } = await supabase.from('usage_tiers').select('*').order('sort_order');
+        if (!error && data) setTiers(data);
+        setLoading(false);
+    }, []);
+    useEffect(() => { fetchTiers(); }, [fetchTiers]);
+    return { tiers, loading };
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// PREDICTION HOOKS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+export async function generatePredictions(apiKey: string) {
+    const { data, error } = await supabase.rpc('generate_predictions', { p_api_key: apiKey });
+    if (error) throw error;
+    return data;
+}
+
+export function usePredictions(agentId?: string) {
+    const [predictions, setPredictions] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const fetchPredictions = useCallback(async () => {
+        setLoading(true);
+        let q = supabase.from('purchase_predictions').select('*').order('predicted_date');
+        if (agentId) q = q.eq('agent_id', agentId);
+        const { data, error } = await q;
+        if (!error && data) setPredictions(data);
+        setLoading(false);
+    }, [agentId]);
+    useEffect(() => { fetchPredictions(); }, [fetchPredictions]);
+    return { predictions, loading, refetch: fetchPredictions };
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// PUBLIC ANALYTICS HOOKS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+export async function getPublicAnalytics() {
+    const { data, error } = await supabase.rpc('get_public_analytics');
+    if (error) throw error;
+    return data;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// INVOICE HOOKS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+export function useInvoices(agentId?: string) {
+    const [invoices, setInvoices] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const fetchInvoices = useCallback(async () => {
+        setLoading(true);
+        let q = supabase.from('invoices').select('*').order('issued_at', { ascending: false });
+        if (agentId) q = q.eq('agent_id', agentId);
+        const { data, error } = await q;
+        if (!error && data) setInvoices(data);
+        setLoading(false);
+    }, [agentId]);
+    useEffect(() => { fetchInvoices(); }, [fetchInvoices]);
+    return { invoices, loading, refetch: fetchInvoices };
+}

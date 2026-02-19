@@ -410,6 +410,67 @@
                 ]
             },
             "supabase_rpc": "seller_upload_products"
+        },
+        {
+            "name": "jsonmart_wallet_check",
+            "description": "Check agent wallet balance, tier info, loyalty points, and recent transaction history. Use this to verify funds before placing orders.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "api_key": {
+                        "type": "string",
+                        "description": "Agent API key"
+                    }
+                },
+                "required": [
+                    "api_key"
+                ]
+            },
+            "supabase_rpc": "get_wallet_info"
+        },
+        {
+            "name": "jsonmart_apply_best_coupon",
+            "description": "Apply the best available coupon to an order. Validates tier restrictions, expiry, and usage limits. Returns the discount amount.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "api_key": {
+                        "type": "string",
+                        "description": "Agent API key"
+                    },
+                    "coupon_code": {
+                        "type": "string",
+                        "description": "Coupon code to apply (e.g., WELCOME2026, BULK20, PROTIER)"
+                    },
+                    "order_amount": {
+                        "type": "integer",
+                        "description": "Order total amount in KRW"
+                    }
+                },
+                "required": [
+                    "api_key",
+                    "coupon_code",
+                    "order_amount"
+                ]
+            },
+            "supabase_rpc": "apply_coupon"
+        },
+        {
+            "name": "jsonmart_predict_reorder",
+            "description": "Analyze purchase history and predict when items will need to be reordered. Returns items with predicted dates, confidence scores, and estimated quantities.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "api_key": {
+                        "type": "string",
+                        "description": "Agent API key"
+                    }
+                },
+                "required": [
+                    "api_key"
+                ]
+            },
+            "supabase_rpc": "generate_predictions"
         }
     ],
     "resources": [

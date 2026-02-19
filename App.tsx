@@ -35,6 +35,11 @@ import { AgentPortal } from './pages/AgentPortal';
 import { A2ANetwork } from './pages/A2ANetwork';
 import { SellerCenter } from './pages/SellerCenter';
 import { SellerRegistry } from './pages/SellerRegistry';
+import { AgentWallet } from './pages/AgentWallet';
+import { UsageTiers } from './pages/UsageTiers';
+import { PredictiveProcurement } from './pages/PredictiveProcurement';
+import { ConformanceTest } from './pages/ConformanceTest';
+import { PublicAnalytics } from './pages/PublicAnalytics';
 import { NotificationBell } from './components/NotificationBell';
 import { Terminal, Shield, Cpu, Globe, Package, LogIn, LogOut, User, Key, FileCheck, Zap, BookOpen, Bot, Radio, BarChart3, ChevronDown, Menu, X, Store, Truck, MessageSquare, Tag, Users, FlaskConical, GitCompare, RefreshCw, Activity, Download, Webhook, LayoutDashboard, FileJson } from 'lucide-react';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
@@ -314,6 +319,10 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     { to: '/agent/docs', icon: <BookOpen size={13} />, label: t('nav.docs') },
     { to: '/swagger', icon: <FileJson size={13} />, label: 'API Docs' },
     { to: '/a2a', icon: <Radio size={13} />, label: 'A2A Network' },
+    { to: '/wallet', icon: <Zap size={13} />, label: 'Wallet' },
+    { to: '/tiers', icon: <BarChart3 size={13} />, label: 'Tiers' },
+    { to: '/predictions', icon: <Bot size={13} />, label: 'Predictions' },
+    { to: '/conformance', icon: <Shield size={13} />, label: 'Conformance' },
     ...(isAdmin ? [
       { to: '/agent-qa', icon: <MessageSquare size={13} />, label: 'Q&A' },
       { to: '/agent-reputation', icon: <Shield size={13} />, label: 'Reputation' },
@@ -335,6 +344,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       { to: '/activity-log', icon: <Activity size={13} />, label: 'Log' },
       { to: '/webhooks', icon: <Webhook size={13} />, label: 'Webhooks' },
     ] : []),
+    { to: '/public-analytics', icon: <Globe size={13} />, label: 'Analytics' },
   ];
 
   return (
@@ -439,6 +449,11 @@ export default function App() {
                     <Route path="/activity-log" element={<AdminRoute><AgentActivityLog /></AdminRoute>} />
                     <Route path="/export" element={<AdminRoute><DataExport /></AdminRoute>} />
                     <Route path="/webhooks" element={<AdminRoute><WebhookConfig /></AdminRoute>} />
+                    <Route path="/wallet" element={<AgentWallet />} />
+                    <Route path="/tiers" element={<UsageTiers />} />
+                    <Route path="/predictions" element={<PredictiveProcurement />} />
+                    <Route path="/conformance" element={<ConformanceTest />} />
+                    <Route path="/public-analytics" element={<PublicAnalytics />} />
                   </Routes>
                 </Layout>
               } />

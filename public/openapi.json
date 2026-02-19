@@ -76,6 +76,10 @@
         {
             "name": "Sellers",
             "description": "Multi-seller marketplace management"
+        },
+        {
+            "name": "Payments",
+            "description": "Virtual wallets, coupons, invoices, and tiers"
         }
     ],
     "paths": {
@@ -1647,6 +1651,232 @@
                 "responses": {
                     "200": {
                         "description": "Seller dashboard data"
+                    }
+                }
+            }
+        },
+        "/v1/wallet/info": {
+            "get": {
+                "tags": [
+                    "Payments"
+                ],
+                "operationId": "getWalletInfo",
+                "summary": "Get agent wallet balance, tier info, and recent transactions",
+                "parameters": [
+                    {
+                        "name": "api_key",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Wallet info with balance, tier, and transactions"
+                    }
+                }
+            }
+        },
+        "/v1/wallet/deposit": {
+            "post": {
+                "tags": [
+                    "Payments"
+                ],
+                "operationId": "walletDeposit",
+                "summary": "Deposit credits into agent virtual wallet",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "api_key": {
+                                        "type": "string"
+                                    },
+                                    "amount": {
+                                        "type": "integer"
+                                    },
+                                    "description": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "api_key",
+                                    "amount"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Deposit successful with new balance"
+                    }
+                }
+            }
+        },
+        "/v1/wallet/spend": {
+            "post": {
+                "tags": [
+                    "Payments"
+                ],
+                "operationId": "walletSpend",
+                "summary": "Spend from wallet for an order (with loyalty points earned)",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "api_key": {
+                                        "type": "string"
+                                    },
+                                    "amount": {
+                                        "type": "integer"
+                                    },
+                                    "order_id": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "api_key",
+                                    "amount"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Payment successful"
+                    }
+                }
+            }
+        },
+        "/v1/wallet/refund": {
+            "post": {
+                "tags": [
+                    "Payments"
+                ],
+                "operationId": "walletRefund",
+                "summary": "Refund an order back to wallet",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "api_key": {
+                                        "type": "string"
+                                    },
+                                    "order_id": {
+                                        "type": "string"
+                                    },
+                                    "amount": {
+                                        "type": "integer",
+                                        "default": 0
+                                    }
+                                },
+                                "required": [
+                                    "api_key",
+                                    "order_id"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Refund processed"
+                    }
+                }
+            }
+        },
+        "/v1/coupons/apply": {
+            "post": {
+                "tags": [
+                    "Payments"
+                ],
+                "operationId": "applyCoupon",
+                "summary": "Apply a coupon to an order (checks tier, limits, expiry)",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "api_key": {
+                                        "type": "string"
+                                    },
+                                    "coupon_code": {
+                                        "type": "string"
+                                    },
+                                    "order_amount": {
+                                        "type": "integer"
+                                    },
+                                    "order_id": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "api_key",
+                                    "coupon_code",
+                                    "order_amount"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Coupon applied with discount amount"
+                    }
+                }
+            }
+        },
+        "/v1/predictions": {
+            "post": {
+                "tags": [
+                    "Payments"
+                ],
+                "operationId": "generatePredictions",
+                "summary": "Generate predictive procurement based on purchase patterns",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "api_key": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "api_key"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Predictions generated"
+                    }
+                }
+            }
+        },
+        "/v1/analytics/public": {
+            "get": {
+                "tags": [
+                    "Payments"
+                ],
+                "operationId": "getPublicAnalytics",
+                "summary": "Get public marketplace analytics (no auth required)",
+                "responses": {
+                    "200": {
+                        "description": "Public analytics data"
                     }
                 }
             }

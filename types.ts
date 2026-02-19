@@ -186,3 +186,121 @@ export interface SellerUpload {
   status: 'PROCESSING' | 'COMPLETED' | 'FAILED';
   createdAt: string;
 }
+
+// ━━━ Payment & Wallet Types ━━━
+export type WalletTxType = 'DEPOSIT' | 'SPEND' | 'REFUND' | 'BONUS' | 'COUPON_CREDIT' | 'LOYALTY_EARN' | 'LOYALTY_REDEEM' | 'REFERRAL_BONUS' | 'REVIEW_REWARD' | 'TIER_UPGRADE_BONUS';
+
+export interface WalletInfo {
+  balance: number;
+  totalDeposited: number;
+  totalSpent: number;
+  totalRefunded: number;
+  loyaltyPoints: number;
+}
+
+export interface WalletTransaction {
+  type: WalletTxType;
+  amount: number;
+  balanceAfter: number;
+  orderId?: string;
+  description: string;
+  createdAt: string;
+}
+
+// ━━━ Coupon Types ━━━
+export type CouponType = 'PERCENTAGE' | 'FIXED' | 'FREE_SHIPPING' | 'FIRST_ORDER' | 'BULK_DISCOUNT' | 'LOYALTY_BONUS' | 'REFERRAL' | 'SEASONAL' | 'TIER_EXCLUSIVE' | 'API_CREDIT';
+
+export interface AgentCoupon {
+  id: string;
+  couponCode: string;
+  couponType: CouponType;
+  value: number;
+  minOrderAmount: number;
+  maxDiscount: number;
+  applicableTiers: string[];
+  usageLimit: number;
+  usageCount: number;
+  perAgentLimit: number;
+  validFrom: string;
+  validUntil: string | null;
+  isActive: boolean;
+  description: string;
+}
+
+// ━━━ Invoice Types ━━━
+export interface Invoice {
+  invoiceId: string;
+  orderId: string;
+  agentId: string;
+  items: { sku: string; title: string; qty: number; price: number }[];
+  subtotal: number;
+  discount: number;
+  tax: number;
+  total: number;
+  couponCode?: string;
+  status: 'ISSUED' | 'PAID' | 'CANCELLED' | 'REFUNDED';
+  issuedAt: string;
+}
+
+// ━━━ Usage Tier Types ━━━
+export type TierName = 'FREE' | 'STARTER' | 'PRO' | 'ENTERPRISE';
+
+export interface UsageTier {
+  tierName: TierName;
+  callsPerMonth: number;
+  priceKrw: number;
+  features: Record<string, any>;
+  perks: Record<string, any>;
+  sortOrder: number;
+}
+
+export interface TierInfo {
+  name: TierName;
+  callsPerMonth: number;
+  monthlyCallsUsed: number;
+  price: number;
+  features: Record<string, any>;
+  perks: Record<string, any>;
+}
+
+// ━━━ Prediction Types ━━━
+export interface PurchasePrediction {
+  id: string;
+  agentId: string;
+  sku: string;
+  productTitle: string;
+  predictedDate: string;
+  confidence: number;
+  avgIntervalDays: number;
+  lastOrderDate: string;
+  totalOrders: number;
+  avgQuantity: number;
+  estimatedAmount: number;
+  status: 'PENDING' | 'NOTIFIED' | 'ORDERED' | 'DISMISSED';
+}
+
+// ━━━ Conformance Test Types ━━━
+export type TestStatus = 'PASS' | 'FAIL' | 'SKIP' | 'RUNNING' | 'PENDING';
+
+export interface ConformanceResult {
+  name: string;
+  status: TestStatus;
+  message: string;
+  durationMs: number;
+}
+
+// ━━━ Public Analytics Types ━━━
+export interface PublicAnalyticsData {
+  totalAgents: number;
+  totalSellers: number;
+  totalProducts: number;
+  totalOrders: number;
+  totalRevenue: number;
+  avgTrustScore: number;
+  totalReviews: number;
+  totalA2aQueries: number;
+  tierDistribution: Record<string, number>;
+  categoryDistribution: Record<string, number>;
+  recentOrders7d: number;
+  generatedAt: string;
+}
