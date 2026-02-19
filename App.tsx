@@ -32,6 +32,7 @@ import { DataExport } from './pages/DataExport';
 import { WebhookConfig } from './pages/WebhookConfig';
 import { SwaggerUI } from './pages/SwaggerUI';
 import { AgentPortal } from './pages/AgentPortal';
+import { A2ANetwork } from './pages/A2ANetwork';
 import { NotificationBell } from './components/NotificationBell';
 import { Terminal, Shield, Cpu, Globe, Package, LogIn, LogOut, User, Key, FileCheck, Zap, BookOpen, Bot, Radio, BarChart3, ChevronDown, Menu, X, Store, Truck, MessageSquare, Tag, Users, FlaskConical, GitCompare, RefreshCw, Activity, Download, Webhook, LayoutDashboard, FileJson } from 'lucide-react';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
@@ -308,6 +309,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     { to: '/portal', icon: <User size={13} />, label: 'Portal' },
     { to: '/agent/docs', icon: <BookOpen size={13} />, label: t('nav.docs') },
     { to: '/swagger', icon: <FileJson size={13} />, label: 'API Docs' },
+    { to: '/a2a', icon: <Radio size={13} />, label: 'A2A Network' },
     ...(isAdmin ? [
       { to: '/agent-qa', icon: <MessageSquare size={13} />, label: 'Q&A' },
       { to: '/agent-reputation', icon: <Shield size={13} />, label: 'Reputation' },
@@ -422,6 +424,7 @@ export default function App() {
                     <Route path="/agent-groups" element={<AdminRoute><AgentGroups /></AdminRoute>} />
                     <Route path="/sandbox" element={<AgentSandbox />} />
                     <Route path="/swagger" element={<SwaggerUI />} />
+                    <Route path="/a2a" element={<A2ANetwork />} />
                     <Route path="/portal" element={<AgentPortal />} />
                     <Route path="/compare" element={<ProductCompare />} />
                     <Route path="/auto-reorder" element={<AdminRoute><AutoReorder /></AdminRoute>} />

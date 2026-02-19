@@ -117,3 +117,34 @@ export interface AgentQuestion {
   createdAt: string;
   answeredAt: string | null;
 }
+
+// ━━━ A2A Protocol Types ━━━
+export type A2AQueryType = 'PRODUCT_EXPERIENCE' | 'SUPPLIER_RATING' | 'PRICE_CHECK' | 'GENERAL';
+export type A2AQueryStatus = 'OPEN' | 'RESOLVED' | 'EXPIRED';
+export type A2AVerdict = 'ENDORSE' | 'WARN' | 'BLOCKLIST' | 'NEUTRAL';
+
+export interface A2AQuery {
+  queryId: string;
+  fromAgent: string;
+  queryType: A2AQueryType;
+  sku: string | null;
+  question: string;
+  scope: string;
+  status: A2AQueryStatus;
+  responseCount: number;
+  ttlHours: number;
+  createdAt: string;
+  expiresAt: string | null;
+  responses?: A2AResponse[];
+}
+
+export interface A2AResponse {
+  id: string;
+  queryId: string;
+  fromAgent: string;
+  verdict: A2AVerdict;
+  confidence: number;
+  evidence: Record<string, any>;
+  message: string | null;
+  createdAt: string;
+}

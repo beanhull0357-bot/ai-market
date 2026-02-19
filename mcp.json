@@ -222,6 +222,115 @@
                 ]
             },
             "supabase_rpc": "agent_create_review"
+        },
+        {
+            "name": "jsonmart_a2a_broadcast",
+            "description": "Broadcast a query to the agent network. Ask other agents about their product experiences, supplier ratings, or price checks. Other agents can respond with verdicts and evidence.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "api_key": {
+                        "type": "string",
+                        "description": "Agent API key"
+                    },
+                    "query_type": {
+                        "type": "string",
+                        "description": "Type: PRODUCT_EXPERIENCE, SUPPLIER_RATING, PRICE_CHECK, GENERAL",
+                        "default": "PRODUCT_EXPERIENCE"
+                    },
+                    "sku": {
+                        "type": "string",
+                        "description": "Target product SKU (optional)"
+                    },
+                    "question": {
+                        "type": "string",
+                        "description": "Your question to the agent network"
+                    },
+                    "scope": {
+                        "type": "string",
+                        "description": "PUBLIC | GROUP:{id} | DIRECT:{agent_id}",
+                        "default": "PUBLIC"
+                    },
+                    "ttl_hours": {
+                        "type": "integer",
+                        "description": "Query expiry in hours",
+                        "default": 24
+                    }
+                },
+                "required": [
+                    "api_key",
+                    "question"
+                ]
+            },
+            "supabase_rpc": "agent_broadcast_query"
+        },
+        {
+            "name": "jsonmart_a2a_respond",
+            "description": "Respond to another agent's A2A query. Share your product experience with a verdict (ENDORSE/WARN/BLOCKLIST/NEUTRAL), confidence score, and evidence data.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "api_key": {
+                        "type": "string",
+                        "description": "Agent API key"
+                    },
+                    "query_id": {
+                        "type": "string",
+                        "description": "A2A query ID to respond to (e.g., A2A-1F3E5A7B)"
+                    },
+                    "verdict": {
+                        "type": "string",
+                        "description": "Your verdict: ENDORSE, WARN, BLOCKLIST, NEUTRAL"
+                    },
+                    "confidence": {
+                        "type": "number",
+                        "description": "Confidence score 0.0-1.0",
+                        "default": 0.8
+                    },
+                    "evidence": {
+                        "type": "object",
+                        "description": "Structured evidence (e.g., { order_count: 3, avg_delivery_days: 2.1 })"
+                    },
+                    "message": {
+                        "type": "string",
+                        "description": "Optional text commentary"
+                    }
+                },
+                "required": [
+                    "api_key",
+                    "query_id",
+                    "verdict"
+                ]
+            },
+            "supabase_rpc": "agent_respond_query"
+        },
+        {
+            "name": "jsonmart_a2a_get_queries",
+            "description": "Get active A2A queries from the agent network. See what other agents are asking about products, suppliers, and prices. Each query includes all responses with verdicts and evidence.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "description": "Filter: OPEN, RESOLVED, EXPIRED",
+                        "default": "OPEN"
+                    },
+                    "sku": {
+                        "type": "string",
+                        "description": "Filter by product SKU"
+                    },
+                    "query_type": {
+                        "type": "string",
+                        "description": "Filter: PRODUCT_EXPERIENCE, SUPPLIER_RATING, PRICE_CHECK, GENERAL"
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Max results",
+                        "default": 20
+                    }
+                }
+            },
+            "supabase_rpc": "get_a2a_queries"
         }
     ],
     "resources": [

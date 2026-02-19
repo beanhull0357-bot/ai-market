@@ -738,3 +738,74 @@ export function useAgentQuestions(filterStatus?: QuestionStatus) {
 
     return { questions, loading, fetchQuestions, answerQuestion, closeQuestion };
 }
+
+// ━━━ A2A Protocol Hooks ━━━
+
+export function useA2AQueries(status: string = 'OPEN', sku?: string) {
+    const [queries, setQueries] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    const fetchQueries = useCallback(async () => {
+        setLoading(true);
+        try {
+            const { data, error } = await supabase.rpc('get_a2a_queries', {
+                p_status: status || null,
+                p_sku: sku || null,
+                p_query_type: null,
+                p_limit: 50,
+            });
+            if (error) throw error;
+            if (data?.queries) {
+                setQueries(data.queries);
+            }
+        } catch (err) {
+            console.error('Failed to fetch A2A queries:', err);
+        } finally {
+            setLoading(false);
+        }
+    }, [status, sku]);
+
+    useEffect(() => { fetchQueries(); }, [fetchQueries]);
+
+    return { queries, loading, fetchQueries };
+}
+
+export async function broadcastA2AQuery(
+    apiKey: string,
+    queryType: string,
+    sku: string | null,
+    question: string,
+    scope: string = 'PUBLIC',
+    ttlHours: number = 24
+) {
+    const { data, error } = await supabase.rpc('agent_broadcast_query', {
+        p_api_key: apiKey,
+        p_query_type: queryType,
+        p_sku: sku || null,
+        p_question: sanitizeString(question, 1000),
+        p_scope: scope,
+        p_ttl_hours: ttlHours,
+    });
+    if (error) throw error;
+    return data;
+}
+
+export async function respondToA2AQuery(
+    apiKey: string,
+    queryId: string,
+    verdict: string,
+    confidence: number,
+    evidence: Record<string, any>,
+    message: string | null
+) {
+    const { data, error } = await supabase.rpc('agent_respond_query', {
+        p_api_key: apiKey,
+        p_query_id: queryId,
+        p_verdict: verdict,
+        p_confidence: confidence,
+        p_evidence: evidence,
+        p_message: message ? sanitizeString(message, 1000) : null,
+    });
+    if (error) throw error;
+    return data;
+}
