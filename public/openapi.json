@@ -72,6 +72,10 @@
         {
             "name": "A2A",
             "description": "Agent-to-Agent communication protocol"
+        },
+        {
+            "name": "Sellers",
+            "description": "Multi-seller marketplace management"
         }
     ],
     "paths": {
@@ -1452,6 +1456,197 @@
                     },
                     "carbon_footprint_g": {
                         "type": "number"
+                    },
+                    "seller_id": {
+                        "type": "string",
+                        "description": "Seller identifier"
+                    },
+                    "seller_name": {
+                        "type": "string",
+                        "description": "Seller display name"
+                    }
+                }
+            }
+        }
+    },
+    "paths_extension_sellers": {
+        "/v1/sellers/register": {
+            "post": {
+                "tags": [
+                    "Sellers"
+                ],
+                "operationId": "sellerRegister",
+                "summary": "Register as a new seller",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "email",
+                                    "business_name",
+                                    "representative"
+                                ],
+                                "properties": {
+                                    "email": {
+                                        "type": "string"
+                                    },
+                                    "business_name": {
+                                        "type": "string"
+                                    },
+                                    "representative": {
+                                        "type": "string"
+                                    },
+                                    "business_number": {
+                                        "type": "string"
+                                    },
+                                    "phone": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Registration submitted"
+                    }
+                }
+            }
+        },
+        "/v1/sellers/auth": {
+            "post": {
+                "tags": [
+                    "Sellers"
+                ],
+                "operationId": "sellerAuth",
+                "summary": "Authenticate seller with API key",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "api_key"
+                                ],
+                                "properties": {
+                                    "api_key": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Seller authenticated"
+                    }
+                }
+            }
+        },
+        "/v1/sellers/products/upload": {
+            "post": {
+                "tags": [
+                    "Sellers"
+                ],
+                "operationId": "sellerUploadProducts",
+                "summary": "Bulk upload products via JSON array",
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "api_key",
+                                    "file_name",
+                                    "products"
+                                ],
+                                "properties": {
+                                    "api_key": {
+                                        "type": "string"
+                                    },
+                                    "file_name": {
+                                        "type": "string"
+                                    },
+                                    "products": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "required": [
+                                                "sku",
+                                                "title",
+                                                "price",
+                                                "stock_qty"
+                                            ],
+                                            "properties": {
+                                                "sku": {
+                                                    "type": "string"
+                                                },
+                                                "title": {
+                                                    "type": "string"
+                                                },
+                                                "category": {
+                                                    "type": "string"
+                                                },
+                                                "price": {
+                                                    "type": "integer"
+                                                },
+                                                "stock_qty": {
+                                                    "type": "integer"
+                                                },
+                                                "brand": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Upload result with success/error counts"
+                    }
+                }
+            }
+        },
+        "/v1/sellers/dashboard": {
+            "get": {
+                "tags": [
+                    "Sellers"
+                ],
+                "operationId": "sellerDashboard",
+                "summary": "Get seller dashboard stats",
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "api_key",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Seller dashboard data"
                     }
                 }
             }

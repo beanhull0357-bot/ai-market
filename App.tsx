@@ -33,6 +33,8 @@ import { WebhookConfig } from './pages/WebhookConfig';
 import { SwaggerUI } from './pages/SwaggerUI';
 import { AgentPortal } from './pages/AgentPortal';
 import { A2ANetwork } from './pages/A2ANetwork';
+import { SellerCenter } from './pages/SellerCenter';
+import { SellerRegistry } from './pages/SellerRegistry';
 import { NotificationBell } from './components/NotificationBell';
 import { Terminal, Shield, Cpu, Globe, Package, LogIn, LogOut, User, Key, FileCheck, Zap, BookOpen, Bot, Radio, BarChart3, ChevronDown, Menu, X, Store, Truck, MessageSquare, Tag, Users, FlaskConical, GitCompare, RefreshCw, Activity, Download, Webhook, LayoutDashboard, FileJson } from 'lucide-react';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
@@ -295,7 +297,9 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       { to: '/domeggook', icon: <Store size={13} />, label: t('nav.domeggook') },
       { to: '/orders', icon: <Truck size={13} />, label: t('nav.orders') },
       { to: '/export', icon: <Download size={13} />, label: 'Export' },
+      { to: '/seller-registry', icon: <Shield size={13} />, label: 'Seller 관리' },
     ] : []),
+    { to: '/seller', icon: <Store size={13} />, label: 'Seller Center' },
   ];
   const agentItems: NavItem[] = [
     { to: '/agent-console', icon: <Cpu size={13} />, label: t('nav.agentConsole') },
@@ -425,6 +429,8 @@ export default function App() {
                     <Route path="/sandbox" element={<AgentSandbox />} />
                     <Route path="/swagger" element={<SwaggerUI />} />
                     <Route path="/a2a" element={<A2ANetwork />} />
+                    <Route path="/seller" element={<SellerCenter />} />
+                    <Route path="/seller-registry" element={<AdminRoute><SellerRegistry /></AdminRoute>} />
                     <Route path="/portal" element={<AgentPortal />} />
                     <Route path="/compare" element={<ProductCompare />} />
                     <Route path="/auto-reorder" element={<AdminRoute><AutoReorder /></AdminRoute>} />

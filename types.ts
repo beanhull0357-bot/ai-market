@@ -36,6 +36,8 @@ export interface ProductPack {
   substitutes?: string[];                  // alternative product SKUs
   restockEta?: string;                     // ISO date string
   carbonFootprintG?: number;               // carbon footprint in grams CO2
+  sellerId?: string;                        // seller reference
+  sellerName?: string;                      // seller display name
 }
 
 export interface AgentPolicy {
@@ -146,5 +148,41 @@ export interface A2AResponse {
   confidence: number;
   evidence: Record<string, any>;
   message: string | null;
+  createdAt: string;
+}
+
+// ━━━ Seller Marketplace Types ━━━
+export type SellerStatus = 'PENDING' | 'ACTIVE' | 'SUSPENDED' | 'BANNED';
+
+export interface Seller {
+  sellerId: string;
+  email: string;
+  businessName: string;
+  representative: string;
+  businessNumber?: string;
+  phone?: string;
+  categoryTags: string[];
+  trustScore: number;
+  totalProducts: number;
+  totalSales: number;
+  totalRevenue: number;
+  avgShipDays: number;
+  returnRate: number;
+  status: SellerStatus;
+  commissionRate: number;
+  settlementCycle: string;
+  bankName?: string;
+  bankAccount?: string;
+  createdAt: string;
+}
+
+export interface SellerUpload {
+  id: string;
+  fileName: string;
+  totalRows: number;
+  successCount: number;
+  errorCount: number;
+  errors: { row: number; field: string; message: string }[];
+  status: 'PROCESSING' | 'COMPLETED' | 'FAILED';
   createdAt: string;
 }

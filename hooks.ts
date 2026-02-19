@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from './supabaseClient';
-import { ProductPack, Order, AgentReview } from './types';
+import { ProductPack, Order, AgentReview, Seller, SellerUpload } from './types';
 
 // ---- Input Validation Helpers ----
 
@@ -62,6 +62,8 @@ function rowToProduct(row: any): ProductPack {
         substitutes: row.substitutes || undefined,
         restockEta: row.restock_eta || undefined,
         carbonFootprintG: row.carbon_footprint_g ?? undefined,
+        sellerId: row.seller_id || undefined,
+        sellerName: row.seller_name || undefined,
     };
 }
 
@@ -808,4 +810,101 @@ export async function respondToA2AQuery(
     });
     if (error) throw error;
     return data;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// SELLER MARKETPLACE HOOKS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+function rowToSeller(row: any): Seller {
+    return {
+        sellerId: row.seller_id,
+        email: row.email,
+        businessName: row.business_name,
+        representative: row.representative,
+        businessNumber: row.business_number || undefined,
+        phone: row.phone || undefined,
+        categoryTags: row.category_tags || [],
+        trustScore: row.trust_score || 0,
+        totalProducts: row.total_products || 0,
+        totalSales: row.total_sales || 0,
+        totalRevenue: row.total_revenue || 0,
+        avgShipDays: row.avg_ship_days || 0,
+        returnRate: row.return_rate || 0,
+        status: row.status,
+        commissionRate: row.commission_rate || 10,
+        settlementCycle: row.settlement_cycle || 'MONTHLY',
+        bankName: row.bank_name || undefined,
+        bankAccount: row.bank_account || undefined,
+        createdAt: row.created_at,
+    };
+}
+
+export function useSellers() {
+    const [sellers, setSellers] = useState<Seller[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    const fetchSellers = useCallback(async () => {
+        setLoading(true);
+        const { data, error } = await supabase.from('sellers').select('*').order('created_at', { ascending: false });
+        if (!error && data) setSellers(data.map(rowToSeller));
+        setLoading(false);
+    }, []);
+
+    useEffect(() => { fetchSellers(); }, [fetchSellers]);
+
+    return { sellers, loading, refetch: fetchSellers };
+}
+
+export async function registerSeller(
+    email: string, businessName: string, representative: string,
+    businessNumber?: string, phone?: string, categoryTags?: string[]
+) {
+    const { data, error } = await supabase.rpc('seller_register', {
+        p_email: sanitizeString(email, 200),
+        p_business_name: sanitizeString(businessName, 200),
+        p_representative: sanitizeString(representative, 100),
+        p_business_number: businessNumber ? sanitizeString(businessNumber, 20) : null,
+        p_phone: phone ? sanitizeString(phone, 20) : null,
+        p_category_tags: categoryTags || [],
+    });
+    if (error) throw error;
+    return data;
+}
+
+export async function sellerAuth(apiKey: string) {
+    const { data, error } = await supabase.rpc('seller_auth', { p_api_key: apiKey });
+    if (error) throw error;
+    return data;
+}
+
+export async function uploadSellerProducts(apiKey: string, fileName: string, products: any[]) {
+    const { data, error } = await supabase.rpc('seller_upload_products', {
+        p_api_key: apiKey,
+        p_file_name: sanitizeString(fileName, 200),
+        p_products: products,
+    });
+    if (error) throw error;
+    return data;
+}
+
+export async function getSellerDashboard(apiKey: string) {
+    const { data, error } = await supabase.rpc('seller_dashboard_stats', { p_api_key: apiKey });
+    if (error) throw error;
+    return data;
+}
+
+export async function getSellerProducts(apiKey: string, category?: string, search?: string) {
+    const { data, error } = await supabase.rpc('get_seller_products', {
+        p_api_key: apiKey,
+        p_category: category || null,
+        p_search: search || null,
+    });
+    if (error) throw error;
+    return data;
+}
+
+export async function updateSellerStatus(sellerId: string, status: string) {
+    const { error } = await supabase.from('sellers').update({ status, updated_at: new Date().toISOString() }).eq('seller_id', sellerId);
+    if (error) throw error;
 }

@@ -331,6 +331,85 @@
                 }
             },
             "supabase_rpc": "get_a2a_queries"
+        },
+        {
+            "name": "jsonmart_compare_sellers",
+            "description": "Compare sellers for a given product SKU. Returns all sellers offering that product with trust scores, prices, shipping times, and return policies. Use this to help your principal find the best seller.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "sku": {
+                        "type": "string",
+                        "description": "Product SKU to compare sellers for"
+                    },
+                    "sort_by": {
+                        "type": "string",
+                        "description": "Sort by: price, trust_score, ship_by_days",
+                        "default": "price"
+                    }
+                },
+                "required": [
+                    "sku"
+                ]
+            },
+            "supabase_table": "products",
+            "description_note": "Queries products table filtered by SKU, returns seller_id, seller_name, price, trust info"
+        },
+        {
+            "name": "jsonmart_seller_upload",
+            "description": "Bulk upload products for a seller. Accepts seller API key and array of product objects. Each product needs sku, title, category, price, stock_qty. Existing SKUs are auto-updated.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "api_key": {
+                        "type": "string",
+                        "description": "Seller API key"
+                    },
+                    "file_name": {
+                        "type": "string",
+                        "description": "Upload file name for tracking"
+                    },
+                    "products": {
+                        "type": "array",
+                        "description": "Array of product objects",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "sku": {
+                                    "type": "string"
+                                },
+                                "title": {
+                                    "type": "string"
+                                },
+                                "category": {
+                                    "type": "string"
+                                },
+                                "price": {
+                                    "type": "integer"
+                                },
+                                "stock_qty": {
+                                    "type": "integer"
+                                },
+                                "brand": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "sku",
+                                "title",
+                                "price",
+                                "stock_qty"
+                            ]
+                        }
+                    }
+                },
+                "required": [
+                    "api_key",
+                    "file_name",
+                    "products"
+                ]
+            },
+            "supabase_rpc": "seller_upload_products"
         }
     ],
     "resources": [
