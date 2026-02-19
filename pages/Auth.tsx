@@ -2,15 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
-import { LogIn, AlertCircle, Terminal, Loader } from 'lucide-react';
+import { LogIn, AlertCircle, Terminal, Loader, Eye } from 'lucide-react';
 
 const BUILD_VERSION = 'v5-fix-relogin';
+
+const DEMO_EMAIL = 'demo@jsonmart.xyz';
+const DEMO_PASSWORD = 'demo1234';
 
 export const Auth: React.FC = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [demoLoading, setDemoLoading] = useState(false);
     const { signIn, user } = useAuth();
     const { t } = useLanguage();
     const navigate = useNavigate();
@@ -38,6 +42,26 @@ export const Auth: React.FC = () => {
             setError(err?.message || 'Login failed.');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleDemoLogin = async () => {
+        setError('');
+        setDemoLoading(true);
+        setEmail(DEMO_EMAIL);
+        setPassword(DEMO_PASSWORD);
+
+        try {
+            const result = await signIn(DEMO_EMAIL, DEMO_PASSWORD);
+            if (result.error) {
+                setError(result.error);
+            } else {
+                navigate('/');
+            }
+        } catch (err: any) {
+            setError(err?.message || 'Demo login failed.');
+        } finally {
+            setDemoLoading(false);
         }
     };
 
@@ -168,6 +192,52 @@ export const Auth: React.FC = () => {
                             {loading ? t('auth.processing') : t('auth.signIn')}
                         </button>
                     </form>
+
+                    {/* Divider */}
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        margin: '20px 0',
+                    }}>
+                        <div style={{ flex: 1, height: '1px', backgroundColor: '#333' }} />
+                        <span style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase' }}>
+                            {t('auth.orDemoLogin')}
+                        </span>
+                        <div style={{ flex: 1, height: '1px', backgroundColor: '#333' }} />
+                    </div>
+
+                    {/* Demo Login Button */}
+                    <button
+                        onClick={handleDemoLogin}
+                        disabled={demoLoading || loading}
+                        style={{
+                            width: '100%',
+                            padding: '12px',
+                            fontWeight: 700,
+                            borderRadius: '4px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px',
+                            border: '1px solid #7c3aed',
+                            cursor: (demoLoading || loading) ? 'not-allowed' : 'pointer',
+                            backgroundColor: demoLoading ? '#333' : 'rgba(124, 58, 237, 0.1)',
+                            color: demoLoading ? '#666' : '#a78bfa',
+                            fontSize: '14px',
+                            transition: 'all 150ms',
+                        }}
+                    >
+                        {demoLoading ? (
+                            <Loader className="animate-spin" size={16} />
+                        ) : (
+                            <Eye size={16} />
+                        )}
+                        {demoLoading ? t('auth.processing') : t('auth.demoLogin')}
+                    </button>
+                    <p style={{ textAlign: 'center', fontSize: '11px', color: '#555', marginTop: '8px' }}>
+                        {t('auth.demoLoginDesc')}
+                    </p>
                 </div>
 
                 <p style={{ textAlign: 'center', fontSize: '12px', color: '#444', marginTop: '24px' }}>

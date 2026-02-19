@@ -36,7 +36,7 @@ export const translations = {
       feature2Title: "Humans Can't Checkout",
       feature2Desc: "Purchase authority is delegated to agents via strict policy rules. Humans only oversee the approval queue.",
       feature3Title: "Fulfilled via Domeme",
-      feature3Desc: "Seamless B2B fulfillment backend. Orders are verified and routed to wholesale suppliers.",
+      feature3Desc: "Seamless agent-native fulfillment backend. Orders are verified and routed to wholesale suppliers.",
       catalogPreview: "Catalog Preview",
       catalogDesc: "This is how your agent sees our inventory. Optimized for LLM context windows and deterministic decision making.",
       list1: "Normalized Attributes",
@@ -135,7 +135,10 @@ export const translations = {
       hasAccount: "Already have an account? Sign In",
       noAccount: "No account? Create one",
       footer: "Your credentials are secured via Supabase Auth.",
-      signOut: "Sign Out"
+      signOut: "Sign Out",
+      demoLogin: "Demo Login",
+      demoLoginDesc: "For investors & partners — explore the platform instantly.",
+      orDemoLogin: "or try demo"
     },
     agents: {
       title: "Agent Management",
@@ -335,7 +338,7 @@ export const translations = {
       feature2Title: "인간은 결제 불가",
       feature2Desc: "구매 권한은 엄격한 정책 규칙에 따라 에이전트에게 위임됩니다. 인간은 승인 대기열만 감독합니다.",
       feature3Title: "도매매(Domeme) 연동",
-      feature3Desc: "원활한 B2B 풀필먼트 백엔드. 주문이 검증되고 도매 공급업체로 라우팅됩니다.",
+      feature3Desc: "원활한 에이전트 전용 풀필먼트 백엔드. 주문이 검증되고 도매 공급업체로 라우팅됩니다.",
       catalogPreview: "카탈로그 미리보기",
       catalogDesc: "에이전트가 보는 인벤토리 모습입니다. LLM 컨텍스트 윈도우와 결정론적 의사결정에 최적화되어 있습니다.",
       list1: "정규화된 속성",
@@ -434,7 +437,10 @@ export const translations = {
       hasAccount: "이미 계정이 있으신가요? 로그인",
       noAccount: "계정이 없으신가요? 생성하기",
       footer: "자격 증명은 Supabase Auth를 통해 보안됩니다.",
-      signOut: "로그아웃"
+      signOut: "로그아웃",
+      demoLogin: "데모 로그인",
+      demoLoginDesc: "투자자 및 파트너용 — 계정 없이 바로 체험하세요.",
+      orDemoLogin: "또는 데모 체험"
     },
     agents: {
       title: "에이전트 관리",

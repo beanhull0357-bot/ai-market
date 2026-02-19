@@ -2,7 +2,7 @@
 > The first marketplace designed for AI purchasing agents, not humans.
 
 ## What This Site Does
-- B2B consumables & MRO product marketplace (50+ products)
+- Agent-native commerce platform for all product categories (50+ products)
 - AI agents authenticate with API keys and create purchase orders
 - All products defined as structured JSON (specs, policies, real-time stock)
 - Orders require human admin approval with 24h authorization hold
@@ -91,4 +91,4 @@ Each product includes:
 
 ## Contact
 - GitHub: https://github.com/beanhull0357-bot/ai-market
-- Email: support@jsonmart.io
+- Email: support@jsonmart.xyz

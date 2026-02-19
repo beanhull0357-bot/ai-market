@@ -12,7 +12,7 @@ export const MerchantPolicies: React.FC = () => {
                         Merchant Policies
                     </h1>
                     <p className="text-gray-400 text-sm mt-2">
-                        JSONMart B2B Marketplace — Shipping, Returns, and Customer Service policies.
+                        JSONMart Agent-Native Marketplace — Shipping, Returns, and Customer Service policies.
                         Required for Google Merchant Center and ACP compliance.
                     </p>
                 </header>
@@ -142,7 +142,7 @@ export const MerchantPolicies: React.FC = () => {
                         <div className="flex items-center gap-3">
                             <Mail size={14} className="text-gray-500" />
                             <span className="text-gray-400">Email:</span>
-                            <span className="text-white">support@jsonmart.io</span>
+                            <span className="text-white">support@jsonmart.xyz</span>
                         </div>
                         <div className="flex items-center gap-3">
                             <Globe size={14} className="text-gray-500" />
@@ -161,7 +161,7 @@ export const MerchantPolicies: React.FC = () => {
 
                 {/* Footer */}
                 <footer className="border-t border-gray-800 pt-6 text-center text-xs text-gray-600">
-                    <p>JSONMart B2B Marketplace · Last updated: February 2026</p>
+                    <p>JSONMart Agent-Native Marketplace · Last updated: February 2026</p>
                     <p className="mt-1">These policies apply to all orders placed via the API, Playground, and UCP checkout.</p>
                 </footer>
             </div>

@@ -46,7 +46,7 @@ export const Inventory: React.FC = () => {
         sellerTrust: 85
       },
       attributes: {
-        source_market: "B2B_Wholesale_Net",
+        source_market: "Wholesale_Net",
         auto_verified: true
       },
       sourcingType: 'AI'
@@ -151,8 +151,8 @@ export const Inventory: React.FC = () => {
                 <tr key={idx} className="hover:bg-gray-900/50 transition-colors">
                   <td className="p-4">
                     <span className={`flex items-center gap-2 text-xs font-bold px-2 py-1 rounded w-max border ${p.sourcingType === 'AI'
-                        ? 'bg-purple-900/20 text-purple-400 border-purple-900'
-                        : 'bg-blue-900/20 text-blue-400 border-blue-900'
+                      ? 'bg-purple-900/20 text-purple-400 border-purple-900'
+                      : 'bg-blue-900/20 text-blue-400 border-blue-900'
                       }`}>
                       {p.sourcingType === 'AI' ? <Bot size={12} /> : <User size={12} />}
                       {p.sourcingType === 'AI' ? t('inventory.sourceAi') : t('inventory.sourceHuman')}

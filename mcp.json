@@ -227,7 +227,7 @@
     "resources": [
         {
             "name": "product_catalog",
-            "description": "Full JSONMart product catalog with 50+ B2B office/consumable products",
+            "description": "Full JSONMart product catalog with 50+ products across all categories",
             "uri": "jsonmart://catalog",
             "mimeType": "application/json"
         },

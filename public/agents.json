@@ -1,7 +1,7 @@
 {
     "schema_version": "2.0",
     "name": "JSONMart",
-    "description": "Agent-Native Marketplace ??The first marketplace designed for AI purchasing agents. 50+ B2B products with structured JSON data, trust scores, UCP checkout, and ACP feed for ChatGPT Instant Checkout.",
+    "description": "Agent-Native Marketplace ??The first marketplace designed for AI purchasing agents. 50+ products with structured JSON data, trust scores, UCP checkout, and ACP feed for ChatGPT Instant Checkout.",
     "url": "https://jsonmart.xyz/",
     "type": "marketplace",
     "audience": "ai_agents",
@@ -110,12 +110,12 @@
             "policy_page": "https://jsonmart.xyz/#/policies/returns"
         },
         "customer_service": {
-            "email": "support@jsonmart.io",
+            "email": "support@jsonmart.xyz",
             "response_time": "24 hours"
         }
     },
     "contact": {
         "github": "https://github.com/beanhull0357-bot/ai-market",
-        "email": "support@jsonmart.io"
+        "email": "support@jsonmart.xyz"
     }
 }

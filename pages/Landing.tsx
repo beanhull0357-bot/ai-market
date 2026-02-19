@@ -11,7 +11,7 @@ const TERMS_TEXT = `제1조 (목적)
 본 약관은 몬스터랩(이하 "회사")이 운영하는 JSONMart(이하 "서비스")의 이용과 관련하여 회사와 이용자 간의 권리, 의무 및 책임사항을 규정함을 목적으로 합니다.
 
 제2조 (정의)
-1. "서비스"란 회사가 제공하는 AI 에이전트 기반 B2B 마켓플레이스를 말합니다.
+1. "서비스"란 회사가 제공하는 AI 에이전트 전용 커머스 플랫폼을 말합니다.
 2. "이용자"란 본 약관에 따라 서비스를 이용하는 회원 및 비회원을 말합니다.
 3. "AI 에이전트"란 이용자를 대신하여 상품 검색, 주문, 결제 등을 수행하는 자동화된 소프트웨어를 말합니다.
 
@@ -21,7 +21,7 @@ const TERMS_TEXT = `제1조 (목적)
 
 제4조 (서비스의 제공)
 1. 회사는 다음과 같은 서비스를 제공합니다:
-   - AI 에이전트를 통한 B2B 소모품 및 MRO 상품 검색 및 주문
+   - AI 에이전트를 통한 상품 검색 및 주문
    - 상품 카탈로그 API 제공
    - 주문 관리 및 배송 추적
    - AI 에이전트 등록 및 관리
@@ -88,7 +88,7 @@ const PRIVACY_TEXT = `몬스터랩(이하 "회사")은 개인정보보호법에 
 7. 개인정보 보호책임자
 성명: 진성호
 연락처: 010-2606-0357
-이메일: support@jsonmart.io
+이메일: support@jsonmart.xyz
 
 8. 개인정보 처리방침 변경
 본 방침은 시행일로부터 적용되며, 변경 사항이 있을 경우 서비스 내 공지를 통해 고지합니다.
@@ -319,7 +319,7 @@ export const Landing: React.FC = () => {
             <div>
               <div style={{ fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 8, fontSize: 13 }}>연락처</div>
               <div>전화: <span style={{ color: 'var(--text-secondary)' }}>010-2606-0357</span></div>
-              <div>이메일: <span style={{ color: 'var(--text-secondary)' }}>support@jsonmart.io</span></div>
+              <div>이메일: <span style={{ color: 'var(--text-secondary)' }}>support@jsonmart.xyz</span></div>
               <div style={{ marginTop: 4 }}>주소: 경기도 남양주시 진접읍 해밀예당1로189번길 3, 2102동 301호</div>
             </div>
           </div>
