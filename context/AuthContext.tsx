@@ -17,8 +17,16 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const DEMO_EMAIL = 'demo@jsonmart.xyz';
+
 // Fetch role with timeout to prevent hanging
-async function fetchUserRole(): Promise<'admin' | 'viewer'> {
+async function fetchUserRole(email?: string): Promise<'admin' | 'viewer'> {
+    // Demo account always gets admin access
+    if (email === DEMO_EMAIL) {
+        console.log('[Auth] Demo account detected — granting admin role');
+        return 'admin';
+    }
+
     try {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 5000);
@@ -49,7 +57,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             if (!isMounted) return;
             console.log('[Auth] getSession:', session ? `has session (${session.user.email})` : 'no session');
             if (session?.user) {
-                const role = await fetchUserRole();
+                const role = await fetchUserRole(session.user.email);
                 if (isMounted) {
                     setUser({
                         id: session.user.id,
@@ -67,7 +75,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             if (session?.user) {
                 const sessionUser = session.user;
                 // Fire and forget — don't block the auth state change
-                fetchUserRole().then(role => {
+                fetchUserRole(sessionUser.email).then(role => {
                     if (isMounted) {
                         setUser({
                             id: sessionUser.id,
