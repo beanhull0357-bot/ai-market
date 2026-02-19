@@ -30,8 +30,10 @@ import { AdminDashboard } from './pages/AdminDashboard';
 import { AgentActivityLog } from './pages/AgentActivityLog';
 import { DataExport } from './pages/DataExport';
 import { WebhookConfig } from './pages/WebhookConfig';
+import { SwaggerUI } from './pages/SwaggerUI';
+import { AgentPortal } from './pages/AgentPortal';
 import { NotificationBell } from './components/NotificationBell';
-import { Terminal, Shield, Cpu, Globe, Package, LogIn, LogOut, User, Key, FileCheck, Zap, BookOpen, Bot, Radio, BarChart3, ChevronDown, Menu, X, Store, Truck, MessageSquare, Tag, Users, FlaskConical, GitCompare, RefreshCw, Activity, Download, Webhook, LayoutDashboard } from 'lucide-react';
+import { Terminal, Shield, Cpu, Globe, Package, LogIn, LogOut, User, Key, FileCheck, Zap, BookOpen, Bot, Radio, BarChart3, ChevronDown, Menu, X, Store, Truck, MessageSquare, Tag, Users, FlaskConical, GitCompare, RefreshCw, Activity, Download, Webhook, LayoutDashboard, FileJson } from 'lucide-react';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -303,7 +305,9 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     ] : []),
     { to: '/playground', icon: <Zap size={13} />, label: t('playground.navTitle') },
     { to: '/sandbox', icon: <FlaskConical size={13} />, label: 'Sandbox' },
+    { to: '/portal', icon: <User size={13} />, label: 'Portal' },
     { to: '/agent/docs', icon: <BookOpen size={13} />, label: t('nav.docs') },
+    { to: '/swagger', icon: <FileJson size={13} />, label: 'API Docs' },
     ...(isAdmin ? [
       { to: '/agent-qa', icon: <MessageSquare size={13} />, label: 'Q&A' },
       { to: '/agent-reputation', icon: <Shield size={13} />, label: 'Reputation' },
@@ -417,6 +421,8 @@ export default function App() {
                     <Route path="/promotions" element={<AdminRoute><Promotions /></AdminRoute>} />
                     <Route path="/agent-groups" element={<AdminRoute><AgentGroups /></AdminRoute>} />
                     <Route path="/sandbox" element={<AgentSandbox />} />
+                    <Route path="/swagger" element={<SwaggerUI />} />
+                    <Route path="/portal" element={<AgentPortal />} />
                     <Route path="/compare" element={<ProductCompare />} />
                     <Route path="/auto-reorder" element={<AdminRoute><AutoReorder /></AdminRoute>} />
                     <Route path="/agent-reputation" element={<AdminRoute><AgentReputation /></AdminRoute>} />

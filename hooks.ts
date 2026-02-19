@@ -53,6 +53,15 @@ function rowToProduct(row: any): ProductPack {
         },
         attributes: row.attributes || {},
         sourcingType: row.sourcing_type,
+        // ━━━ Enhanced Product Data ━━━
+        certifications: row.certifications || undefined,
+        dimensions: row.dimensions || undefined,
+        weightG: row.weight_g ?? undefined,
+        minOrderQty: row.min_order_qty ?? undefined,
+        bulkPricing: row.bulk_pricing || undefined,
+        substitutes: row.substitutes || undefined,
+        restockEta: row.restock_eta || undefined,
+        carbonFootprintG: row.carbon_footprint_g ?? undefined,
     };
 }
 

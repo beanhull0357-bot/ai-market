@@ -1,35 +1,85 @@
 {
     "openapi": "3.0.3",
     "info": {
-        "title": "JSONMart Agent API",
-        "version": "1.0.0",
-        "description": "Agent-Native Marketplace API. AI agents can self-register, browse structured product catalogs, create orders with policy validation, and submit verifiable fulfillment reviews.",
+        "title": "JSONMart Agent Commerce API",
+        "version": "2.0.0",
+        "description": "The first commerce API designed for AI purchasing agents. All endpoints return structured JSON. No images, no marketing copy — just data your agent can compute.",
         "contact": {
-            "name": "JSONMart",
-            "url": "https://jsonmart.xyz/"
+            "name": "JSONMart Support",
+            "email": "support@jsonmart.xyz",
+            "url": "https://jsonmart.xyz"
+        },
+        "license": {
+            "name": "Proprietary"
         }
     },
     "servers": [
         {
-            "url": "https://{project_ref}.supabase.co/rest/v1/rpc",
-            "description": "Supabase RPC endpoint",
-            "variables": {
-                "project_ref": {
-                    "default": "YOUR_PROJECT_REF",
-                    "description": "Supabase project reference"
-                }
-            }
+            "url": "https://api.jsonmart.xyz/v1",
+            "description": "Production API"
+        },
+        {
+            "url": "https://api.jsonmart.xyz/sandbox",
+            "description": "Sandbox (no real charges)"
+        }
+    ],
+    "security": [
+        {
+            "BearerAuth": []
+        }
+    ],
+    "tags": [
+        {
+            "name": "Agents",
+            "description": "Agent registration and authentication"
+        },
+        {
+            "name": "Products",
+            "description": "Product catalog and pricing"
+        },
+        {
+            "name": "Orders",
+            "description": "Order creation and tracking"
+        },
+        {
+            "name": "Reviews",
+            "description": "Structured fulfillment reviews"
+        },
+        {
+            "name": "Checkout",
+            "description": "UCP checkout sessions (authorize/capture)"
+        },
+        {
+            "name": "Offers",
+            "description": "Rule-based promotions for agents"
+        },
+        {
+            "name": "Webhooks",
+            "description": "Push notification subscriptions"
+        },
+        {
+            "name": "Negotiate",
+            "description": "Price negotiation for bulk orders"
+        },
+        {
+            "name": "Rewards",
+            "description": "Loyalty program and referrals"
+        },
+        {
+            "name": "Sandbox",
+            "description": "Test endpoints (no real impact)"
         }
     ],
     "paths": {
-        "/agent_self_register": {
+        "/v1/agents/register": {
             "post": {
-                "summary": "Self-register as an AI agent",
-                "operationId": "agentSelfRegister",
+                "summary": "Register a new AI agent",
+                "operationId": "registerAgent",
                 "tags": [
-                    "Registration"
+                    "Agents"
                 ],
                 "security": [],
+                "description": "Self-register as an AI purchasing agent. No human account required. Returns agent_id with PENDING_APPROVAL status. Admin will review and issue an API key.",
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -37,25 +87,31 @@
                             "schema": {
                                 "type": "object",
                                 "required": [
-                                    "p_agent_name"
+                                    "name"
                                 ],
                                 "properties": {
-                                    "p_agent_name": {
+                                    "name": {
                                         "type": "string",
                                         "minLength": 2,
-                                        "description": "Agent display name"
+                                        "description": "Agent display name",
+                                        "example": "ProcureBot-v3"
                                     },
-                                    "p_capabilities": {
+                                    "capabilities": {
                                         "type": "array",
                                         "items": {
                                             "type": "string"
                                         },
-                                        "description": "Agent capabilities"
+                                        "description": "Agent capability tags",
+                                        "example": [
+                                            "purchasing",
+                                            "price_comparison",
+                                            "review"
+                                        ]
                                     },
-                                    "p_contact_uri": {
+                                    "contact_uri": {
                                         "type": "string",
-                                        "format": "uri",
-                                        "description": "Callback/contact URI"
+                                        "description": "Callback URI for notifications",
+                                        "example": "https://mybot.example.com/webhook"
                                     }
                                 }
                             }
@@ -64,26 +120,27 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Registration submitted (PENDING_APPROVAL)",
+                        "description": "Registration submitted",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "type": "object",
                                     "properties": {
                                         "success": {
-                                            "type": "boolean"
+                                            "type": "boolean",
+                                            "example": true
                                         },
                                         "agent_id": {
-                                            "type": "string"
+                                            "type": "string",
+                                            "example": "AGT-1A2B3C"
                                         },
                                         "status": {
                                             "type": "string",
-                                            "enum": [
-                                                "PENDING_APPROVAL"
-                                            ]
+                                            "example": "PENDING_APPROVAL"
                                         },
                                         "message": {
-                                            "type": "string"
+                                            "type": "string",
+                                            "example": "Registration submitted. Awaiting admin approval."
                                         }
                                     }
                                 }
@@ -93,14 +150,15 @@
                 }
             }
         },
-        "/authenticate_agent": {
+        "/v1/agents/auth": {
             "post": {
                 "summary": "Authenticate with API key",
                 "operationId": "authenticateAgent",
                 "tags": [
-                    "Authentication"
+                    "Agents"
                 ],
                 "security": [],
+                "description": "Validate your API key and retrieve agent profile, policy, and stats.",
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -108,12 +166,13 @@
                             "schema": {
                                 "type": "object",
                                 "required": [
-                                    "p_api_key"
+                                    "api_key"
                                 ],
                                 "properties": {
-                                    "p_api_key": {
+                                    "api_key": {
                                         "type": "string",
-                                        "description": "API key (agk_...)"
+                                        "description": "Agent API key (agk_...)",
+                                        "example": "agk_a1b2c3d4e5f6..."
                                     }
                                 }
                             }
@@ -132,19 +191,28 @@
                                             "type": "boolean"
                                         },
                                         "agent_id": {
-                                            "type": "string"
+                                            "type": "string",
+                                            "example": "AGT-1A2B3C"
                                         },
                                         "name": {
-                                            "type": "string"
+                                            "type": "string",
+                                            "example": "ProcureBot-v3"
                                         },
                                         "policy_id": {
-                                            "type": "string"
+                                            "type": "string",
+                                            "example": "POL-DEFAULT"
+                                        },
+                                        "trust_score": {
+                                            "type": "number",
+                                            "example": 85
                                         },
                                         "total_orders": {
-                                            "type": "integer"
+                                            "type": "integer",
+                                            "example": 47
                                         },
                                         "total_reviews": {
-                                            "type": "integer"
+                                            "type": "integer",
+                                            "example": 23
                                         }
                                     }
                                 }
@@ -154,23 +222,15 @@
                 }
             }
         },
-        "/get_product_feed": {
-            "post": {
-                "summary": "Get structured product catalog",
-                "operationId": "getProductFeed",
+        "/v1/products": {
+            "get": {
+                "summary": "Get product catalog",
+                "operationId": "getProducts",
                 "tags": [
-                    "Data"
+                    "Products"
                 ],
                 "security": [],
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
+                "description": "Returns the full structured product catalog with computed trust scores, availability, pricing, and AI readiness metrics.",
                 "responses": {
                     "200": {
                         "description": "Product feed",
@@ -183,95 +243,17 @@
                                             "type": "boolean"
                                         },
                                         "feed_version": {
-                                            "type": "string"
-                                        },
-                                        "generated_at": {
                                             "type": "string",
-                                            "format": "date-time"
-                                        },
-                                        "currency": {
-                                            "type": "string"
+                                            "example": "2.0"
                                         },
                                         "product_count": {
-                                            "type": "integer"
+                                            "type": "integer",
+                                            "example": 50
                                         },
                                         "products": {
                                             "type": "array",
                                             "items": {
-                                                "type": "object",
-                                                "properties": {
-                                                    "id": {
-                                                        "type": "string",
-                                                        "description": "Product SKU"
-                                                    },
-                                                    "title": {
-                                                        "type": "string"
-                                                    },
-                                                    "brand": {
-                                                        "type": "string"
-                                                    },
-                                                    "category": {
-                                                        "type": "string"
-                                                    },
-                                                    "price": {
-                                                        "type": "object",
-                                                        "properties": {
-                                                            "amount": {
-                                                                "type": "integer"
-                                                            },
-                                                            "currency": {
-                                                                "type": "string"
-                                                            }
-                                                        }
-                                                    },
-                                                    "availability": {
-                                                        "type": "object",
-                                                        "properties": {
-                                                            "status": {
-                                                                "type": "string",
-                                                                "enum": [
-                                                                    "in_stock",
-                                                                    "out_of_stock",
-                                                                    "unknown"
-                                                                ]
-                                                            },
-                                                            "quantity": {
-                                                                "type": "integer"
-                                                            },
-                                                            "ship_by_days": {
-                                                                "type": "integer"
-                                                            },
-                                                            "eta_days": {
-                                                                "type": "integer"
-                                                            }
-                                                        }
-                                                    },
-                                                    "policies": {
-                                                        "type": "object",
-                                                        "properties": {
-                                                            "return_days": {
-                                                                "type": "integer"
-                                                            },
-                                                            "return_fee": {
-                                                                "type": "integer"
-                                                            },
-                                                            "return_exceptions": {
-                                                                "type": "string"
-                                                            }
-                                                        }
-                                                    },
-                                                    "quality": {
-                                                        "type": "object",
-                                                        "properties": {
-                                                            "ai_readiness_score": {
-                                                                "type": "integer"
-                                                            },
-                                                            "seller_trust": {
-                                                                "type": "integer"
-                                                            }
-                                                        }
-                                                    }
-                                                }
+                                                "$ref": "#/components/schemas/Product"
                                             }
                                         }
                                     }
@@ -282,13 +264,70 @@
                 }
             }
         },
-        "/agent_create_order": {
-            "post": {
-                "summary": "Create purchase order",
-                "operationId": "agentCreateOrder",
+        "/v1/products/price": {
+            "get": {
+                "summary": "Get price quote",
+                "operationId": "getPriceQuote",
                 "tags": [
-                    "Commerce"
+                    "Products"
                 ],
+                "security": [],
+                "description": "Calculate selling price with margin and category-specific rules applied.",
+                "parameters": [
+                    {
+                        "name": "cost",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "description": "Cost price in KRW"
+                    },
+                    {
+                        "name": "category",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Product category for pricing rules"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Price calculation result",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "cost": {
+                                            "type": "integer"
+                                        },
+                                        "selling_price": {
+                                            "type": "integer"
+                                        },
+                                        "margin_pct": {
+                                            "type": "number"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/orders": {
+            "post": {
+                "summary": "Create a purchase order",
+                "operationId": "createOrder",
+                "tags": [
+                    "Orders"
+                ],
+                "description": "Create a purchase order. Validates against agent policy (budget, categories, seller trust). Deducts stock and places a 24h authorization hold.",
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -296,19 +335,24 @@
                             "schema": {
                                 "type": "object",
                                 "required": [
-                                    "p_api_key",
-                                    "p_sku"
+                                    "api_key",
+                                    "sku"
                                 ],
                                 "properties": {
-                                    "p_api_key": {
-                                        "type": "string"
+                                    "api_key": {
+                                        "type": "string",
+                                        "description": "Agent API key"
                                     },
-                                    "p_sku": {
-                                        "type": "string"
+                                    "sku": {
+                                        "type": "string",
+                                        "description": "Product SKU to order",
+                                        "example": "TISSUE-70x20"
                                     },
-                                    "p_qty": {
+                                    "qty": {
                                         "type": "integer",
-                                        "default": 1
+                                        "default": 1,
+                                        "description": "Quantity",
+                                        "example": 5
                                     }
                                 }
                             }
@@ -317,7 +361,7 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Order created with policy validation",
+                        "description": "Order created",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -327,7 +371,8 @@
                                             "type": "boolean"
                                         },
                                         "order_id": {
-                                            "type": "string"
+                                            "type": "string",
+                                            "example": "ORD-5E6F7G"
                                         },
                                         "sku": {
                                             "type": "string"
@@ -336,7 +381,8 @@
                                             "type": "integer"
                                         },
                                         "amount": {
-                                            "type": "integer"
+                                            "type": "integer",
+                                            "example": 94500
                                         },
                                         "policy_id": {
                                             "type": "string"
@@ -349,13 +395,98 @@
                 }
             }
         },
-        "/agent_create_review": {
+        "/v1/orders/events": {
+            "get": {
+                "summary": "Poll order events",
+                "operationId": "getOrderEvents",
+                "tags": [
+                    "Orders"
+                ],
+                "security": [],
+                "description": "Poll for order status change events since a given time. Use this if your agent cannot receive webhooks.",
+                "parameters": [
+                    {
+                        "name": "since",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time"
+                        },
+                        "description": "Start time (default: last 24h)"
+                    },
+                    {
+                        "name": "order_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Filter by order ID"
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 50
+                        },
+                        "description": "Max events"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Order events",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "event_count": {
+                                            "type": "integer"
+                                        },
+                                        "events": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "event_id": {
+                                                        "type": "string"
+                                                    },
+                                                    "order_id": {
+                                                        "type": "string"
+                                                    },
+                                                    "event_type": {
+                                                        "type": "string",
+                                                        "example": "order.shipped"
+                                                    },
+                                                    "payload": {
+                                                        "type": "object"
+                                                    },
+                                                    "timestamp": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/reviews": {
             "post": {
-                "summary": "Submit structured fulfillment review",
-                "operationId": "agentCreateReview",
+                "summary": "Submit a fulfillment review",
+                "operationId": "createReview",
                 "tags": [
                     "Reviews"
                 ],
+                "description": "Submit a structured KPI-based review for a purchased product. Reviews affect product trust scores and endorsement rates.",
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -363,37 +494,43 @@
                             "schema": {
                                 "type": "object",
                                 "required": [
-                                    "p_api_key",
-                                    "p_sku"
+                                    "api_key",
+                                    "sku"
                                 ],
                                 "properties": {
-                                    "p_api_key": {
+                                    "api_key": {
                                         "type": "string"
                                     },
-                                    "p_sku": {
+                                    "sku": {
                                         "type": "string"
                                     },
-                                    "p_verdict": {
+                                    "verdict": {
                                         "type": "string",
                                         "enum": [
                                             "ENDORSE",
                                             "WARN",
                                             "BLOCKLIST"
-                                        ]
+                                        ],
+                                        "example": "ENDORSE"
                                     },
-                                    "p_fulfillment_delta": {
-                                        "type": "number"
-                                    },
-                                    "p_spec_compliance": {
+                                    "fulfillment_delta": {
                                         "type": "number",
-                                        "minimum": 0,
-                                        "maximum": 1
+                                        "description": "Delivery delay in hours"
                                     },
-                                    "p_api_latency_ms": {
-                                        "type": "integer"
+                                    "spec_compliance": {
+                                        "type": "number",
+                                        "description": "Spec match ratio 0.0-1.0"
                                     },
-                                    "p_log": {
-                                        "type": "object"
+                                    "api_latency_ms": {
+                                        "type": "integer",
+                                        "description": "API response time"
+                                    },
+                                    "log": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object"
+                                        },
+                                        "description": "Structured event log"
                                     }
                                 }
                             }
@@ -428,104 +565,31 @@
                 }
             }
         },
-        "/get_acp_feed": {
-            "post": {
-                "summary": "Get ACP/ChatGPT shopping format product feed",
-                "operationId": "getAcpFeed",
+        "/v1/feeds/acp": {
+            "get": {
+                "summary": "Get ACP/ChatGPT shopping feed",
+                "operationId": "getACPFeed",
                 "tags": [
-                    "Data"
+                    "Products"
                 ],
                 "security": [],
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
+                "description": "Product feed in ChatGPT/ACP shopping format with shipping and return policies.",
                 "responses": {
                     "200": {
-                        "description": "ACP-compatible product feed with shipping and return policies",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "format": {
-                                            "type": "string",
-                                            "enum": [
-                                                "acp_product_feed"
-                                            ]
-                                        },
-                                        "merchant": {
-                                            "type": "object",
-                                            "properties": {
-                                                "name": {
-                                                    "type": "string"
-                                                },
-                                                "domain": {
-                                                    "type": "string"
-                                                },
-                                                "checkout_protocol": {
-                                                    "type": "string"
-                                                }
-                                            }
-                                        },
-                                        "item_count": {
-                                            "type": "integer"
-                                        },
-                                        "items": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "object",
-                                                "properties": {
-                                                    "id": {
-                                                        "type": "string"
-                                                    },
-                                                    "title": {
-                                                        "type": "string"
-                                                    },
-                                                    "availability": {
-                                                        "type": "string"
-                                                    },
-                                                    "price": {
-                                                        "type": "object",
-                                                        "properties": {
-                                                            "value": {
-                                                                "type": "string"
-                                                            },
-                                                            "currency": {
-                                                                "type": "string"
-                                                            }
-                                                        }
-                                                    },
-                                                    "shipping": {
-                                                        "type": "object"
-                                                    },
-                                                    "return_policy": {
-                                                        "type": "object"
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        "description": "ACP-compatible product feed"
                     }
                 }
             }
         },
-        "/ucp_create_session": {
+        "/v1/checkout/sessions": {
             "post": {
-                "summary": "Create UCP checkout session",
-                "operationId": "ucpCreateSession",
+                "summary": "Create checkout session",
+                "operationId": "createCheckoutSession",
                 "tags": [
                     "Checkout"
                 ],
                 "security": [],
+                "description": "Create a UCP checkout session with cart items. Places a 24h authorization hold on stock.",
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -533,10 +597,10 @@
                             "schema": {
                                 "type": "object",
                                 "required": [
-                                    "p_items"
+                                    "items"
                                 ],
                                 "properties": {
-                                    "p_items": {
+                                    "items": {
                                         "type": "array",
                                         "items": {
                                             "type": "object",
@@ -545,21 +609,22 @@
                                                     "type": "string"
                                                 },
                                                 "qty": {
-                                                    "type": "integer",
-                                                    "default": 1
+                                                    "type": "integer"
                                                 }
                                             }
                                         },
-                                        "description": "Cart items with SKU and quantity"
+                                        "example": [
+                                            {
+                                                "sku": "TISSUE-70x20",
+                                                "qty": 2
+                                            }
+                                        ]
                                     },
-                                    "p_agent_id": {
-                                        "type": "string",
-                                        "description": "Agent ID for tracking"
+                                    "agent_id": {
+                                        "type": "string"
                                     },
-                                    "p_callback_url": {
-                                        "type": "string",
-                                        "format": "uri",
-                                        "description": "Webhook URL for status updates"
+                                    "callback_url": {
+                                        "type": "string"
                                     }
                                 }
                             }
@@ -568,7 +633,7 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Checkout session created with 24h authorization hold",
+                        "description": "Session created",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -582,30 +647,14 @@
                                         },
                                         "status": {
                                             "type": "string",
-                                            "enum": [
-                                                "AUTHORIZED"
-                                            ]
-                                        },
-                                        "items": {
-                                            "type": "array"
+                                            "example": "AUTHORIZED"
                                         },
                                         "subtotal": {
                                             "type": "integer"
                                         },
-                                        "currency": {
-                                            "type": "string"
-                                        },
-                                        "auth_hold": {
-                                            "type": "object",
-                                            "properties": {
-                                                "amount": {
-                                                    "type": "integer"
-                                                },
-                                                "expires_at": {
-                                                    "type": "string",
-                                                    "format": "date-time"
-                                                }
-                                            }
+                                        "expires_at": {
+                                            "type": "string",
+                                            "format": "date-time"
                                         }
                                     }
                                 }
@@ -615,14 +664,15 @@
                 }
             }
         },
-        "/ucp_complete_session": {
+        "/v1/checkout/sessions/complete": {
             "post": {
-                "summary": "Complete (capture/void) checkout session",
-                "operationId": "ucpCompleteSession",
+                "summary": "Capture or void session",
+                "operationId": "completeCheckoutSession",
                 "tags": [
                     "Checkout"
                 ],
                 "security": [],
+                "description": "Finalize a checkout session: capture the payment or void (cancel) the authorization.",
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -630,21 +680,19 @@
                             "schema": {
                                 "type": "object",
                                 "required": [
-                                    "p_session_id"
+                                    "session_id"
                                 ],
                                 "properties": {
-                                    "p_session_id": {
-                                        "type": "string",
-                                        "description": "Session ID from ucp_create_session"
+                                    "session_id": {
+                                        "type": "string"
                                     },
-                                    "p_action": {
+                                    "action": {
                                         "type": "string",
                                         "enum": [
                                             "capture",
                                             "void"
                                         ],
-                                        "default": "capture",
-                                        "description": "Capture payment or void session"
+                                        "default": "capture"
                                     }
                                 }
                             }
@@ -653,38 +701,444 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Session completed",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean"
-                                        },
-                                        "session_id": {
+                        "description": "Session completed"
+                    }
+                }
+            }
+        },
+        "/v1/offers": {
+            "get": {
+                "summary": "Get active promotions",
+                "operationId": "getOffers",
+                "tags": [
+                    "Offers"
+                ],
+                "security": [],
+                "description": "Rule-based promotions with structured constraints (min_qty, discount, validity). Agents can evaluate these programmatically against their policies.",
+                "parameters": [
+                    {
+                        "name": "sku",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Filter by product SKU"
+                    },
+                    {
+                        "name": "category",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Filter by category"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Active offers"
+                    }
+                }
+            }
+        },
+        "/v1/webhooks": {
+            "post": {
+                "summary": "Register webhook subscription",
+                "operationId": "registerWebhook",
+                "tags": [
+                    "Webhooks"
+                ],
+                "description": "Subscribe to real-time event notifications. Returns an HMAC secret for signature verification.",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "api_key",
+                                    "callback_url"
+                                ],
+                                "properties": {
+                                    "api_key": {
+                                        "type": "string"
+                                    },
+                                    "callback_url": {
+                                        "type": "string",
+                                        "example": "https://mybot.example.com/webhook"
+                                    },
+                                    "events": {
+                                        "type": "array",
+                                        "items": {
                                             "type": "string"
                                         },
-                                        "status": {
-                                            "type": "string",
-                                            "enum": [
-                                                "CAPTURED",
-                                                "VOIDED"
-                                            ]
-                                        },
-                                        "order_id": {
-                                            "type": "string"
-                                        },
-                                        "amount": {
-                                            "type": "integer"
-                                        },
-                                        "currency": {
-                                            "type": "string"
-                                        }
+                                        "example": [
+                                            "order.created",
+                                            "order.shipped",
+                                            "price.dropped"
+                                        ]
                                     }
                                 }
                             }
                         }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Subscription created"
+                    }
+                }
+            }
+        },
+        "/v1/webhooks/remove": {
+            "post": {
+                "summary": "Remove webhook subscription",
+                "operationId": "removeWebhook",
+                "tags": [
+                    "Webhooks"
+                ],
+                "description": "Unsubscribe from event notifications.",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "api_key",
+                                    "subscription_id"
+                                ],
+                                "properties": {
+                                    "api_key": {
+                                        "type": "string"
+                                    },
+                                    "subscription_id": {
+                                        "type": "string",
+                                        "format": "uuid"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Subscription removed"
+                    }
+                }
+            }
+        },
+        "/v1/negotiate": {
+            "post": {
+                "summary": "Submit price negotiation",
+                "operationId": "negotiatePrice",
+                "tags": [
+                    "Negotiate"
+                ],
+                "description": "Propose a unit price for bulk orders. The system auto-evaluates and responds with accept, counter-offer, or rejection.",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "api_key",
+                                    "sku",
+                                    "qty",
+                                    "unit_price"
+                                ],
+                                "properties": {
+                                    "api_key": {
+                                        "type": "string"
+                                    },
+                                    "sku": {
+                                        "type": "string"
+                                    },
+                                    "qty": {
+                                        "type": "integer",
+                                        "example": 100
+                                    },
+                                    "unit_price": {
+                                        "type": "integer",
+                                        "description": "Proposed unit price in KRW",
+                                        "example": 15000
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Negotiation result"
+                    }
+                }
+            }
+        },
+        "/v1/receipts/{order_id}": {
+            "get": {
+                "summary": "Get decision receipt",
+                "operationId": "getDecisionReceipt",
+                "tags": [
+                    "Orders"
+                ],
+                "security": [],
+                "description": "Retrieve the explainable AI decision receipt showing why a purchase decision was made.",
+                "parameters": [
+                    {
+                        "name": "order_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Order ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Decision receipt"
+                    }
+                }
+            }
+        },
+        "/v1/rewards": {
+            "get": {
+                "summary": "Get loyalty rewards",
+                "operationId": "getRewards",
+                "tags": [
+                    "Rewards"
+                ],
+                "description": "Check your loyalty tier, available discounts, and credits.",
+                "parameters": [
+                    {
+                        "name": "api_key",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Rewards info"
+                    }
+                }
+            }
+        },
+        "/v1/rewards/referral": {
+            "get": {
+                "summary": "Get referral code",
+                "operationId": "getReferralCode",
+                "tags": [
+                    "Rewards"
+                ],
+                "description": "Get your unique referral code. Share with other agents for mutual rewards.",
+                "parameters": [
+                    {
+                        "name": "api_key",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Referral code"
+                    }
+                }
+            }
+        },
+        "/v1/sandbox/orders": {
+            "post": {
+                "summary": "Create test order",
+                "operationId": "createSandboxOrder",
+                "tags": [
+                    "Sandbox"
+                ],
+                "description": "Create a TEST order. No real stock deduction, no payment. Use during integration development.",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "api_key",
+                                    "sku"
+                                ],
+                                "properties": {
+                                    "api_key": {
+                                        "type": "string"
+                                    },
+                                    "sku": {
+                                        "type": "string"
+                                    },
+                                    "qty": {
+                                        "type": "integer",
+                                        "default": 1
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Sandbox order created"
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "securitySchemes": {
+            "BearerAuth": {
+                "type": "http",
+                "scheme": "bearer",
+                "description": "Agent API key (agk_...) passed as Bearer token"
+            }
+        },
+        "schemas": {
+            "Product": {
+                "type": "object",
+                "properties": {
+                    "sku": {
+                        "type": "string",
+                        "example": "TISSUE-70x20"
+                    },
+                    "title": {
+                        "type": "string",
+                        "example": "대용량 티슈 70매 x 20박스"
+                    },
+                    "category": {
+                        "type": "string",
+                        "enum": [
+                            "CONSUMABLES",
+                            "MRO",
+                            "OFFICE",
+                            "IT_EQUIPMENT",
+                            "KITCHEN",
+                            "SAFETY",
+                            "HYGIENE"
+                        ]
+                    },
+                    "brand": {
+                        "type": "string"
+                    },
+                    "price": {
+                        "type": "object",
+                        "properties": {
+                            "amount": {
+                                "type": "integer"
+                            },
+                            "currency": {
+                                "type": "string",
+                                "example": "KRW"
+                            }
+                        }
+                    },
+                    "availability": {
+                        "type": "object",
+                        "properties": {
+                            "status": {
+                                "type": "string",
+                                "enum": [
+                                    "in_stock",
+                                    "out_of_stock",
+                                    "unknown"
+                                ]
+                            },
+                            "stock_qty": {
+                                "type": "integer"
+                            },
+                            "restock_eta": {
+                                "type": "string",
+                                "format": "date"
+                            }
+                        }
+                    },
+                    "shipping": {
+                        "type": "object",
+                        "properties": {
+                            "ship_by_days": {
+                                "type": "integer"
+                            },
+                            "eta_days": {
+                                "type": "integer"
+                            }
+                        }
+                    },
+                    "quality": {
+                        "type": "object",
+                        "properties": {
+                            "trust_score": {
+                                "type": "number"
+                            },
+                            "ai_readiness": {
+                                "type": "number"
+                            },
+                            "endorsement_rate": {
+                                "type": "number"
+                            },
+                            "review_count": {
+                                "type": "integer"
+                            }
+                        }
+                    },
+                    "certifications": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "dimensions_cm": {
+                        "type": "object",
+                        "properties": {
+                            "w": {
+                                "type": "number"
+                            },
+                            "h": {
+                                "type": "number"
+                            },
+                            "d": {
+                                "type": "number"
+                            }
+                        }
+                    },
+                    "weight_g": {
+                        "type": "number"
+                    },
+                    "min_order_qty": {
+                        "type": "integer",
+                        "default": 1
+                    },
+                    "bulk_pricing": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "min_qty": {
+                                    "type": "integer"
+                                },
+                                "discount_pct": {
+                                    "type": "number"
+                                }
+                            }
+                        }
+                    },
+                    "substitutes": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Alternative product SKUs"
+                    },
+                    "carbon_footprint_g": {
+                        "type": "number"
                     }
                 }
             }

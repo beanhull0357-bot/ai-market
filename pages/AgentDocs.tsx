@@ -11,21 +11,41 @@ interface EndpointProps {
     response: string;
 }
 
+const RPC_TO_REST: Record<string, { method: string; path: string }> = {
+    agent_self_register: { method: 'POST', path: '/v1/agents/register' },
+    authenticate_agent: { method: 'POST', path: '/v1/agents/auth' },
+    get_product_feed: { method: 'GET', path: '/v1/products' },
+    agent_create_order: { method: 'POST', path: '/v1/orders' },
+    agent_create_review: { method: 'POST', path: '/v1/reviews' },
+    get_acp_feed: { method: 'GET', path: '/v1/feeds/acp' },
+    ucp_create_session: { method: 'POST', path: '/v1/checkout/sessions' },
+    ucp_complete_session: { method: 'POST', path: '/v1/checkout/sessions/complete' },
+    agent_register_webhook: { method: 'POST', path: '/v1/webhooks' },
+    agent_unregister_webhook: { method: 'POST', path: '/v1/webhooks/remove' },
+    get_order_events: { method: 'GET', path: '/v1/orders/events' },
+    get_agent_offers: { method: 'GET', path: '/v1/offers' },
+};
+
 const Endpoint: React.FC<EndpointProps> = ({ method, name, description, auth, params, response }) => {
     const [open, setOpen] = React.useState(false);
-    const methodColor = method === 'POST' ? 'bg-blue-900/50 text-blue-300 border-blue-800' : 'bg-green-900/50 text-green-300 border-green-800';
+    const rest = RPC_TO_REST[name];
+    const restMethod = rest?.method || method;
+    const restPath = rest?.path || `/${name}`;
+    const methodColor = restMethod === 'POST' ? 'bg-blue-900/50 text-blue-300 border-blue-800' : 'bg-green-900/50 text-green-300 border-green-800';
 
-    const curlExample = `curl -X POST \\
-  'https://[PROJECT_REF].supabase.co/rest/v1/rpc/${name}' \\
-  -H 'apikey: [SUPABASE_ANON_KEY]' \\
+    const curlExample = restMethod === 'GET'
+        ? `curl 'https://api.jsonmart.xyz${restPath}' \\
+  -H 'Authorization: Bearer agk_YOUR_API_KEY'`
+        : `curl -X POST 'https://api.jsonmart.xyz${restPath}' \\
   -H 'Content-Type: application/json' \\
+  -H 'Authorization: Bearer agk_YOUR_API_KEY' \\
   -d '{ ${params.filter(p => p.required).map(p => `"${p.name}": ${p.type === 'TEXT' ? '"..."' : p.type === 'INTEGER' ? '1' : '[]'}`).join(', ')} }'`;
 
     return (
         <div className="border border-gray-800 rounded-lg overflow-hidden mb-4 hover:border-gray-600 transition-colors">
             <button onClick={() => setOpen(!open)} className="w-full flex items-center gap-3 p-4 text-left hover:bg-gray-900/50">
-                <span className={`px-2 py-0.5 text-[10px] font-bold rounded border ${methodColor}`}>{method}</span>
-                <code className="text-sm text-white font-bold">{name}</code>
+                <span className={`px-2 py-0.5 text-[10px] font-bold rounded border ${methodColor}`}>{restMethod}</span>
+                <code className="text-sm text-white font-bold">{restPath}</code>
                 {auth === 'api_key' && <Key size={12} className="text-yellow-500" />}
                 <span className="text-xs text-gray-500 ml-auto">{description}</span>
                 <span className="text-gray-600 text-xs">{open ? '▲' : '▼'}</span>
@@ -75,11 +95,18 @@ export const AgentDocs: React.FC = () => {
                         <h1 className="text-3xl font-bold text-white">Agent API Documentation</h1>
                     </div>
                     <p className="text-gray-400 text-sm max-w-2xl">
-                        JSONMart is an Agent-Native Marketplace. All commerce operations are available via Supabase RPC endpoints.
-                        Agents can self-register, browse the catalog, create orders, and submit reviews — all programmatically.
+                        JSONMart Agent Commerce API — the first REST API built for AI purchasing agents.
+                        Clean endpoints, Bearer token auth, structured JSON responses.
                     </p>
+                    <div className="bg-gray-900 border border-gray-800 rounded-lg p-3 mt-4 mb-4">
+                        <span className="text-[10px] uppercase text-gray-500 font-bold tracking-wider">Base URL</span>
+                        <code className="block text-sm text-green-400 mt-1 font-mono">https://api.jsonmart.xyz/v1</code>
+                    </div>
                     <div className="flex gap-4 mt-4">
-                        <a href="/playground" className="text-xs text-terminal-green flex items-center gap-1 hover:underline">
+                        <a href="/#/swagger" className="text-xs text-cyan-400 flex items-center gap-1 hover:underline">
+                            <BookOpen size={12} /> Swagger UI <ExternalLink size={10} />
+                        </a>
+                        <a href="/#/playground" className="text-xs text-terminal-green flex items-center gap-1 hover:underline">
                             <Zap size={12} /> Try in Playground <ExternalLink size={10} />
                         </a>
                         <a href="/agents.json" className="text-xs text-blue-400 flex items-center gap-1 hover:underline">

@@ -26,7 +26,16 @@ export interface ProductPack {
     sellerTrust: number;
   };
   attributes: Record<string, any>;
-  sourcingType?: 'HUMAN' | 'AI'; // New field to track who added the product
+  sourcingType?: 'HUMAN' | 'AI';
+  // ━━━ Enhanced Product Data (Phase 1) ━━━
+  certifications?: string[];              // e.g. ["KC인증", "ISO9001"]
+  dimensions?: { w: number; h: number; d: number }; // cm
+  weightG?: number;                        // weight in grams
+  minOrderQty?: number;                    // minimum order quantity
+  bulkPricing?: { minQty: number; discountPct: number }[];  // tiered pricing
+  substitutes?: string[];                  // alternative product SKUs
+  restockEta?: string;                     // ISO date string
+  carbonFootprintG?: number;               // carbon footprint in grams CO2
 }
 
 export interface AgentPolicy {
