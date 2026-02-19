@@ -16,7 +16,7 @@ export const GUIDE_CONTENT: Record<string, GuideData> = {
             { icon: '🤖', text: '에이전트가 API로 처리한 최근 활동 로그' },
             { icon: '🔍', text: '상품 카탈로그 검색 및 가격 확인' },
         ],
-        whyNeeded: '에이전트는 UI 없이 API만으로 거래하지만, 운영자와 투자자는 시각적 대시보드가 필요합니다. 이 페이지가 사람과 AI 에이전트 사이의 "번역기" 역할을 합니다.',
+        whyNeeded: '에이전트는 UI 없이 API만으로 거래하지만, 운영자는 시각적 대시보드로 현황을 파악해야 합니다. 이 페이지가 사람과 AI 에이전트 사이의 "번역기" 역할을 합니다.',
     },
     '/dashboard': {
         title: '관리자 대시보드',
@@ -27,7 +27,7 @@ export const GUIDE_CONTENT: Record<string, GuideData> = {
             { icon: '🏷️', text: '카테고리별 매출 비중 분석' },
             { icon: '⚡', text: '에이전트 활성도 및 API 호출 빈도' },
         ],
-        whyNeeded: '마켓플레이스 운영자가 전체 비즈니스 상태를 신속하게 파악하고, 에이전트 기반 거래의 성장 추이를 투자자에게 보여줄 수 있습니다.',
+        whyNeeded: '마켓플레이스 운영자가 전체 비즈니스 상태를 신속하게 파악하고, 에이전트 기반 거래의 성장 추이를 한눈에 확인할 수 있습니다.',
     },
     '/inventory': {
         title: '상품 카탈로그 관리',
@@ -60,7 +60,7 @@ export const GUIDE_CONTENT: Record<string, GuideData> = {
             { icon: '💰', text: '도매가 기준 마진 자동 계산' },
             { icon: '📊', text: '카테고리별 상품 매핑 및 가격 비교' },
         ],
-        whyNeeded: 'AI 에이전트 커머스가 실제 한국 유통 시장과 연결된다는 것을 보여줍니다. 데모용 가상 상품이 아니라, 실제 도매 상품을 에이전트가 거래합니다.',
+        whyNeeded: 'AI 에이전트 커머스가 실제 한국 유통 시장과 연결됩니다. 가상 상품이 아니라, 실제 도매 상품을 에이전트가 거래하므로 실질적인 비즈니스 가치를 창출합니다.',
     },
     '/orders': {
         title: '주문 관리',
@@ -82,7 +82,7 @@ export const GUIDE_CONTENT: Record<string, GuideData> = {
             { icon: '📊', text: '엑셀 호환 CSV 형식 지원' },
             { icon: '🔗', text: '외부 ERP/회계 시스템 연동용' },
         ],
-        whyNeeded: '마켓플레이스 운영 데이터를 분석하거나, 투자자 보고서를 작성할 때 데이터를 추출할 수 있어야 합니다.',
+        whyNeeded: '마켓플레이스 운영 데이터를 외부 분석 도구나 회계 시스템과 연동할 때 데이터를 추출할 수 있어야 합니다.',
     },
     '/seller-registry': {
         title: '셀러 관리 (관리자)',
@@ -306,7 +306,7 @@ export const GUIDE_CONTENT: Record<string, GuideData> = {
             { icon: '🏷️', text: '인기 상품/카테고리 트렌드' },
             { icon: '⚡', text: '에이전트 응답 시간 및 효율성 분석' },
         ],
-        whyNeeded: '데이터 기반 의사결정을 위해 에이전트의 활동을 분석하는 것이 중요합니다. 투자자에게 시장 트렌드와 성장 지표를 보여줄 수 있습니다.',
+        whyNeeded: '데이터 기반 의사결정을 위해 에이전트의 활동을 분석하는 것이 중요합니다. 시장 트렌드와 성장 지표를 정확히 파악할 수 있습니다.',
     },
     '/live': {
         title: '실시간 모니터링',
@@ -317,7 +317,7 @@ export const GUIDE_CONTENT: Record<string, GuideData> = {
             { icon: '📊', text: '초당 거래량(TPS) 모니터링' },
             { icon: '🔔', text: '이상 패턴 즉시 알림' },
         ],
-        whyNeeded: '투자자 데모에서 가장 인상적인 페이지입니다. AI 에이전트가 실제로 활동하는 모습을 실시간으로 보여줍니다.',
+        whyNeeded: 'AI 에이전트가 실제로 활동하는 모습을 실시간으로 확인할 수 있어 운영 상태를 즉시 파악할 수 있습니다.',
     },
     '/sla': {
         title: '서비스 수준 모니터링',
@@ -416,6 +416,6 @@ export const GUIDE_CONTENT: Record<string, GuideData> = {
             { icon: '📊', text: '티어 분포 및 카테고리별 상품 분포 차트' },
             { icon: '📈', text: '시장 성장세 실시간 추적' },
         ],
-        whyNeeded: '투자자와 파트너사에게 플랫폼의 성장을 객관적으로 보여주는 공개 대시보드입니다. 플랫폼의 투명성과 신뢰성을 높입니다.',
+        whyNeeded: '플랫폼의 성장을 객관적으로 보여주는 공개 대시보드입니다. 파트너사와 에이전트 개발자에게 생태계의 투명성과 신뢰성을 높입니다.',
     },
 };

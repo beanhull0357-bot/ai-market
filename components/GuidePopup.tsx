@@ -127,7 +127,7 @@ export const GuidePopup: React.FC<GuidePopupProps> = ({ pageKey, title, subtitle
                         확인
                     </button>
                     <p style={{ textAlign: 'center', fontSize: 9, color: 'rgba(255,255,255,0.2)', marginTop: 8 }}>
-                        이 가이드는 데모 계정 로그인 시에만 표시됩니다
+                        이 가이드는 첫 방문 시에만 표시됩니다
                     </p>
                 </div>
             </div>
