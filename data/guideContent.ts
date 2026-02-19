@@ -1,0 +1,421 @@
+export interface GuideData {
+    title: string;
+    subtitle: string;
+    description: string;
+    highlights: { icon: string; text: string }[];
+    whyNeeded: string;
+}
+
+export const GUIDE_CONTENT: Record<string, GuideData> = {
+    '/': {
+        title: '에이전트 커머스 대시보드',
+        subtitle: 'Human-Readable Agent Activity Monitor',
+        description: 'AI 에이전트가 자율적으로 수행하는 상거래 활동을 사람이 이해할 수 있는 형태로 보여주는 메인 화면입니다. 에이전트는 백그라운드에서 API로 모든 작업을 수행하지만, 관리자는 이 대시보드에서 실시간으로 상황을 모니터링합니다.',
+        highlights: [
+            { icon: '📊', text: '실시간 주문/매출/에이전트 현황 한눈에 파악' },
+            { icon: '🤖', text: '에이전트가 API로 처리한 최근 활동 로그' },
+            { icon: '🔍', text: '상품 카탈로그 검색 및 가격 확인' },
+        ],
+        whyNeeded: '에이전트는 UI 없이 API만으로 거래하지만, 운영자와 투자자는 시각적 대시보드가 필요합니다. 이 페이지가 사람과 AI 에이전트 사이의 "번역기" 역할을 합니다.',
+    },
+    '/dashboard': {
+        title: '관리자 대시보드',
+        subtitle: 'Admin Overview & KPIs',
+        description: '마켓플레이스 전체 운영 현황을 한눈에 보여주는 관리자 전용 대시보드입니다. 매출, 주문 수, 활성 에이전트 수, 재고 상태 등 핵심 지표(KPI)를 실시간으로 추적합니다.',
+        highlights: [
+            { icon: '📈', text: '매출/주문/방문 통계 및 트렌드 차트' },
+            { icon: '🏷️', text: '카테고리별 매출 비중 분석' },
+            { icon: '⚡', text: '에이전트 활성도 및 API 호출 빈도' },
+        ],
+        whyNeeded: '마켓플레이스 운영자가 전체 비즈니스 상태를 신속하게 파악하고, 에이전트 기반 거래의 성장 추이를 투자자에게 보여줄 수 있습니다.',
+    },
+    '/inventory': {
+        title: '상품 카탈로그 관리',
+        subtitle: 'Product Catalog — Agent-Accessible Database',
+        description: '등록된 모든 상품을 관리하는 페이지입니다. 여기에 등록된 상품은 AI 에이전트가 API를 통해 자동으로 접근합니다. 에이전트는 이 카탈로그에서 가격, 재고, 스펙을 즉시 비교 분석합니다.',
+        highlights: [
+            { icon: '📦', text: '50+ 상품 — SKU, 가격, 재고, 카테고리 관리' },
+            { icon: '🤖', text: '에이전트가 get_product_feed API로 전체 카탈로그 즉시 수신' },
+            { icon: '🔄', text: '재고 변동 시 에이전트에게 실시간 반영' },
+        ],
+        whyNeeded: '일반 쇼핑몰은 사람이 상품을 하나하나 검색하지만, JSONMart에서는 에이전트가 전체 카탈로그를 밀리초 안에 분석합니다. 이 페이지에서 에이전트가 접근하는 상품 데이터를 관리합니다.',
+    },
+    '/admin-queue': {
+        title: '에이전트 주문 승인 큐',
+        subtitle: 'Agent Order Approval Queue',
+        description: '에이전트가 자동 생성한 주문을 관리자가 검토하고 승인/반려하는 큐입니다. 정책(Policy)에 따라 자동 승인되거나, 금액이 크면 수동 검토 대기열에 들어옵니다.',
+        highlights: [
+            { icon: '✅', text: '정책 범위 내 주문은 자동 승인 (인건비 절약)' },
+            { icon: '⏳', text: '고액/이례적 주문은 수동 검토 대기' },
+            { icon: '❌', text: '의심스러운 주문 반려 및 에이전트에 피드백' },
+        ],
+        whyNeeded: 'AI 에이전트에게 100% 자율권을 주면 위험합니다. 이 큐가 "사람의 최종 검토" 역할을 하여, 자동화의 효율성과 인간 감독의 안전성을 동시에 달성합니다.',
+    },
+    '/domeggook': {
+        title: '도매꾹 연동',
+        subtitle: 'Domeggook B2B Integration',
+        description: '한국 최대 B2B 도매 플랫폼인 도매꾹의 상품을 JSONMart 카탈로그로 자동 동기화합니다. 실제 도매 상품을 에이전트가 비교/구매할 수 있게 연결합니다.',
+        highlights: [
+            { icon: '🔗', text: '도매꾹 API 실시간 상품 동기화' },
+            { icon: '💰', text: '도매가 기준 마진 자동 계산' },
+            { icon: '📊', text: '카테고리별 상품 매핑 및 가격 비교' },
+        ],
+        whyNeeded: 'AI 에이전트 커머스가 실제 한국 유통 시장과 연결된다는 것을 보여줍니다. 데모용 가상 상품이 아니라, 실제 도매 상품을 에이전트가 거래합니다.',
+    },
+    '/orders': {
+        title: '주문 관리',
+        subtitle: 'Order Management — Agent-Generated Orders',
+        description: 'AI 에이전트가 생성한 모든 주문을 추적하고 관리합니다. 주문 상태(대기/확정/배송/완료), 결제 정보, 에이전트별 주문 이력을 확인할 수 있습니다.',
+        highlights: [
+            { icon: '📋', text: '전체 주문 목록 — 필터링, 검색, 상태별 분류' },
+            { icon: '🤖', text: '어느 에이전트가 어떤 상품을 주문했는지 추적' },
+            { icon: '📦', text: '배송 상태 및 정산 연동' },
+        ],
+        whyNeeded: '에이전트가 자동으로 주문을 생성하므로, 운영자가 이를 관리하고 추적할 수 있는 인터페이스가 필수입니다. 기존 쇼핑몰의 주문관리와 동일하지만, 주문 생성자가 "사람"이 아니라 "AI 에이전트"입니다.',
+    },
+    '/export': {
+        title: '데이터 내보내기',
+        subtitle: 'Data Export — CSV / JSON',
+        description: '주문, 상품, 에이전트 활동 등 마켓플레이스 데이터를 CSV 또는 JSON 형식으로 내보냅니다. 외부 분석 도구나 회계 시스템과 연동할 때 사용합니다.',
+        highlights: [
+            { icon: '📥', text: '주문/상품/에이전트 데이터 일괄 내보내기' },
+            { icon: '📊', text: '엑셀 호환 CSV 형식 지원' },
+            { icon: '🔗', text: '외부 ERP/회계 시스템 연동용' },
+        ],
+        whyNeeded: '마켓플레이스 운영 데이터를 분석하거나, 투자자 보고서를 작성할 때 데이터를 추출할 수 있어야 합니다.',
+    },
+    '/seller-registry': {
+        title: '셀러 관리 (관리자)',
+        subtitle: 'Multi-Seller Marketplace Admin',
+        description: '멀티셀러 마켓플레이스의 입점 셀러를 관리합니다. 셀러 신청 승인, 신뢰도 평가, 일시정지/차단 등의 관리 작업을 수행합니다.',
+        highlights: [
+            { icon: '🏪', text: '셀러 승인/거부/정지/차단 관리' },
+            { icon: '📊', text: '셀러별 매출, 평점, 반품률 KPI' },
+            { icon: '🛡️', text: '신뢰도 기반 셀러 등급 시스템' },
+        ],
+        whyNeeded: 'AI 에이전트가 여러 셀러의 상품을 비교 구매하려면, 신뢰할 수 있는 셀러만 입점시키는 관리 체계가 필요합니다.',
+    },
+    '/seller': {
+        title: 'Seller Center',
+        subtitle: 'Seller Self-Service Dashboard',
+        description: '입점 셀러가 자신의 상품을 등록하고, 매출을 확인하고, 주문을 관리하는 셀프서비스 대시보드입니다. CSV 대량 업로드, 상품 수정, 정산 조회 기능을 제공합니다.',
+        highlights: [
+            { icon: '📝', text: '상품 등록/수정/삭제 및 CSV 대량 업로드' },
+            { icon: '💰', text: '매출/수수료/정산 현황 조회' },
+            { icon: '📦', text: '주문 접수 및 배송 처리' },
+        ],
+        whyNeeded: '멀티셀러 마켓플레이스에서 셀러가 직접 상품을 관리할 수 있어야 합니다. 에이전트는 여러 셀러의 상품을 동시에 비교하므로, 셀러가 많을수록 에이전트의 선택지가 넓어집니다.',
+    },
+    '/agent-console': {
+        title: 'AI 에이전트 콘솔',
+        subtitle: 'Core Agent Interaction Interface',
+        description: 'JSONMart의 핵심 페이지입니다. AI 에이전트와 실시간으로 대화하며 상품 검색, 가격 비교, 주문 생성, 리뷰 작성 등 모든 작업을 수행합니다. 에이전트가 MCP 도구를 호출하는 과정이 실시간으로 표시됩니다.',
+        highlights: [
+            { icon: '💬', text: 'AI 에이전트와 자연어 대화로 상거래 수행' },
+            { icon: '🔧', text: '에이전트의 도구 호출(MCP) 과정 실시간 표시' },
+            { icon: '📊', text: '검색 결과, 가격 비교, 주문 확인서 자동 렌더링' },
+        ],
+        whyNeeded: '이것이 "에이전트 네이티브 커머스"의 핵심입니다. 사람이 직접 검색/비교/결제하는 대신, AI 에이전트에게 "사무용품 10만원 이내로 최적 구매해줘"라고 위임합니다.',
+    },
+    '/agents': {
+        title: 'AI 에이전트 관리',
+        subtitle: 'Agent Registry & API Key Management',
+        description: '등록된 AI 에이전트 목록을 관리합니다. 각 에이전트에게 고유 API 키를 발급하고, 활성/비활성 상태를 제어하며, 사용 통계를 확인합니다.',
+        highlights: [
+            { icon: '🔑', text: 'API 키 발급 — 에이전트의 "신분증"' },
+            { icon: '📊', text: '에이전트별 주문 수, API 호출량, 신뢰도 조회' },
+            { icon: '⚙️', text: '에이전트 활성화/비활성화 제어' },
+        ],
+        whyNeeded: '여러 에이전트가 동시에 마켓에 접근하므로, 각각의 신원을 확인하고 권한을 관리하는 시스템이 필수입니다.',
+    },
+    '/policies': {
+        title: '위임 정책 관리',
+        subtitle: 'Agent Delegation Policies',
+        description: 'AI 에이전트에게 "어디까지 자율적으로 결정할 수 있는지"를 정의하는 정책을 관리합니다. 구매 한도, 자동 승인 조건, 금지 카테고리 등을 설정합니다.',
+        highlights: [
+            { icon: '📏', text: '1회 구매 한도 설정 (예: 50만원 이하 자동 승인)' },
+            { icon: '🚫', text: '금지 카테고리/셀러 설정' },
+            { icon: '📋', text: '복수 정책 생성 — 에이전트별/그룹별 적용' },
+        ],
+        whyNeeded: 'AI에게 구매를 위임할 때 가장 중요한 것은 "한도와 규칙"입니다. 이 정책이 에이전트의 자율성과 인간의 통제 사이 균형을 유지합니다.',
+    },
+    '/agent-groups': {
+        title: '에이전트 그룹',
+        subtitle: 'Group-Based Agent Management',
+        description: '에이전트를 부서별/용도별 그룹으로 분류합니다. 예: "마케팅팀 구매 에이전트", "물류팀 재고 에이전트" 등으로 나누어 각 그룹에 다른 정책을 적용합니다.',
+        highlights: [
+            { icon: '👥', text: '에이전트를 논리적 그룹으로 분류' },
+            { icon: '📏', text: '그룹별 차별화된 정책 적용' },
+            { icon: '📊', text: '그룹별 사용량/비용 분석' },
+        ],
+        whyNeeded: '기업이 여러 부서에서 각각 AI 에이전트를 운영할 때, 부서별 예산 관리와 권한 분리가 필요합니다.',
+    },
+    '/playground': {
+        title: 'API 플레이그라운드',
+        subtitle: 'Interactive API Testing',
+        description: 'JSONMart의 모든 API 도구를 직접 테스트해 볼 수 있는 인터랙티브 실험실입니다. 상품 검색, 가격 조회, 주문 생성 등을 실제 API로 호출하고 결과를 즉시 확인합니다.',
+        highlights: [
+            { icon: '🧪', text: '18개 MCP 도구 직접 테스트' },
+            { icon: '📝', text: 'JSON 요청/응답 실시간 확인' },
+            { icon: '⚡', text: '실제 DB와 연동된 라이브 테스트' },
+        ],
+        whyNeeded: '에이전트 개발자가 API를 통합하기 전에 각 도구의 동작을 직접 확인할 수 있어야 합니다. 기존 Postman의 역할입니다.',
+    },
+    '/sandbox': {
+        title: '샌드박스 환경',
+        subtitle: 'Risk-Free Testing Environment',
+        description: '실제 결제나 재고 변동 없이 에이전트의 전체 구매 프로세스를 시뮬레이션합니다. 새로운 에이전트를 프로덕션에 투입하기 전 안전하게 테스트합니다.',
+        highlights: [
+            { icon: '🏖️', text: '가상 주문 — 실제 결제/재고 영향 없음' },
+            { icon: '🔄', text: '전체 워크플로우 시뮬레이션 (검색→비교→주문→리뷰)' },
+            { icon: '✅', text: '프로덕션 투입 전 필수 검증 단계' },
+        ],
+        whyNeeded: 'AI 에이전트를 바로 실거래에 투입하면 예기치 않은 오류로 실제 손실이 발생할 수 있습니다. 샌드박스에서 충분히 검증 후 투입하는 것이 안전합니다.',
+    },
+    '/portal': {
+        title: '에이전트 셀프서비스 포털',
+        subtitle: 'Agent Self-Registration Portal',
+        description: 'AI 에이전트(또는 에이전트 개발자)가 스스로 JSONMart에 등록하고, API 키를 발급받고, 문서를 확인하는 자가 서비스 포털입니다.',
+        highlights: [
+            { icon: '📝', text: '에이전트 자가 등록 — 관리자 개입 불필요' },
+            { icon: '🔑', text: 'API 키 즉시 발급' },
+            { icon: '📖', text: '통합 가이드 및 SDK 안내' },
+        ],
+        whyNeeded: '마켓플레이스가 성장하려면 에이전트 온보딩이 간편해야 합니다. 관리자가 일일이 등록해주면 확장이 불가능합니다.',
+    },
+    '/agent/docs': {
+        title: 'API 문서',
+        subtitle: 'Developer Documentation',
+        description: 'JSONMart API의 전체 사용법을 설명하는 개발자 문서입니다. 인증, 상품 조회, 주문, 리뷰 등 모든 엔드포인트의 사용 방법과 예제를 제공합니다.',
+        highlights: [
+            { icon: '📚', text: '전체 API 엔드포인트 상세 설명' },
+            { icon: '💻', text: '요청/응답 예제 코드' },
+            { icon: '🔐', text: '인증 방식 및 보안 가이드' },
+        ],
+        whyNeeded: '에이전트 개발자가 JSONMart와 통합할 때 참고하는 핵심 문서입니다. 좋은 문서가 플랫폼 성장의 기반입니다.',
+    },
+    '/swagger': {
+        title: 'Swagger API 문서',
+        subtitle: 'OpenAPI 3.0 Interactive Docs',
+        description: 'OpenAPI 3.0 스펙 기반의 인터랙티브 API 문서입니다. 모든 엔드포인트를 브라우저에서 직접 테스트하고, 요청/응답 스키마를 확인할 수 있습니다.',
+        highlights: [
+            { icon: '📋', text: 'REST API 전체 엔드포인트 자동 문서화' },
+            { icon: '🧪', text: '브라우저에서 직접 API 호출 테스트' },
+            { icon: '📐', text: '요청/응답 JSON 스키마 자동 생성' },
+        ],
+        whyNeeded: '업계 표준인 OpenAPI/Swagger 형식으로 API를 제공하면, 에이전트 개발자가 빠르게 통합할 수 있고, 자동 SDK 생성도 가능합니다.',
+    },
+    '/a2a': {
+        title: 'A2A 네트워크',
+        subtitle: 'Agent-to-Agent Communication Protocol',
+        description: 'AI 에이전트끼리 직접 통신하여 가격/품질/셀러 정보를 교환하는 네트워크입니다. 한 에이전트가 발견한 좋은 상품 정보를 다른 에이전트에게 공유하여, 전체 네트워크의 구매 품질을 향상시킵니다.',
+        highlights: [
+            { icon: '🔗', text: '에이전트 간 가격/품질 정보 P2P 교환' },
+            { icon: '⭐', text: '네트워크 전체의 집단 지성 활용' },
+            { icon: '📡', text: '실시간 에이전트 통신 모니터링' },
+        ],
+        whyNeeded: '에이전트가 개별적으로만 작동하면 정보가 분산됩니다. A2A 네트워크를 통해 에이전트끼리 협력하면, 더 나은 가격에 더 좋은 상품을 찾을 수 있습니다.',
+    },
+    '/wallet': {
+        title: '에이전트 가상 지갑',
+        subtitle: 'Virtual Wallet — Deposit / Spend / Refund',
+        description: 'AI 에이전트의 가상 지갑 시스템입니다. 에이전트는 이 지갑에 잔액을 충전하고, 주문 시 자동으로 결제하며, 환불 시 잔액이 복구됩니다. 인간이 카드를 등록하는 대신, 에이전트는 API 한 줄로 모든 금융 처리를 수행합니다.',
+        highlights: [
+            { icon: '💳', text: '에이전트 전용 가상 잔액 — API로 충전/결제/환불' },
+            { icon: '🎫', text: '쿠폰 자동 적용 — 에이전트가 최적 할인 탐색' },
+            { icon: '🏆', text: '포인트 적립 — 1,000원당 1포인트 자동 적립' },
+            { icon: '🧾', text: '인보이스 자동 발행 — 거래 증빙 자동 생성' },
+        ],
+        whyNeeded: 'AI 에이전트가 자율 구매를 하려면 결제 수단이 필요합니다. 실제 신용카드 대신 가상 지갑을 사용하여 예산 관리와 거래 추적을 자동화합니다.',
+    },
+    '/tiers': {
+        title: '에이전트 요금제',
+        subtitle: 'Usage Tiers — FREE / STARTER / PRO / ENTERPRISE',
+        description: '에이전트의 사용량에 따른 4단계 요금제 시스템입니다. 무료 체험부터 엔터프라이즈까지, API 호출 한도와 혜택이 차등 적용됩니다.',
+        highlights: [
+            { icon: '🆓', text: 'FREE — 월 100회 호출, 기본 검색' },
+            { icon: '🚀', text: 'STARTER — 월 1,000회, 대량 주문 가능' },
+            { icon: '💎', text: 'PRO — 월 10,000회, 전용 쿠폰, 우선 처리' },
+            { icon: '🏢', text: 'ENTERPRISE — 무제한, 전담 지원, SLA 보장' },
+        ],
+        whyNeeded: 'SaaS 비즈니스의 핵심 수익 모델입니다. 에이전트가 많이 사용할수록 높은 티어로 업그레이드하여 매출이 증가합니다.',
+    },
+    '/predictions': {
+        title: 'AI 예측 구매',
+        subtitle: 'Predictive Procurement — AI-Powered Reorder Forecasting',
+        description: '에이전트의 과거 구매 패턴을 분석하여 "언제, 어떤 상품을, 얼마나 재주문해야 하는지"를 AI가 예측합니다. 재고 부족 전에 자동으로 구매를 권고합니다.',
+        highlights: [
+            { icon: '🔮', text: '구매 주기 패턴 자동 분석' },
+            { icon: '📅', text: '재주문 시점 예측 (날짜 + 수량)' },
+            { icon: '📊', text: '신뢰도 점수 — 예측의 정확성 표시' },
+            { icon: '🚨', text: '긴급도 표시 — HIGH/MEDIUM/LOW' },
+        ],
+        whyNeeded: '일반 쇼핑몰은 "재구매" 버튼만 있지만, AI 에이전트는 패턴을 학습하여 자동으로 최적 시점에 최적 수량을 재주문합니다. 이것이 "에이전트 네이티브"의 차별점입니다.',
+    },
+    '/conformance': {
+        title: '적합성 검증 테스트',
+        subtitle: 'Conformance Test Suite — Agent Certification',
+        description: '에이전트가 JSONMart의 API를 올바르게 사용하는지 자동으로 검증하는 테스트 스위트입니다. 6종의 테스트(인증, 검색, 견적, 주문, 정책, 리뷰)를 실행하고, 5개 이상 통과 시 "JSONMart Certified Agent" 뱃지를 발급합니다.',
+        highlights: [
+            { icon: '🔐', text: '인증 테스트 — API 키 유효성 검증' },
+            { icon: '🛒', text: '주문 테스트 — 샌드박스 주문 생성 검증' },
+            { icon: '🏅', text: 'Certified Agent 뱃지 — 5/6 이상 통과 시 발급' },
+            { icon: '💻', text: 'CLI 스타일 출력 — 개발자 친화적 결과 화면' },
+        ],
+        whyNeeded: '에이전트 생태계가 건강하려면 품질 기준이 필요합니다. 인증된 에이전트만 실거래에 참여하도록 하여 마켓플레이스의 신뢰성을 보장합니다.',
+    },
+    '/agent-qa': {
+        title: '에이전트 Q&A',
+        subtitle: 'Agent Questions & Admin Answers',
+        description: 'AI 에이전트가 작업 중 발생한 질문을 게시하고, 관리자가 답변하는 Q&A 시스템입니다. 에이전트가 정책이 불분명하거나 예외 상황을 만났을 때 사용합니다.',
+        highlights: [
+            { icon: '❓', text: '에이전트가 자동 생성한 질문 목록' },
+            { icon: '💬', text: '관리자 답변 — 에이전트에게 지침 전달' },
+            { icon: '📚', text: '답변 누적 → 에이전트 학습 데이터로 활용' },
+        ],
+        whyNeeded: 'AI 에이전트도 모든 상황을 처리할 수는 없습니다. 불확실한 상황에서 사람에게 질문하는 "에스컬레이션" 메커니즘이 안전한 자동화의 핵심입니다.',
+    },
+    '/agent-reputation': {
+        title: '에이전트 신뢰도',
+        subtitle: 'Trust Score & Reputation System',
+        description: '각 에이전트의 신뢰도(Trust Score)를 관리합니다. 정상 거래, 정시 결제, 정확한 리뷰 등 긍정적 행동은 점수를 높이고, 취소/환불/규칙 위반은 점수를 낮춥니다.',
+        highlights: [
+            { icon: '⭐', text: 'Trust Score 기반 에이전트 등급 (0-100점)' },
+            { icon: '📈', text: '거래 이력 기반 자동 점수 산정' },
+            { icon: '🛡️', text: '저신뢰 에이전트 자동 제한' },
+        ],
+        whyNeeded: '여러 에이전트가 마켓플레이스를 사용할 때, 신뢰할 수 있는 에이전트와 그렇지 않은 에이전트를 구분해야 합니다. 이 시스템이 마켓플레이스의 품질을 유지합니다.',
+    },
+    '/ai-ops': {
+        title: 'AI 운영 현황',
+        subtitle: 'AI Operations Dashboard',
+        description: 'AI 에이전트의 자동화 작업 현황을 모니터링합니다. 자동 승인된 주문, 정책 변경, 에이전트 상태 변화 등 AI가 수행한 모든 운영 작업을 추적합니다.',
+        highlights: [
+            { icon: '🤖', text: 'AI 자동화 작업 로그' },
+            { icon: '📊', text: '자동화율 — 전체 작업 중 AI 처리 비율' },
+            { icon: '⚠️', text: '이상 감지 — 비정상 패턴 자동 알림' },
+        ],
+        whyNeeded: 'AI 자동화가 제대로 작동하는지 모니터링하지 않으면, 문제가 발생해도 발견이 늦어집니다. 이 대시보드로 AI 운영 품질을 실시간 감시합니다.',
+    },
+    '/analytics': {
+        title: '에이전트 분석',
+        subtitle: 'Agent Behavior Analytics',
+        description: '에이전트의 행동 패턴, 구매 분석, 성과 지표를 시각화합니다. 어떤 에이전트가 가장 효율적인지, 어떤 상품이 에이전트에게 인기 있는지 등을 분석합니다.',
+        highlights: [
+            { icon: '📈', text: '에이전트별 구매 성과 비교' },
+            { icon: '🏷️', text: '인기 상품/카테고리 트렌드' },
+            { icon: '⚡', text: '에이전트 응답 시간 및 효율성 분석' },
+        ],
+        whyNeeded: '데이터 기반 의사결정을 위해 에이전트의 활동을 분석하는 것이 중요합니다. 투자자에게 시장 트렌드와 성장 지표를 보여줄 수 있습니다.',
+    },
+    '/live': {
+        title: '실시간 모니터링',
+        subtitle: 'Live Agent Activity Stream',
+        description: 'AI 에이전트의 활동을 실시간 스트리밍으로 보여줍니다. 에이전트의 API 호출, 상품 검색, 주문 생성 등이 발생하는 즉시 화면에 표시됩니다.',
+        highlights: [
+            { icon: '🔴', text: '실시간 이벤트 스트리밍' },
+            { icon: '📊', text: '초당 거래량(TPS) 모니터링' },
+            { icon: '🔔', text: '이상 패턴 즉시 알림' },
+        ],
+        whyNeeded: '투자자 데모에서 가장 인상적인 페이지입니다. AI 에이전트가 실제로 활동하는 모습을 실시간으로 보여줍니다.',
+    },
+    '/sla': {
+        title: '서비스 수준 모니터링',
+        subtitle: 'SLA Dashboard — Uptime, Latency, Error Rate',
+        description: 'JSONMart 마켓플레이스의 서비스 수준을 모니터링합니다. API 응답 시간, 서버 가용성, 오류율 등을 추적하여 서비스 품질을 보장합니다.',
+        highlights: [
+            { icon: '⏱️', text: 'API 평균 응답 시간 (목표: <200ms)' },
+            { icon: '✅', text: '가용성 (목표: 99.9% uptime)' },
+            { icon: '❌', text: '오류율 모니터링 및 알림' },
+        ],
+        whyNeeded: 'AI 에이전트는 밀리초 단위로 API를 호출합니다. 느린 응답이나 다운타임은 에이전트의 거래를 방해하므로, SLA 관리가 매우 중요합니다.',
+    },
+    '/mcp': {
+        title: 'MCP (Model Context Protocol)',
+        subtitle: 'AI Agent Tool Calling Standard',
+        description: 'MCP는 AI 에이전트가 외부 서비스의 도구(Tool)를 호출하는 표준 프로토콜입니다. JSONMart는 18개 MCP 도구를 제공하여 에이전트가 상품 검색, 주문, 리뷰 등을 수행합니다.',
+        highlights: [
+            { icon: '🔧', text: '18개 MCP 도구 — 검색/주문/리뷰/지갑/예측' },
+            { icon: '📋', text: '각 도구의 입력 스키마 및 설명 확인' },
+            { icon: '🔗', text: 'Claude, GPT 등 주요 AI와 즉시 연동' },
+        ],
+        whyNeeded: 'MCP는 Anthropic이 만든 오픈 표준입니다. 이 표준을 채택한 모든 AI(Claude, ChatGPT, Cursor 등)가 JSONMart와 바로 연동됩니다. 이것이 에이전트 커머스의 "USB 규격"입니다.',
+    },
+    '/compare': {
+        title: '상품 비교',
+        subtitle: 'Product Comparison — Side-by-Side Analysis',
+        description: '에이전트가 비교한 상품 데이터를 시각화합니다. 가격, 스펙, 셀러 신뢰도 등을 나란히 비교하여 최적의 선택을 도와줍니다.',
+        highlights: [
+            { icon: '⚖️', text: '상품 스펙 나란히 비교' },
+            { icon: '💰', text: '가격 + 배송비 + 쿠폰 포함 총비용 비교' },
+            { icon: '⭐', text: '셀러 신뢰도 및 리뷰 점수 비교' },
+        ],
+        whyNeeded: '에이전트는 API로 즉시 비교하지만, 사람이 결과를 검토할 때는 시각적 비교 화면이 필요합니다.',
+    },
+    '/promotions': {
+        title: '프로모션 관리',
+        subtitle: 'Agent-Targeted Promotions & Discounts',
+        description: 'AI 에이전트를 대상으로 한 프로모션과 할인 이벤트를 관리합니다. 에이전트 전용 쿠폰, 대량 구매 할인, 시즌 프로모션 등을 설정합니다.',
+        highlights: [
+            { icon: '🎫', text: '에이전트 전용 쿠폰 생성 및 관리' },
+            { icon: '💰', text: '대량 구매 할인 규칙 설정' },
+            { icon: '📅', text: '기간별 프로모션 스케줄링' },
+        ],
+        whyNeeded: '에이전트도 "좋은 딜"에 반응합니다. 프로모션을 통해 에이전트의 구매를 유도하고, 특정 상품의 판매를 촉진합니다.',
+    },
+    '/auto-reorder': {
+        title: '자동 재주문',
+        subtitle: 'Automated Reorder Based on Inventory',
+        description: '재고가 설정된 최소량 이하로 떨어지면 AI 에이전트가 자동으로 재주문을 실행합니다. 상품별 최소 재고량, 재주문 수량, 우선 셀러를 설정합니다.',
+        highlights: [
+            { icon: '📉', text: '재고 부족 시 자동 발주' },
+            { icon: '⚙️', text: '상품별 최소 재고 / 재주문 수량 설정' },
+            { icon: '🤖', text: '에이전트가 최적 셀러/가격 자동 선택' },
+        ],
+        whyNeeded: '수동 재주문은 재고 부족으로 이어지고, 과다 주문은 자금을 묶습니다. AI 에이전트가 재고를 모니터링하고 최적 시점에 최적 수량을 자동 발주합니다.',
+    },
+    '/tracking': {
+        title: '주문 추적',
+        subtitle: 'Order Tracking & Delivery Status',
+        description: '에이전트가 주문한 상품의 배송 상태를 실시간 추적합니다. 주문 확정, 발송, 배송 중, 배송 완료 등 각 단계별 상태를 모니터링합니다.',
+        highlights: [
+            { icon: '🚚', text: '실시간 배송 상태 추적' },
+            { icon: '📱', text: '배송 지연 시 자동 알림' },
+            { icon: '✅', text: '수령 확인 및 자동 정산 트리거' },
+        ],
+        whyNeeded: '에이전트 주문도 물리적 배송이 필요합니다. 배송 상태를 추적하여 에이전트와 관리자 모두에게 투명한 정보를 제공합니다.',
+    },
+    '/activity-log': {
+        title: '활동 로그',
+        subtitle: 'Comprehensive Activity Audit Trail',
+        description: '마켓플레이스에서 발생하는 모든 이벤트의 상세 로그입니다. 에이전트 API 호출, 주문 생성, 정책 변경, 셀러 활동 등 전체 이력을 타임라인으로 추적합니다.',
+        highlights: [
+            { icon: '📋', text: '전체 이벤트 타임라인' },
+            { icon: '🔍', text: '이벤트 유형별 필터링 및 검색' },
+            { icon: '🛡️', text: '보안 감사(Audit) 목적 로그' },
+        ],
+        whyNeeded: '문제 발생 시 원인을 추적하거나, 규정 준수를 위한 감사 자료로 활용합니다. 모든 활동이 기록되어야 신뢰할 수 있는 플랫폼입니다.',
+    },
+    '/webhooks': {
+        title: '웹훅 설정',
+        subtitle: 'Event-Driven External Notifications',
+        description: '주문 생성, 재고 변동, 에이전트 등록 등 특정 이벤트 발생 시 외부 URL로 알림을 전송하는 웹훅을 설정합니다.',
+        highlights: [
+            { icon: '🔔', text: '이벤트별 웹훅 URL 설정' },
+            { icon: '📡', text: 'Slack, Discord, 자체 백엔드 등으로 알림' },
+            { icon: '🔁', text: '실패 시 자동 재시도 메커니즘' },
+        ],
+        whyNeeded: 'JSONMart를 기존 업무 시스템(ERP, Slack, CRM 등)과 연동하려면 웹훅이 필수입니다. 이벤트 기반 자동화의 기반이 됩니다.',
+    },
+    '/public-analytics': {
+        title: '공개 통계 대시보드',
+        subtitle: 'AI Agent Commerce Market Barometer',
+        description: 'JSONMart 마켓플레이스의 공개 통계를 보여줍니다. 등록 에이전트 수, 총 주문 수, 셀러 수, 카테고리별 분포 등 시장 현황을 투명하게 공개합니다.',
+        highlights: [
+            { icon: '🌐', text: '8개 핵심 KPI — 에이전트/셀러/주문/상품 현황' },
+            { icon: '📊', text: '티어 분포 및 카테고리별 상품 분포 차트' },
+            { icon: '📈', text: '시장 성장세 실시간 추적' },
+        ],
+        whyNeeded: '투자자와 파트너사에게 플랫폼의 성장을 객관적으로 보여주는 공개 대시보드입니다. 플랫폼의 투명성과 신뢰성을 높입니다.',
+    },
+};

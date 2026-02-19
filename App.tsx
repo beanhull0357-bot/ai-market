@@ -41,6 +41,8 @@ import { PredictiveProcurement } from './pages/PredictiveProcurement';
 import { ConformanceTest } from './pages/ConformanceTest';
 import { PublicAnalytics } from './pages/PublicAnalytics';
 import { NotificationBell } from './components/NotificationBell';
+import { GuidePopup } from './components/GuidePopup';
+import { GUIDE_CONTENT } from './data/guideContent';
 import { Terminal, Shield, Cpu, Globe, Package, LogIn, LogOut, User, Key, FileCheck, Zap, BookOpen, Bot, Radio, BarChart3, ChevronDown, Menu, X, Store, Truck, MessageSquare, Tag, Users, FlaskConical, GitCompare, RefreshCw, Activity, Download, Webhook, LayoutDashboard, FileJson } from 'lucide-react';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -286,7 +288,7 @@ function MobileMenu({ onClose }: { onClose: () => void }) {
 /* ━━━ Layout ━━━ */
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { t } = useLanguage();
-  const { isAdmin } = useAuth();
+  const { isAdmin, isDemo } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
 
@@ -393,6 +395,14 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
       {/* Mobile Menu */}
       {mobileOpen && <MobileMenu onClose={() => setMobileOpen(false)} />}
+
+      {/* Demo Guide Popup */}
+      {isDemo && GUIDE_CONTENT[location.pathname] && (
+        <GuidePopup
+          pageKey={location.pathname}
+          {...GUIDE_CONTENT[location.pathname]}
+        />
+      )}
 
       {/* Main Content with page transition */}
       <main className="page-enter" key={location.pathname} style={{ flex: 1, marginTop: 52 }}>
