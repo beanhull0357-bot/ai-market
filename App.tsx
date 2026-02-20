@@ -40,10 +40,12 @@ import { UsageTiers } from './pages/UsageTiers';
 import { PredictiveProcurement } from './pages/PredictiveProcurement';
 import { ConformanceTest } from './pages/ConformanceTest';
 import { PublicAnalytics } from './pages/PublicAnalytics';
+import EcosystemMap from './pages/EcosystemMap';
+import NegotiationCenter from './pages/NegotiationCenter';
 import { NotificationBell } from './components/NotificationBell';
 import { GuidePopup } from './components/GuidePopup';
 import { GUIDE_CONTENT } from './data/guideContent';
-import { Terminal, Shield, Cpu, Globe, Package, LogIn, LogOut, User, Key, FileCheck, Zap, BookOpen, Bot, Radio, BarChart3, ChevronDown, Menu, X, Store, Truck, MessageSquare, Tag, Users, FlaskConical, GitCompare, RefreshCw, Activity, Download, Webhook, LayoutDashboard, FileJson } from 'lucide-react';
+import { Terminal, Shield, Cpu, Globe, Package, LogIn, LogOut, User, Key, FileCheck, Zap, BookOpen, Bot, Radio, BarChart3, ChevronDown, Menu, X, Store, Truck, MessageSquare, Tag, Users, FlaskConical, GitCompare, RefreshCw, Activity, Download, Webhook, LayoutDashboard, FileJson, Handshake } from 'lucide-react';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -232,6 +234,7 @@ function MobileMenu({ onClose }: { onClose: () => void }) {
         ] : []),
         { to: '/playground', icon: <Zap size={15} />, label: t('nav.playground') },
         { to: '/sandbox', icon: <FlaskConical size={15} />, label: 'Sandbox' },
+        { to: '/negotiate', icon: <Handshake size={15} />, label: 'Negotiate' },
         { to: '/agent/docs', icon: <BookOpen size={15} />, label: t('nav.docs') },
         ...(isAdmin ? [
           { to: '/agent-qa', icon: <MessageSquare size={15} />, label: 'Agent Q&A' },
@@ -254,6 +257,7 @@ function MobileMenu({ onClose }: { onClose: () => void }) {
           { to: '/auto-reorder', icon: <RefreshCw size={15} />, label: 'Auto Reorder' },
           { to: '/tracking', icon: <Truck size={15} />, label: 'Tracking' },
         ] : []),
+        { to: '/ecosystem', icon: <Globe size={15} />, label: 'Ecosystem' },
       ],
     },
   ];
@@ -329,6 +333,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       { to: '/agent-qa', icon: <MessageSquare size={13} />, label: 'Q&A' },
       { to: '/agent-reputation', icon: <Shield size={13} />, label: 'Reputation' },
     ] : []),
+    { to: '/negotiate', icon: <Handshake size={13} />, label: 'Negotiate' },
   ];
   const aiItems: NavItem[] = [
     ...(isAdmin ? [
@@ -347,6 +352,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       { to: '/webhooks', icon: <Webhook size={13} />, label: 'Webhooks' },
     ] : []),
     { to: '/public-analytics', icon: <Globe size={13} />, label: 'Analytics' },
+    { to: '/ecosystem', icon: <Globe size={13} />, label: 'Ecosystem' },
   ];
 
   return (
@@ -464,6 +470,8 @@ export default function App() {
                     <Route path="/predictions" element={<PredictiveProcurement />} />
                     <Route path="/conformance" element={<ConformanceTest />} />
                     <Route path="/public-analytics" element={<PublicAnalytics />} />
+                    <Route path="/ecosystem" element={<EcosystemMap />} />
+                    <Route path="/negotiate" element={<NegotiationCenter />} />
                   </Routes>
                 </Layout>
               } />

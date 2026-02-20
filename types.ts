@@ -304,3 +304,29 @@ export interface PublicAnalyticsData {
   recentOrders7d: number;
   generatedAt: string;
 }
+
+// ━━━ Negotiation Protocol Types ━━━
+export type NegotiationStatus = 'PENDING' | 'NEGOTIATING' | 'AGREED' | 'REJECTED' | 'EXPIRED';
+
+export interface NegotiationRound {
+  round: number;
+  proposedBy: 'buyer' | 'seller';
+  price: number;
+  message: string;
+  timestamp: string;
+}
+
+export interface Negotiation {
+  negotiationId: string;
+  sku: string;
+  productTitle: string;
+  listPrice: number;
+  buyerAgentId: string;
+  sellerAgentId: string;
+  status: NegotiationStatus;
+  rounds: NegotiationRound[];
+  finalPrice: number | null;
+  maxRounds: number;
+  policyBudget: number | null;
+  createdAt: string;
+}

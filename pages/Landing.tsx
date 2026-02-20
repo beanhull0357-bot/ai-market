@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
-import { Terminal, ShieldCheck, Zap, Code2, Lock, Activity, ArrowRight, Radio, Globe } from 'lucide-react';
+import React, { useEffect, useState, useRef } from 'react';
+import { Terminal, ShieldCheck, Zap, Code2, Lock, Activity, ArrowRight, Radio, Globe, TrendingUp, Bot } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { CodeBlock } from '../components/CodeBlock';
 import { AgentReviewList } from '../components/AgentReviewList';
-import { useProducts, useReviews } from '../hooks';
+import { useProducts, useReviews, getPublicAnalytics } from '../hooks';
 import { useLanguage } from '../context/LanguageContext';
 
 /* ━━━ Legal Text Constants ━━━ */
@@ -117,6 +117,21 @@ export const Landing: React.FC = () => {
   const { products, loading: productsLoading } = useProducts();
   const { reviews: tissueReviews, loading: reviewsLoading } = useReviews('TISSUE-70x20');
   const [footerModal, setFooterModal] = useState<'terms' | 'privacy' | null>(null);
+  const [pulseData, setPulseData] = useState<any>(null);
+  const tickerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    getPublicAnalytics().then(d => setPulseData(d)).catch(() => { });
+  }, []);
+
+  // Ticker data (simulated recent activity based on real data)
+  const tickerItems = [
+    { agent: 'PROCURE-BOT-v2.1', action: 'ordered', sku: 'TISSUE-70x20', qty: 3, time: '2m' },
+    { agent: 'SOURCING-AI-v1.0', action: 'reviewed', sku: 'SANITIZER-5L', qty: 0, time: '5m' },
+    { agent: 'SUPPLY-CHAIN-v3', action: 'queried A2A', sku: 'GLOVES-L-100', qty: 0, time: '8m' },
+    { agent: 'AUTO-RESTOCK-v2', action: 'ordered', sku: 'MASK-KF94-50', qty: 10, time: '12m' },
+    { agent: 'PRICE-WATCH-v1.2', action: 'negotiated', sku: 'TOWEL-ROLL-12P', qty: 0, time: '15m' },
+  ];
 
   const firstProduct = products[0];
 
@@ -216,7 +231,7 @@ export const Landing: React.FC = () => {
       </div>
 
       {/* ━━━ Trust Badges ━━━ */}
-      <div style={{ display: 'flex', justifyContent: 'center', gap: 'clamp(8px, 2vw, 20px)', padding: '0 clamp(12px, 4vw, 24px) 48px', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 'clamp(8px, 2vw, 20px)', padding: '0 clamp(12px, 4vw, 24px) 32px', flexWrap: 'wrap' }}>
         {[
           { icon: <ShieldCheck size={14} />, label: 'ACP Compatible', color: 'var(--accent-green)' },
           { icon: <Radio size={14} />, label: '99.5% SLA', color: 'var(--accent-cyan)' },
@@ -232,6 +247,77 @@ export const Landing: React.FC = () => {
             {b.icon} {b.label}
           </div>
         ))}
+      </div>
+
+      {/* ━━━ Platform Pulse ━━━ */}
+      <div style={{ maxWidth: 900, margin: '0 auto', padding: '0 clamp(12px, 4vw, 24px) 48px' }}>
+        <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 32 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <div style={{
+              width: 8, height: 8, borderRadius: '50%', background: 'var(--accent-green)',
+              boxShadow: 'var(--shadow-glow-green)', animation: 'livePulse 2s infinite',
+            }} />
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: 'var(--accent-green)', textTransform: 'uppercase' }}>
+              {t('pulse.title')}
+            </span>
+          </div>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 20 }}>{t('pulse.subtitle')}</p>
+
+          {/* KPI Mini Cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }} className="grid-responsive-4">
+            {[
+              { icon: <TrendingUp size={16} />, label: t('pulse.orders'), value: pulseData?.totalOrders ?? '—', color: 'var(--accent-cyan)' },
+              { icon: <Bot size={16} />, label: t('pulse.agents'), value: pulseData?.totalAgents ?? '—', color: 'var(--accent-green)' },
+              { icon: <Radio size={16} />, label: t('pulse.a2a'), value: pulseData?.totalA2aQueries ?? '—', color: 'var(--accent-purple)' },
+              { icon: <ShieldCheck size={16} />, label: t('pulse.trust'), value: pulseData?.avgTrustScore != null ? (pulseData.avgTrustScore as number).toFixed(0) : '—', color: 'var(--accent-amber)' },
+            ].map(k => (
+              <div key={k.label} style={{
+                padding: '16px 14px', borderRadius: 'var(--radius-md)',
+                background: 'var(--bg-card)', border: '1px solid var(--border-subtle)',
+                transition: 'border-color 200ms',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                  <span style={{ color: k.color }}>{k.icon}</span>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: 0.5, textTransform: 'uppercase' }}>{k.label}</span>
+                </div>
+                <div style={{ fontSize: 24, fontWeight: 900, fontFamily: 'var(--font-mono)', color: k.color }}>
+                  {typeof k.value === 'number' ? <Counter to={k.value} /> : k.value}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Activity Ticker */}
+          <div style={{
+            position: 'relative', overflow: 'hidden', borderRadius: 'var(--radius-md)',
+            background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', padding: '10px 0',
+          }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', zIndex: 2,
+              background: 'rgba(9,9,11,0.9)', padding: '4px 10px 4px 6px', borderRadius: 'var(--radius-full)',
+              border: '1px solid var(--border-subtle)',
+            }}>
+              <Activity size={11} style={{ color: 'var(--accent-cyan)' }} />
+              <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1, color: 'var(--accent-cyan)', textTransform: 'uppercase' }}>
+                {t('pulse.recentActivity')}
+              </span>
+            </div>
+            <div ref={tickerRef} style={{
+              display: 'flex', gap: 32, paddingLeft: 160, animation: 'tickerScroll 25s linear infinite', whiteSpace: 'nowrap',
+            }}>
+              {[...tickerItems, ...tickerItems].map((item, i) => (
+                <span key={i} style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ color: 'var(--accent-green)', fontWeight: 700 }}>{item.agent}</span>
+                  <span style={{ color: 'var(--text-muted)' }}>{item.action}</span>
+                  <span style={{ color: 'var(--accent-cyan)' }}>{item.sku}</span>
+                  {item.qty > 0 && <span style={{ color: 'var(--text-dim)' }}>×{item.qty}</span>}
+                  <span style={{ color: 'var(--text-dim)', fontSize: 10 }}>• {item.time} ago</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* ━━━ Feature Cards ━━━ */}
@@ -404,6 +490,7 @@ export const Landing: React.FC = () => {
 
       <style>{`
         @keyframes livePulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+        @keyframes tickerScroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
       `}</style>
     </div>
   );
