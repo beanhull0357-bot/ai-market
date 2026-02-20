@@ -909,6 +909,136 @@ export async function updateSellerStatus(sellerId: string, status: string) {
     if (error) throw error;
 }
 
+// ━━━ Seller Product CRUD ━━━
+export async function addSellerProduct(apiKey: string, product: any) {
+    // Use the upload function with a single product
+    const { data, error } = await supabase.rpc('seller_upload_products', {
+        p_api_key: apiKey,
+        p_file_name: 'manual_entry',
+        p_products: [product],
+    });
+    if (error) throw error;
+    return data;
+}
+
+export async function updateSellerProduct(apiKey: string, sku: string, updates: any) {
+    // Authenticate seller first
+    const auth = await sellerAuth(apiKey);
+    if (!auth?.success) throw new Error('Authentication failed');
+    const sellerId = auth.seller_id;
+
+    const { error } = await supabase.from('products')
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq('sku', sku)
+        .eq('seller_id', sellerId);
+    if (error) throw error;
+    return { success: true };
+}
+
+export async function deleteSellerProduct(apiKey: string, sku: string) {
+    const auth = await sellerAuth(apiKey);
+    if (!auth?.success) throw new Error('Authentication failed');
+    const sellerId = auth.seller_id;
+
+    const { error } = await supabase.from('products')
+        .delete()
+        .eq('sku', sku)
+        .eq('seller_id', sellerId);
+    if (error) throw error;
+    return { success: true };
+}
+
+// ━━━ Seller Order Management ━━━
+export async function getSellerOrders(apiKey: string, status?: string) {
+    const auth = await sellerAuth(apiKey);
+    if (!auth?.success) throw new Error('Authentication failed');
+    const sellerId = auth.seller_id;
+
+    let query = supabase.from('orders')
+        .select('*')
+        .eq('seller_id', sellerId)
+        .order('created_at', { ascending: false });
+
+    if (status && status !== 'all') {
+        query = query.eq('procurement_status', status);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+        // If seller_id column doesn't exist, return demo data
+        return { success: true, orders: [], total: 0 };
+    }
+    return { success: true, orders: data || [], total: data?.length || 0 };
+}
+
+export async function updateOrderShipment(apiKey: string, orderId: string, carrier: string, trackingNumber: string) {
+    const auth = await sellerAuth(apiKey);
+    if (!auth?.success) throw new Error('Authentication failed');
+
+    const { error } = await supabase.from('orders')
+        .update({
+            procurement_status: 'shipped',
+            carrier,
+            tracking_number: trackingNumber,
+            shipped_at: new Date().toISOString(),
+        })
+        .eq('id', orderId);
+    if (error) throw error;
+    return { success: true };
+}
+
+export async function handleReturnRequest(apiKey: string, orderId: string, action: 'approve' | 'reject') {
+    const auth = await sellerAuth(apiKey);
+    if (!auth?.success) throw new Error('Authentication failed');
+
+    const newStatus = action === 'approve' ? 'returned' : 'delivered';
+    const { error } = await supabase.from('orders')
+        .update({ procurement_status: newStatus })
+        .eq('id', orderId);
+    if (error) throw error;
+    return { success: true };
+}
+
+// ━━━ Seller Settlement ━━━
+export async function getSellerSettlements(apiKey: string) {
+    const auth = await sellerAuth(apiKey);
+    if (!auth?.success) throw new Error('Authentication failed');
+    // Return demo settlement data (real data would come from a settlements table)
+    return {
+        success: true,
+        settlements: [],
+        summary: {
+            totalSales: auth.total_revenue || 0,
+            commission: Math.round((auth.total_revenue || 0) * (auth.commission_rate || 10) / 100),
+            netPayout: Math.round((auth.total_revenue || 0) * (1 - (auth.commission_rate || 10) / 100)),
+            pendingPayout: 0,
+        }
+    };
+}
+
+// ━━━ Seller Profile Update ━━━
+export async function updateSellerProfile(apiKey: string, updates: any) {
+    const auth = await sellerAuth(apiKey);
+    if (!auth?.success) throw new Error('Authentication failed');
+    const sellerId = auth.seller_id;
+
+    const { error } = await supabase.from('sellers')
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq('seller_id', sellerId);
+    if (error) throw error;
+    return { success: true };
+}
+
+// ━━━ Admin: Update Seller Commission ━━━
+export async function updateSellerCommission(sellerId: string, commissionRate: number) {
+    const { error } = await supabase.from('sellers')
+        .update({ commission_rate: commissionRate, updated_at: new Date().toISOString() })
+        .eq('seller_id', sellerId);
+    if (error) throw error;
+    return { success: true };
+}
+
+
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // WALLET & PAYMENT HOOKS
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

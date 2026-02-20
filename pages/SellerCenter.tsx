@@ -1,8 +1,8 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Store, Upload, Package, BarChart3, Settings, Download, FileSpreadsheet, Search, Filter, AlertCircle, CheckCircle, Loader2, RefreshCw, Trash2, Edit3, Eye, TrendingUp, DollarSign, ShoppingCart, ChevronDown, X } from 'lucide-react';
-import { sellerAuth, getSellerDashboard, getSellerProducts, uploadSellerProducts, registerSeller } from '../hooks';
+import { Store, Upload, Package, BarChart3, Settings, Download, FileSpreadsheet, Search, Filter, AlertCircle, CheckCircle, Loader2, RefreshCw, Trash2, Edit3, Eye, TrendingUp, DollarSign, ShoppingCart, ChevronDown, X, Plus, Truck, RotateCcw, CreditCard, Save, Key, Ban } from 'lucide-react';
+import { sellerAuth, getSellerDashboard, getSellerProducts, uploadSellerProducts, registerSeller, addSellerProduct, updateSellerProduct, deleteSellerProduct, getSellerOrders, updateOrderShipment, handleReturnRequest, getSellerSettlements, updateSellerProfile } from '../hooks';
 
-type Tab = 'dashboard' | 'products' | 'upload' | 'orders' | 'settings';
+type Tab = 'dashboard' | 'products' | 'upload' | 'orders' | 'settlement' | 'settings';
 
 /* ━━━ Excel Template Columns ━━━ */
 const TEMPLATE_COLUMNS = [
@@ -20,6 +20,8 @@ const TEMPLATE_COLUMNS = [
     { key: 'min_order_qty', label: '최소주문수량', required: false, example: '1' },
     { key: 'attributes', label: '추가속성(JSON)', required: false, example: '{"color":"white"}' },
 ];
+
+const CARRIERS = ['CJ대한통운', '롯데택배', '한진택배', '우체국택배', '로젠택배', '경동택배', '대신택배', '기타'];
 
 /* ━━━ CSV Generator ━━━ */
 function downloadTemplate() {
@@ -62,6 +64,8 @@ function KpiCard({ label, value, sub, icon, color }: { label: string; value: str
     );
 }
 
+const emptyProduct = { sku: '', title: '', category: '', price: '', stock_qty: '', brand: '', ship_by_days: '1', eta_days: '3', return_days: '7', return_fee: '3000', gtin: '', min_order_qty: '1', attributes: '' };
+
 /* ━━━ Main SellerCenter Component ━━━ */
 export const SellerCenter: React.FC = () => {
     const [apiKey, setApiKey] = useState('');
@@ -78,6 +82,10 @@ export const SellerCenter: React.FC = () => {
     const [products, setProducts] = useState<any[]>([]);
     const [productSearch, setProductSearch] = useState('');
     const [productTotal, setProductTotal] = useState(0);
+    const [showAddProduct, setShowAddProduct] = useState(false);
+    const [editingProduct, setEditingProduct] = useState<any>(null);
+    const [productForm, setProductForm] = useState(emptyProduct);
+    const [savingProduct, setSavingProduct] = useState(false);
 
     // Upload
     const [uploadFile, setUploadFile] = useState<File | null>(null);
@@ -85,6 +93,20 @@ export const SellerCenter: React.FC = () => {
     const [uploadResult, setUploadResult] = useState<any>(null);
     const [uploading, setUploading] = useState(false);
     const fileRef = useRef<HTMLInputElement>(null);
+
+    // Orders
+    const [orders, setOrders] = useState<any[]>([]);
+    const [orderFilter, setOrderFilter] = useState('all');
+    const [shipModal, setShipModal] = useState<any>(null);
+    const [shipCarrier, setShipCarrier] = useState(CARRIERS[0]);
+    const [shipTracking, setShipTracking] = useState('');
+
+    // Settlement
+    const [settlements, setSettlements] = useState<any>(null);
+
+    // Settings
+    const [profileForm, setProfileForm] = useState<any>({});
+    const [savingProfile, setSavingProfile] = useState(false);
 
     // Registration
     const [showRegister, setShowRegister] = useState(false);
@@ -172,12 +194,107 @@ export const SellerCenter: React.FC = () => {
         } catch (e: any) { setError(e.message); }
     };
 
+    /* ━━━ Product CRUD ━━━ */
+    const handleSaveProduct = async () => {
+        setSavingProduct(true); setError('');
+        try {
+            const prod = {
+                sku: productForm.sku, title: productForm.title, category: productForm.category || 'GENERAL',
+                price: parseInt(productForm.price) || 0, stock_qty: parseInt(productForm.stock_qty) || 0,
+                brand: productForm.brand || '', ship_by_days: parseInt(productForm.ship_by_days) || 1,
+                eta_days: parseInt(productForm.eta_days) || 3, return_days: parseInt(productForm.return_days) || 7,
+                return_fee: parseInt(productForm.return_fee) || 0, gtin: productForm.gtin || null,
+                min_order_qty: parseInt(productForm.min_order_qty) || 1, attributes: productForm.attributes || '{}',
+            };
+            if (editingProduct) {
+                await updateSellerProduct(apiKey, editingProduct.sku, prod);
+            } else {
+                await addSellerProduct(apiKey, prod);
+            }
+            setShowAddProduct(false); setEditingProduct(null); setProductForm(emptyProduct);
+            loadProducts();
+        } catch (e: any) { setError(e.message); }
+        setSavingProduct(false);
+    };
+
+    const handleDeleteProduct = async (sku: string) => {
+        if (!confirm(`정말 "${sku}" 상품을 삭제하시겠습니까?`)) return;
+        try {
+            await deleteSellerProduct(apiKey, sku);
+            loadProducts();
+        } catch (e: any) { setError(e.message); }
+    };
+
+    const startEditProduct = (p: any) => {
+        setEditingProduct(p);
+        setProductForm({ sku: p.sku, title: p.title, category: p.category, price: String(p.price || ''), stock_qty: String(p.stock_qty || ''), brand: p.brand || '', ship_by_days: String(p.ship_by_days || '1'), eta_days: String(p.eta_days || '3'), return_days: String(p.return_days || '7'), return_fee: String(p.return_fee || '0'), gtin: p.gtin || '', min_order_qty: String(p.min_order_qty || '1'), attributes: typeof p.attributes === 'object' ? JSON.stringify(p.attributes) : p.attributes || '' });
+        setShowAddProduct(true);
+    };
+
+    /* ━━━ Orders ━━━ */
+    const loadOrders = useCallback(async () => {
+        if (!authenticated) return;
+        setLoading(true);
+        try {
+            const res = await getSellerOrders(apiKey, orderFilter);
+            if (res?.success) setOrders(res.orders || []);
+        } catch (e) { /* silent */ }
+        setLoading(false);
+    }, [apiKey, authenticated, orderFilter]);
+
+    useEffect(() => { if (authenticated && tab === 'orders') loadOrders(); }, [authenticated, tab, loadOrders]);
+
+    const handleShip = async () => {
+        if (!shipModal || !shipTracking) return;
+        try {
+            await updateOrderShipment(apiKey, shipModal.id, shipCarrier, shipTracking);
+            setShipModal(null); setShipTracking('');
+            loadOrders();
+        } catch (e: any) { setError(e.message); }
+    };
+
+    /* ━━━ Settlement ━━━ */
+    const loadSettlements = useCallback(async () => {
+        if (!authenticated) return;
+        try {
+            const res = await getSellerSettlements(apiKey);
+            if (res?.success) setSettlements(res);
+        } catch (e) { /* silent */ }
+    }, [apiKey, authenticated]);
+
+    useEffect(() => { if (authenticated && tab === 'settlement') loadSettlements(); }, [authenticated, tab, loadSettlements]);
+
+    /* ━━━ Profile ━━━ */
+    useEffect(() => {
+        if (authenticated && tab === 'settings' && sellerInfo) {
+            setProfileForm({
+                business_name: sellerInfo.business_name || '', representative: sellerInfo.representative || '',
+                phone: sellerInfo.phone || '', email: sellerInfo.email || '',
+                bank_name: sellerInfo.bank_name || '', bank_account: sellerInfo.bank_account || '',
+                default_ship_by_days: sellerInfo.default_ship_by_days || 1, default_eta_days: sellerInfo.default_eta_days || 3,
+                default_return_days: sellerInfo.default_return_days || 7, default_return_fee: sellerInfo.default_return_fee || 3000,
+            });
+        }
+    }, [authenticated, tab, sellerInfo]);
+
+    const handleSaveProfile = async () => {
+        setSavingProfile(true);
+        try {
+            await updateSellerProfile(apiKey, profileForm);
+            const res = await sellerAuth(apiKey);
+            if (res?.success) setSellerInfo(res);
+        } catch (e: any) { setError(e.message); }
+        setSavingProfile(false);
+    };
+
     const tabStyle = (t: Tab) => ({
         padding: '8px 16px', fontSize: 12, fontWeight: tab === t ? 700 : 500, cursor: 'pointer',
         color: tab === t ? 'var(--accent-cyan)' : 'var(--text-muted)',
         borderBottom: tab === t ? '2px solid var(--accent-cyan)' : '2px solid transparent',
         transition: 'all 0.2s',
     });
+
+    const inputStyle = { width: '100%', padding: 10, borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: 12, boxSizing: 'border-box' as const };
 
     /* ━━━ Login Screen ━━━ */
     if (!authenticated) return (
@@ -257,11 +374,12 @@ export const SellerCenter: React.FC = () => {
             </div>
 
             {/* Tabs */}
-            <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--border-subtle)', marginBottom: 20 }}>
+            <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--border-subtle)', marginBottom: 20, overflowX: 'auto' }}>
                 <div style={tabStyle('dashboard')} onClick={() => setTab('dashboard')}><BarChart3 size={12} style={{ marginRight: 4 }} />대시보드</div>
                 <div style={tabStyle('products')} onClick={() => setTab('products')}><Package size={12} style={{ marginRight: 4 }} />상품관리</div>
                 <div style={tabStyle('upload')} onClick={() => setTab('upload')}><Upload size={12} style={{ marginRight: 4 }} />엑셀 업로드</div>
-                <div style={tabStyle('orders')} onClick={() => setTab('orders')}><ShoppingCart size={12} style={{ marginRight: 4 }} />주문/정산</div>
+                <div style={tabStyle('orders')} onClick={() => setTab('orders')}><ShoppingCart size={12} style={{ marginRight: 4 }} />주문관리</div>
+                <div style={tabStyle('settlement')} onClick={() => setTab('settlement')}><CreditCard size={12} style={{ marginRight: 4 }} />정산</div>
                 <div style={tabStyle('settings')} onClick={() => setTab('settings')}><Settings size={12} style={{ marginRight: 4 }} />설정</div>
             </div>
 
@@ -320,10 +438,55 @@ export const SellerCenter: React.FC = () => {
                             <input value={productSearch} onChange={e => setProductSearch(e.target.value)} placeholder="SKU 또는 상품명 검색..."
                                 style={{ flex: 1, border: 'none', background: 'transparent', color: 'var(--text-primary)', fontSize: 12, outline: 'none' }} />
                         </div>
+                        <button onClick={() => { setEditingProduct(null); setProductForm(emptyProduct); setShowAddProduct(true); }}
+                            style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '8px 14px', borderRadius: 8, border: 'none', background: 'var(--accent-cyan)', color: '#000', fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>
+                            <Plus size={14} /> 상품 추가
+                        </button>
                         <button onClick={loadProducts} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer' }}>
                             <RefreshCw size={14} />
                         </button>
                     </div>
+
+                    {/* Add/Edit Product Modal */}
+                    {showAddProduct && (
+                        <div className="glass-card" style={{ padding: 20, marginBottom: 16, borderLeft: '3px solid var(--accent-cyan)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{editingProduct ? '✏️ 상품 수정' : '➕ 새 상품 등록'}</div>
+                                <button onClick={() => { setShowAddProduct(false); setEditingProduct(null); }} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer' }}><X size={16} /></button>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+                                {[
+                                    { key: 'sku', label: 'SKU *', ph: 'TISSUE-70x20', disabled: !!editingProduct },
+                                    { key: 'title', label: '상품명 *', ph: '물티슈 70매 20팩' },
+                                    { key: 'category', label: '카테고리 *', ph: 'CONSUMABLES' },
+                                    { key: 'price', label: '판매가(원) *', ph: '18900' },
+                                    { key: 'stock_qty', label: '재고수량 *', ph: '142' },
+                                    { key: 'brand', label: '브랜드', ph: 'BrandA' },
+                                    { key: 'ship_by_days', label: '출고일(일)', ph: '1' },
+                                    { key: 'eta_days', label: '배송소요일', ph: '3' },
+                                    { key: 'return_days', label: '반품기간(일)', ph: '7' },
+                                    { key: 'return_fee', label: '반품배송비(원)', ph: '3000' },
+                                    { key: 'gtin', label: '바코드', ph: '8801234567890' },
+                                    { key: 'min_order_qty', label: '최소주문수량', ph: '1' },
+                                ].map(f => (
+                                    <div key={f.key}>
+                                        <label style={{ fontSize: 10, color: 'var(--text-dim)', display: 'block', marginBottom: 2 }}>{f.label}</label>
+                                        <input value={(productForm as any)[f.key]} onChange={e => setProductForm(p => ({ ...p, [f.key]: e.target.value }))}
+                                            placeholder={f.ph} disabled={f.disabled} style={inputStyle} />
+                                    </div>
+                                ))}
+                            </div>
+                            {error && <div style={{ color: 'var(--accent-red)', fontSize: 11, marginTop: 8 }}>{error}</div>}
+                            <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
+                                <button onClick={handleSaveProduct} disabled={savingProduct || !productForm.sku || !productForm.title}
+                                    style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '8px 20px', borderRadius: 8, border: 'none', background: 'var(--accent-green)', color: '#000', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+                                    {savingProduct ? <Loader2 size={13} className="spin" /> : <Save size={13} />} {editingProduct ? '수정 완료' : '등록'}
+                                </button>
+                                <button onClick={() => { setShowAddProduct(false); setEditingProduct(null); }}
+                                    style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer' }}>취소</button>
+                            </div>
+                        </div>
+                    )}
 
                     <div style={{ fontSize: 11, color: 'var(--text-dim)', marginBottom: 8 }}>총 {productTotal}개 상품</div>
 
@@ -331,7 +494,7 @@ export const SellerCenter: React.FC = () => {
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                             <thead>
                                 <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                                    {['SKU', '상품명', '카테고리', '가격', '재고', '출고일', '상태'].map(h => (
+                                    {['SKU', '상품명', '카테고리', '가격', '재고', '출고일', '상태', '관리'].map(h => (
                                         <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontSize: 10, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase' }}>{h}</th>
                                     ))}
                                 </tr>
@@ -350,11 +513,17 @@ export const SellerCenter: React.FC = () => {
                                                 {p.stock_status === 'in_stock' ? '판매중' : '품절'}
                                             </span>
                                         </td>
+                                        <td style={{ padding: '8px 12px' }}>
+                                            <div style={{ display: 'flex', gap: 4 }}>
+                                                <button onClick={() => startEditProduct(p)} title="수정" style={{ padding: 4, borderRadius: 4, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--accent-cyan)', cursor: 'pointer' }}><Edit3 size={12} /></button>
+                                                <button onClick={() => handleDeleteProduct(p.sku)} title="삭제" style={{ padding: 4, borderRadius: 4, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--accent-red)', cursor: 'pointer' }}><Trash2 size={12} /></button>
+                                            </div>
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
-                        {products.length === 0 && <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-dim)', fontSize: 12 }}>등록된 상품이 없습니다</div>}
+                        {products.length === 0 && <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-dim)', fontSize: 12 }}>등록된 상품이 없습니다. "상품 추가" 버튼으로 시작하세요.</div>}
                     </div>
                     {loading && <div style={{ textAlign: 'center', padding: 16 }}><Loader2 size={18} className="spin" style={{ color: 'var(--accent-cyan)' }} /></div>}
                 </div>
@@ -464,24 +633,148 @@ export const SellerCenter: React.FC = () => {
 
             {/* ━━━ Orders Tab ━━━ */}
             {tab === 'orders' && (
-                <div className="glass-card" style={{ padding: 24, textAlign: 'center' }}>
-                    <ShoppingCart size={32} style={{ color: 'var(--text-dim)', marginBottom: 12 }} />
-                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>주문/정산</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 16 }}>
-                        셀러별 주문 현황 및 정산 내역을 확인합니다.
+                <div>
+                    {/* Order Filter Tabs */}
+                    <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
+                        {[
+                            { key: 'all', label: '전체' },
+                            { key: 'pending', label: '신규주문' },
+                            { key: 'confirmed', label: '발송대기' },
+                            { key: 'shipped', label: '배송중' },
+                            { key: 'delivered', label: '완료' },
+                            { key: 'returned', label: '반품' },
+                        ].map(f => (
+                            <button key={f.key} onClick={() => setOrderFilter(f.key)}
+                                style={{ padding: '6px 14px', borderRadius: 6, fontSize: 11, fontWeight: orderFilter === f.key ? 700 : 500, cursor: 'pointer', border: orderFilter === f.key ? '1px solid var(--accent-cyan)' : '1px solid var(--border-subtle)', background: orderFilter === f.key ? 'rgba(6,182,212,0.1)' : 'transparent', color: orderFilter === f.key ? 'var(--accent-cyan)' : 'var(--text-muted)' }}>
+                                {f.label}
+                            </button>
+                        ))}
+                        <button onClick={loadOrders} style={{ marginLeft: 'auto', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer' }}><RefreshCw size={12} /></button>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, maxWidth: 500, margin: '0 auto' }}>
-                        <div style={{ padding: 16, borderRadius: 8, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
-                            <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 4 }}>총 매출</div>
-                            <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--accent-green)', fontFamily: 'var(--font-mono)' }}>₩{(sellerInfo?.total_revenue || 0).toLocaleString()}</div>
+
+                    {/* Shipment Modal */}
+                    {shipModal && (
+                        <div className="glass-card" style={{ padding: 20, marginBottom: 16, borderLeft: '3px solid var(--accent-green)' }}>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12 }}>🚚 발송 처리 — 주문#{shipModal.id?.slice?.(0, 8)}</div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 12, marginBottom: 12 }}>
+                                <div>
+                                    <label style={{ fontSize: 10, color: 'var(--text-dim)', display: 'block', marginBottom: 2 }}>택배사</label>
+                                    <select value={shipCarrier} onChange={e => setShipCarrier(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
+                                        {CARRIERS.map(c => <option key={c}>{c}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: 10, color: 'var(--text-dim)', display: 'block', marginBottom: 2 }}>운송장 번호</label>
+                                    <input value={shipTracking} onChange={e => setShipTracking(e.target.value)} placeholder="운송장 번호 입력" style={inputStyle} />
+                                </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                                <button onClick={handleShip} disabled={!shipTracking}
+                                    style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '8px 20px', borderRadius: 8, border: 'none', background: 'var(--accent-green)', color: '#000', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}><Truck size={13} /> 발송 완료</button>
+                                <button onClick={() => setShipModal(null)} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer' }}>취소</button>
+                            </div>
                         </div>
-                        <div style={{ padding: 16, borderRadius: 8, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
-                            <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 4 }}>정산 주기</div>
-                            <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--accent-cyan)', fontFamily: 'var(--font-mono)' }}>월간</div>
-                        </div>
-                        <div style={{ padding: 16, borderRadius: 8, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
-                            <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 4 }}>수수료율</div>
-                            <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--accent-purple)', fontFamily: 'var(--font-mono)' }}>{sellerInfo?.commission_rate || 10}%</div>
+                    )}
+
+                    {/* Orders Table */}
+                    <div className="glass-card" style={{ overflow: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                            <thead>
+                                <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                                    {['주문번호', '상품', '수량', '금액', '주문일', '상태', '관리'].map(h => (
+                                        <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontSize: 10, fontWeight: 600, color: 'var(--text-dim)' }}>{h}</th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {orders.map((o: any) => {
+                                    const statusMap: Record<string, { label: string; color: string }> = {
+                                        pending: { label: '신규', color: 'var(--accent-amber)' }, confirmed: { label: '발송대기', color: 'var(--accent-cyan)' },
+                                        shipped: { label: '배송중', color: 'var(--accent-purple)' }, delivered: { label: '완료', color: 'var(--accent-green)' },
+                                        returned: { label: '반품', color: 'var(--accent-red)' },
+                                    };
+                                    const st = statusMap[o.procurement_status] || { label: o.procurement_status, color: 'var(--text-dim)' };
+                                    return (
+                                        <tr key={o.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                                            <td style={{ padding: '8px 12px', fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)', fontSize: 10 }}>{o.id?.slice?.(0, 8)}…</td>
+                                            <td style={{ padding: '8px 12px', color: 'var(--text-primary)', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.product_title || o.items?.[0]?.title || '-'}</td>
+                                            <td style={{ padding: '8px 12px', fontFamily: 'var(--font-mono)' }}>{o.quantity || 1}</td>
+                                            <td style={{ padding: '8px 12px', fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>₩{(o.total_amount || 0).toLocaleString()}</td>
+                                            <td style={{ padding: '8px 12px', fontSize: 10, color: 'var(--text-muted)' }}>{new Date(o.created_at).toLocaleDateString('ko')}</td>
+                                            <td style={{ padding: '8px 12px' }}><span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 4, fontWeight: 600, background: `color-mix(in srgb, ${st.color} 12%, transparent)`, color: st.color }}>{st.label}</span></td>
+                                            <td style={{ padding: '8px 12px' }}>
+                                                <div style={{ display: 'flex', gap: 4 }}>
+                                                    {(o.procurement_status === 'pending' || o.procurement_status === 'confirmed') && (
+                                                        <button onClick={() => setShipModal(o)} title="발송" style={{ padding: 4, borderRadius: 4, border: '1px solid var(--accent-green)', background: 'rgba(34,197,94,0.08)', color: 'var(--accent-green)', cursor: 'pointer' }}><Truck size={12} /></button>
+                                                    )}
+                                                    {o.procurement_status === 'return_requested' && (
+                                                        <button onClick={() => handleReturnRequest(apiKey, o.id, 'approve').then(loadOrders)} title="반품승인" style={{ padding: 4, borderRadius: 4, border: '1px solid var(--accent-red)', background: 'rgba(239,68,68,0.08)', color: 'var(--accent-red)', cursor: 'pointer' }}><RotateCcw size={12} /></button>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                        {orders.length === 0 && <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-dim)', fontSize: 12 }}>주문 내역이 없습니다</div>}
+                    </div>
+                    {loading && <div style={{ textAlign: 'center', padding: 16 }}><Loader2 size={18} className="spin" style={{ color: 'var(--accent-cyan)' }} /></div>}
+                </div>
+            )}
+
+            {/* ━━━ Settlement Tab ━━━ */}
+            {tab === 'settlement' && (
+                <div>
+                    {/* Summary KPIs */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 20 }}>
+                        <KpiCard label="총 매출" value={`₩${(settlements?.summary?.totalSales || sellerInfo?.total_revenue || 0).toLocaleString()}`} icon={<DollarSign size={16} />} color="var(--accent-green)" />
+                        <KpiCard label="수수료" value={`₩${(settlements?.summary?.commission || 0).toLocaleString()}`} sub={`${sellerInfo?.commission_rate || 10}%`} icon={<CreditCard size={16} />} color="var(--accent-red)" />
+                        <KpiCard label="정산 금액" value={`₩${(settlements?.summary?.netPayout || 0).toLocaleString()}`} sub="매출 - 수수료" icon={<TrendingUp size={16} />} color="var(--accent-cyan)" />
+                        <KpiCard label="정산 주기" value="월간" sub="익월 15일 정산" icon={<BarChart3 size={16} />} color="var(--accent-purple)" />
+                    </div>
+
+                    {/* Settlement History */}
+                    <div className="glass-card" style={{ padding: 20 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 16 }}>📋 정산 내역</div>
+                        {(settlements?.settlements || []).length > 0 ? (
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                                <thead>
+                                    <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                                        {['정산 기간', '매출', '수수료', '정산액', '상태'].map(h => (
+                                            <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontSize: 10, fontWeight: 600, color: 'var(--text-dim)' }}>{h}</th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {settlements.settlements.map((s: any) => (
+                                        <tr key={s.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                                            <td style={{ padding: '8px 12px', color: 'var(--text-primary)' }}>{s.period}</td>
+                                            <td style={{ padding: '8px 12px', fontFamily: 'var(--font-mono)' }}>₩{s.totalSales?.toLocaleString()}</td>
+                                            <td style={{ padding: '8px 12px', fontFamily: 'var(--font-mono)', color: 'var(--accent-red)' }}>-₩{s.commission?.toLocaleString()}</td>
+                                            <td style={{ padding: '8px 12px', fontFamily: 'var(--font-mono)', color: 'var(--accent-green)', fontWeight: 700 }}>₩{s.netPayout?.toLocaleString()}</td>
+                                            <td style={{ padding: '8px 12px' }}><span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 4, fontWeight: 600, background: s.status === 'paid' ? 'rgba(34,197,94,0.12)' : 'rgba(234,179,8,0.12)', color: s.status === 'paid' ? 'var(--accent-green)' : 'var(--accent-amber)' }}>{s.status === 'paid' ? '정산완료' : s.status === 'approved' ? '승인됨' : '대기중'}</span></td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        ) : (
+                            <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-dim)', fontSize: 12 }}>
+                                <CreditCard size={28} style={{ marginBottom: 8, opacity: 0.5 }} />
+                                <div>아직 정산 내역이 없습니다</div>
+                                <div style={{ fontSize: 10, marginTop: 4 }}>주문이 완료되면 정산 내역이 생성됩니다</div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Commission Info */}
+                    <div className="glass-card" style={{ padding: 16, marginTop: 16 }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>💡 수수료 안내</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.8 }}>
+                            • 기본 수수료율: <strong style={{ color: 'var(--accent-cyan)' }}>{sellerInfo?.commission_rate || 10}%</strong><br />
+                            • 정산 주기: 월간 (1일~말일 매출 → 익월 15일 정산)<br />
+                            • 정산 금액 = 총 매출 - 수수료 - 반품 금액<br />
+                            • 정산 계좌는 설정 탭에서 등록할 수 있습니다
                         </div>
                     </div>
                 </div>
@@ -489,22 +782,84 @@ export const SellerCenter: React.FC = () => {
 
             {/* ━━━ Settings Tab ━━━ */}
             {tab === 'settings' && (
-                <div className="glass-card" style={{ padding: 24 }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 16 }}>⚙️ 셀러 설정</div>
-                    <div style={{ display: 'grid', gap: 12, maxWidth: 500 }}>
-                        {[
-                            { label: '셀러 ID', value: sellerInfo?.seller_id },
-                            { label: '상호명', value: sellerInfo?.business_name },
-                            { label: '신뢰도', value: `${sellerInfo?.trust_score || 0} / 100` },
-                            { label: '수수료율', value: `${sellerInfo?.commission_rate || 10}%` },
-                            { label: '입점 상품', value: `${sellerInfo?.total_products || 0}개` },
-                        ].map(item => (
-                            <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--border-subtle)', fontSize: 12 }}>
-                                <span style={{ color: 'var(--text-muted)' }}>{item.label}</span>
-                                <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>{item.value}</span>
-                            </div>
-                        ))}
+                <div>
+                    {/* Account Info (read-only) */}
+                    <div className="glass-card" style={{ padding: 20, marginBottom: 16 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 16 }}>🔑 계정 정보</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+                            {[
+                                { label: '셀러 ID', value: sellerInfo?.seller_id },
+                                { label: '신뢰도', value: `${sellerInfo?.trust_score || 0} / 100` },
+                                { label: '수수료율', value: `${sellerInfo?.commission_rate || 10}%` },
+                                { label: '입점 상품', value: `${sellerInfo?.total_products || 0}개` },
+                            ].map(item => (
+                                <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border-subtle)', fontSize: 12 }}>
+                                    <span style={{ color: 'var(--text-muted)' }}>{item.label}</span>
+                                    <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>{item.value}</span>
+                                </div>
+                            ))}
+                        </div>
                     </div>
+
+                    {/* Editable Profile */}
+                    <div className="glass-card" style={{ padding: 20, marginBottom: 16 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 16 }}>📝 프로필 수정</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+                            {[
+                                { key: 'business_name', label: '상호명' },
+                                { key: 'representative', label: '대표자' },
+                                { key: 'phone', label: '연락처' },
+                                { key: 'email', label: '이메일' },
+                            ].map(f => (
+                                <div key={f.key}>
+                                    <label style={{ fontSize: 10, color: 'var(--text-dim)', display: 'block', marginBottom: 2 }}>{f.label}</label>
+                                    <input value={profileForm[f.key] || ''} onChange={e => setProfileForm((p: any) => ({ ...p, [f.key]: e.target.value }))} style={inputStyle} />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Shipping Policy */}
+                    <div className="glass-card" style={{ padding: 20, marginBottom: 16 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 16 }}>🚚 기본 배송 정책</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+                            {[
+                                { key: 'default_ship_by_days', label: '기본 출고 소요일', suffix: '일' },
+                                { key: 'default_eta_days', label: '기본 배송 소요일', suffix: '일' },
+                                { key: 'default_return_days', label: '반품 가능 기간', suffix: '일' },
+                                { key: 'default_return_fee', label: '반품 배송비', suffix: '원' },
+                            ].map(f => (
+                                <div key={f.key}>
+                                    <label style={{ fontSize: 10, color: 'var(--text-dim)', display: 'block', marginBottom: 2 }}>{f.label} ({f.suffix})</label>
+                                    <input type="number" value={profileForm[f.key] || ''} onChange={e => setProfileForm((p: any) => ({ ...p, [f.key]: parseInt(e.target.value) || 0 }))} style={inputStyle} />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Bank Account */}
+                    <div className="glass-card" style={{ padding: 20, marginBottom: 16 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 16 }}>🏦 정산 계좌</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+                            <div>
+                                <label style={{ fontSize: 10, color: 'var(--text-dim)', display: 'block', marginBottom: 2 }}>은행</label>
+                                <select value={profileForm.bank_name || ''} onChange={e => setProfileForm((p: any) => ({ ...p, bank_name: e.target.value }))} style={{ ...inputStyle, cursor: 'pointer' }}>
+                                    <option value="">선택</option>
+                                    {['국민은행', '신한은행', '우리은행', '하나은행', 'SC제일은행', '기업은행', '농협은행', '카카오뱅크', '토스뱅크'].map(b => <option key={b}>{b}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label style={{ fontSize: 10, color: 'var(--text-dim)', display: 'block', marginBottom: 2 }}>계좌번호</label>
+                                <input value={profileForm.bank_account || ''} onChange={e => setProfileForm((p: any) => ({ ...p, bank_account: e.target.value }))} placeholder="계좌번호 입력" style={inputStyle} />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Save Button */}
+                    <button onClick={handleSaveProfile} disabled={savingProfile}
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 24px', borderRadius: 8, border: 'none', background: 'var(--accent-cyan)', color: '#000', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                        {savingProfile ? <Loader2 size={14} className="spin" /> : <Save size={14} />} 설정 저장
+                    </button>
                 </div>
             )}
         </div>

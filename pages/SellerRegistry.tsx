@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Store, Shield, CheckCircle, XCircle, Clock, AlertTriangle, Ban, Search, RefreshCw, Loader2, ChevronDown, ChevronUp, TrendingUp, Package, ShoppingCart, Eye } from 'lucide-react';
-import { useSellers, updateSellerStatus } from '../hooks';
+import { Store, Shield, CheckCircle, XCircle, Clock, AlertTriangle, Ban, Search, RefreshCw, Loader2, ChevronDown, ChevronUp, TrendingUp, Package, ShoppingCart, Eye, Save, DollarSign } from 'lucide-react';
+import { useSellers, updateSellerStatus, updateSellerCommission } from '../hooks';
 import { Seller, SellerStatus } from '../types';
 
 type FilterStatus = SellerStatus | 'ALL';
@@ -38,6 +38,8 @@ function StatusBadge({ status }: { status: SellerStatus }) {
 function SellerCard({ seller, onStatusChange }: { seller: Seller; onStatusChange: () => void }) {
     const [expanded, setExpanded] = useState(false);
     const [updating, setUpdating] = useState(false);
+    const [commissionEdit, setCommissionEdit] = useState<number | null>(null);
+    const [savingCommission, setSavingCommission] = useState(false);
 
     const handleStatus = async (newStatus: SellerStatus) => {
         setUpdating(true);
@@ -89,7 +91,22 @@ function SellerCard({ seller, onStatusChange }: { seller: Seller; onStatusChange
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8, fontSize: 11, marginBottom: 12 }}>
                         <div><span style={{ color: 'var(--text-dim)' }}>셀러 ID:</span> <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)' }}>{seller.sellerId}</span></div>
                         <div><span style={{ color: 'var(--text-dim)' }}>연락처:</span> <span style={{ color: 'var(--text-primary)' }}>{seller.phone || '-'}</span></div>
-                        <div><span style={{ color: 'var(--text-dim)' }}>수수료:</span> <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>{seller.commissionRate}%</span></div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <span style={{ color: 'var(--text-dim)' }}>수수료:</span>
+                            <input type="number" value={commissionEdit ?? seller.commissionRate} onChange={e => setCommissionEdit(parseFloat(e.target.value) || 0)}
+                                style={{ width: 50, padding: '2px 4px', borderRadius: 4, border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: 11, fontFamily: 'var(--font-mono)', textAlign: 'right' }} />
+                            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>%</span>
+                            {commissionEdit !== null && commissionEdit !== seller.commissionRate && (
+                                <button onClick={async () => {
+                                    setSavingCommission(true);
+                                    try { await updateSellerCommission(seller.sellerId, commissionEdit); setCommissionEdit(null); onStatusChange(); } catch (e) { alert('수수료 변경 실패'); }
+                                    setSavingCommission(false);
+                                }} disabled={savingCommission}
+                                    style={{ padding: '2px 6px', borderRadius: 4, border: 'none', background: 'var(--accent-green)', color: '#000', fontSize: 9, fontWeight: 700, cursor: 'pointer' }}>
+                                    {savingCommission ? <Loader2 size={9} className="spin" /> : <Save size={9} />} 저장
+                                </button>
+                            )}
+                        </div>
                         <div><span style={{ color: 'var(--text-dim)' }}>평균출고:</span> <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>{seller.avgShipDays}일</span></div>
                         <div><span style={{ color: 'var(--text-dim)' }}>정산주기:</span> <span style={{ color: 'var(--text-primary)' }}>{seller.settlementCycle}</span></div>
                         <div><span style={{ color: 'var(--text-dim)' }}>가입일:</span> <span style={{ color: 'var(--text-primary)' }}>{new Date(seller.createdAt).toLocaleDateString('ko')}</span></div>
