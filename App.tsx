@@ -41,10 +41,13 @@ import { ConformanceTest } from './pages/ConformanceTest';
 import { PublicAnalytics } from './pages/PublicAnalytics';
 import EcosystemMap from './pages/EcosystemMap';
 import NegotiationCenter from './pages/NegotiationCenter';
+import { DecisionReplay } from './pages/DecisionReplay';
+import { A2AMarket } from './pages/A2AMarket';
+import { WorkflowBuilder } from './pages/WorkflowBuilder';
 import { NotificationBell } from './components/NotificationBell';
 import { GuidePopup } from './components/GuidePopup';
 import { GUIDE_CONTENT } from './data/guideContent';
-import { Terminal, Shield, Cpu, Globe, Package, LogIn, LogOut, User, Key, FileCheck, Zap, BookOpen, Bot, Radio, BarChart3, ChevronDown, Menu, X, Store, Truck, MessageSquare, Tag, Users, FlaskConical, GitCompare, RefreshCw, Activity, Download, Webhook, LayoutDashboard, FileJson, Handshake } from 'lucide-react';
+import { Terminal, Shield, Cpu, Globe, Package, LogIn, LogOut, User, Key, FileCheck, Zap, BookOpen, Bot, Radio, BarChart3, ChevronDown, Menu, X, Store, Truck, MessageSquare, Tag, Users, FlaskConical, GitCompare, RefreshCw, Activity, Download, Webhook, LayoutDashboard, FileJson, Handshake, Brain, Workflow } from 'lucide-react';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -350,6 +353,9 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     ] : []),
     { to: '/public-analytics', icon: <Globe size={13} />, label: 'Analytics' },
     { to: '/ecosystem', icon: <Globe size={13} />, label: 'Ecosystem' },
+    { to: '/decision-replay', icon: <Brain size={13} />, label: 'Decision Replay' },
+    { to: '/a2a-market', icon: <Radio size={13} />, label: 'A2A Market' },
+    { to: '/workflow-builder', icon: <Workflow size={13} />, label: 'Workflow' },
   ];
 
   return (
@@ -468,6 +474,9 @@ export default function App() {
                     <Route path="/public-analytics" element={<PublicAnalytics />} />
                     <Route path="/ecosystem" element={<EcosystemMap />} />
                     <Route path="/negotiate" element={<NegotiationCenter />} />
+                    <Route path="/decision-replay" element={<DecisionReplay />} />
+                    <Route path="/a2a-market" element={<A2AMarket />} />
+                    <Route path="/workflow-builder" element={<WorkflowBuilder />} />
                   </Routes>
                 </Layout>
               } />
