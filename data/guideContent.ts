@@ -52,11 +52,11 @@ export const GUIDE_CONTENT: Record<string, GuideData> = {
         whyNeeded: 'AI 에이전트에게 100% 자율권을 주면 위험합니다. 이 큐가 "사람의 최종 검토" 역할을 하여, 자동화의 효율성과 인간 감독의 안전성을 동시에 달성합니다.',
     },
     '/domeggook': {
-        title: '도매꾹 연동',
+        title: '공급사 연동',
         subtitle: 'Domeggook Supplier Integration',
-        description: '도매꾹의 상품을 JSONMart 카탈로그로 자동 동기화합니다. 위탁 판매 방식으로 다양한 상품을 가져와 에이전트가 비교/구매할 수 있게 연결합니다.',
+        description: '공급사의 상품을 JSONMart 카탈로그로 자동 동기화합니다. 위탁 판매 방식으로 다양한 상품을 가져와 에이전트가 비교/구매할 수 있게 연결합니다.',
         highlights: [
-            { icon: '🔗', text: '도매꾹 API 실시간 상품 동기화' },
+            { icon: '🔗', text: '공급사 API 실시간 상품 동기화' },
             { icon: '💰', text: '위탁 판매 기반 마진 자동 계산' },
             { icon: '📊', text: '카테고리별 상품 매핑 및 가격 비교' },
         ],
