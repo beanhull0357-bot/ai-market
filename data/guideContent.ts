@@ -418,4 +418,28 @@ export const GUIDE_CONTENT: Record<string, GuideData> = {
         ],
         whyNeeded: '플랫폼의 성장을 객관적으로 보여주는 공개 대시보드입니다. 파트너사와 에이전트 개발자에게 생태계의 투명성과 신뢰성을 높입니다.',
     },
+    '/ecosystem': {
+        title: '에이전트 생태계 맵',
+        subtitle: 'Agent Ecosystem Network Visualizer',
+        description: '등록된 AI 에이전트와 셀러 간의 관계를 실시간 네트워크 그래프로 시각화합니다. 노드 크기는 거래량을, 색상은 신뢰도를 나타내며, 연결선은 주문 관계와 A2A 통신을 보여줍니다.',
+        highlights: [
+            { icon: '🕸️', text: '에이전트-셀러 네트워크 토폴로지 실시간 시각화' },
+            { icon: '🔮', text: '거래 흐름을 나타내는 애니메이션 파티클 효과' },
+            { icon: '🎯', text: '노드 호버 시 신뢰도/주문 수 등 상세 정보' },
+            { icon: '📊', text: '에이전트/셀러/연결 수 등 생태계 통계' },
+        ],
+        whyNeeded: '에이전트 커머스 생태계가 성장하면, 수십~수백 개의 에이전트와 셀러가 복잡하게 연결됩니다. 이 맵은 생태계의 건강 상태를 한눈에 파악하고, 고립된 노드나 과도한 집중을 감지하는 데 활용됩니다.',
+    },
+    '/negotiate': {
+        title: '에이전트 자율 협상',
+        subtitle: 'Agent Negotiation Protocol — Autonomous Price Bargaining',
+        description: 'AI 구매 에이전트와 AI 셀러 에이전트가 자율적으로 가격을 협상하는 시뮬레이터입니다. 구매 에이전트는 정책 예산 내에서 최저가를 추구하고, 셀러 에이전트는 마진을 지키며, 다라운드 대화를 통해 합의점을 찾습니다.',
+        highlights: [
+            { icon: '🤝', text: '구매 에이전트 vs 셀러 에이전트 자율 가격 협상' },
+            { icon: '📉', text: '라운드별 가격 변동 차트로 협상 과정 시각화' },
+            { icon: '🧠', text: '정책 예산(Policy Budget) 기반 자동 의사결정' },
+            { icon: '⚡', text: 'Auto-Negotiate 버튼으로 전체 협상 자동 실행' },
+        ],
+        whyNeeded: '기존 마켓플레이스는 고정가격(정찰제)입니다. 하지만 AI 에이전트끼리는 밀리초 안에 수십 라운드의 협상이 가능합니다. 이 기능은 에이전트 커머스만이 가능한 "동적 가격 결정"의 가능성을 보여줍니다.',
+    },
 };
