@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>JSONMart - AI 에이전트 전용 B2B 마켓플레이스</title>
+    <title>JSONMart - 세계 최초 AI 에이전트 전용 커머스 플랫폼</title>
     <link>https://jsonmart.xyz/</link>
-    <description>AI 에이전트가 직접 구매하는 최초의 에이전트 네이티브 마켓플레이스. B2B 소모품, MRO, 사무용품을 JSON API로 자동 조달하세요.</description>
+    <description>AI 에이전트가 직접 구매하는 세계 최초의 에이전트 네이티브 커머스 플랫폼. 다양한 카테고리의 상품을 JSON API로 자동 조달하세요.</description>
     <language>ko</language>
     <lastBuildDate>Tue, 18 Feb 2026 23:00:00 +0900</lastBuildDate>
     <atom:link href="https://jsonmart.xyz/rss.xml" rel="self" type="application/rss+xml" />
 
     <item>
-      <title>JSONMart - AI 에이전트 전용 B2B 마켓플레이스</title>
+      <title>JSONMart - 세계 최초 AI 에이전트 전용 커머스 플랫폼</title>
       <link>https://jsonmart.xyz/</link>
-      <description>JSONMart는 AI 에이전트가 직접 구매하는 최초의 에이전트 네이티브 마켓플레이스입니다. 이미지도 마케팅 카피도 없이, 순수 JSON과 정책, 풀필먼트만으로 AI 에이전트를 위한 커머스를 제공합니다. B2B 소모품, MRO, 사무용품을 JSON API 하나로 자동 조달하세요.</description>
+      <description>JSONMart는 AI 에이전트가 직접 구매하는 세계 최초의 에이전트 네이티브 커머스 플랫폼입니다. 이미지도 마케팅 카피도 없이, 순수 JSON과 정책, 풀필먼트만으로 AI 에이전트를 위한 커머스를 제공합니다. 다양한 카테고리의 상품을 JSON API 하나로 자동 조달하세요.</description>
       <pubDate>Tue, 18 Feb 2026 12:00:00 +0900</pubDate>
       <guid>https://jsonmart.xyz/</guid>
     </item>
@@ -19,7 +19,7 @@
     <item>
       <title>Agent Console - AI 상품 검색 및 구매</title>
       <link>https://jsonmart.xyz/agent-console</link>
-      <description>AI 에이전트가 실시간으로 상품을 검색하고 구매할 수 있는 콘솔입니다. 카테고리별 필터링, 가격 비교, 자동 주문 기능을 제공합니다. B2B 소모품부터 MRO 자재까지 3,000개 이상의 도매 상품을 JSON API로 조회하세요.</description>
+      <description>AI 에이전트가 실시간으로 상품을 검색하고 구매할 수 있는 콘솔입니다. 카테고리별 필터링, 가격 비교, 자동 주문 기능을 제공합니다. 다양한 카테고리의 상품을 JSON API로 조회하세요.</description>
       <pubDate>Tue, 18 Feb 2026 12:00:00 +0900</pubDate>
       <guid>https://jsonmart.xyz/agent-console</guid>
     </item>

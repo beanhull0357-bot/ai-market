@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:g="http://base.google.com/ns/1.0">
   <channel>
-    <title>JSONMart - Agent-Native B2B Marketplace</title>
+    <title>JSONMart - Agent-Native Commerce Platform</title>
     <link>https://jsonmart.xyz/</link>
-    <description>B2B Consumables &amp; MRO products for AI purchasing agents. 50+ products with structured data, trust scores, and policy-driven ordering.</description>
+    <description>Diverse products for AI purchasing agents. 50+ products with structured data, trust scores, and policy-driven ordering.</description>
 
     <!-- ==================== CONSUMABLES ==================== -->
 
@@ -102,7 +102,7 @@
       </g:shipping>
     </item>
 
-    <!-- ==================== MRO ==================== -->
+    <!-- ==================== OFFICE SUPPLIES ==================== -->
 
     <item>
       <g:id>PAPER-A4-80G</g:id>

@@ -53,14 +53,14 @@ export const GUIDE_CONTENT: Record<string, GuideData> = {
     },
     '/domeggook': {
         title: '도매꾹 연동',
-        subtitle: 'Domeggook B2B Integration',
-        description: '한국 최대 B2B 도매 플랫폼인 도매꾹의 상품을 JSONMart 카탈로그로 자동 동기화합니다. 실제 도매 상품을 에이전트가 비교/구매할 수 있게 연결합니다.',
+        subtitle: 'Domeggook Supplier Integration',
+        description: '도매꾹의 상품을 JSONMart 카탈로그로 자동 동기화합니다. 위탁 판매 방식으로 다양한 상품을 가져와 에이전트가 비교/구매할 수 있게 연결합니다.',
         highlights: [
             { icon: '🔗', text: '도매꾹 API 실시간 상품 동기화' },
-            { icon: '💰', text: '도매가 기준 마진 자동 계산' },
+            { icon: '💰', text: '위탁 판매 기반 마진 자동 계산' },
             { icon: '📊', text: '카테고리별 상품 매핑 및 가격 비교' },
         ],
-        whyNeeded: 'AI 에이전트 커머스가 실제 한국 유통 시장과 연결됩니다. 가상 상품이 아니라, 실제 도매 상품을 에이전트가 거래하므로 실질적인 비즈니스 가치를 창출합니다.',
+        whyNeeded: 'AI 에이전트 커머스가 실제 유통 시장과 연결됩니다. 위탁 판매 방식으로 다양한 상품을 에이전트가 거래하므로 실질적인 비즈니스 가치를 창출합니다.',
     },
     '/orders': {
         title: '주문 관리',
@@ -138,17 +138,6 @@ export const GUIDE_CONTENT: Record<string, GuideData> = {
             { icon: '📋', text: '복수 정책 생성 — 에이전트별/그룹별 적용' },
         ],
         whyNeeded: 'AI에게 구매를 위임할 때 가장 중요한 것은 "한도와 규칙"입니다. 이 정책이 에이전트의 자율성과 인간의 통제 사이 균형을 유지합니다.',
-    },
-    '/agent-groups': {
-        title: '에이전트 그룹',
-        subtitle: 'Group-Based Agent Management',
-        description: '에이전트를 부서별/용도별 그룹으로 분류합니다. 예: "마케팅팀 구매 에이전트", "물류팀 재고 에이전트" 등으로 나누어 각 그룹에 다른 정책을 적용합니다.',
-        highlights: [
-            { icon: '👥', text: '에이전트를 논리적 그룹으로 분류' },
-            { icon: '📏', text: '그룹별 차별화된 정책 적용' },
-            { icon: '📊', text: '그룹별 사용량/비용 분석' },
-        ],
-        whyNeeded: '기업이 여러 부서에서 각각 AI 에이전트를 운영할 때, 부서별 예산 관리와 권한 분리가 필요합니다.',
     },
     '/playground': {
         title: 'API 플레이그라운드',

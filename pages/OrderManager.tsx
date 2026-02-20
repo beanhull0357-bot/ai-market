@@ -127,10 +127,10 @@ export function OrderManager() {
 
         setExporting(true);
         try {
-            // Build rows in 14-column Domeggook format
+            // Build rows in 14-column supplier bulk order format
             const rows: any[][] = [];
 
-            // Header row (must match Domeggook template exactly)
+            // Header row (must match supplier template exactly)
             rows.push([
                 '마켓', '상품번호', '옵션코드', '옵션명', '수량',
                 '수령자명', '우편번호', '배송주소', '배송 상세주소',
@@ -148,7 +148,7 @@ export function OrderManager() {
                     sourceId = sourceId.replace(/[^0-9]/g, '');
 
                     rows.push([
-                        isDomeggook ? '도매꾹' : '도매매',     // A: 마켓
+                        isDomeggook ? '공급사A' : '공급사B',     // A: 마켓
                         sourceId,                              // B: 상품번호
                         '00',                                   // C: 옵션코드 (기본: 00)
                         '',                                     // D: 옵션명
@@ -159,7 +159,7 @@ export function OrderManager() {
                         order.address_detail || '',            // I: 배송 상세주소
                         order.phone || '',                     // J: 휴대전화
                         order.phone_alt || '',                 // K: 추가연락처
-                        '',                                     // L: 쇼핑몰명 (도매꾹은 비움)
+                        '',                                     // L: 쇼핑몰명
                         '',                                     // M: 전달사항
                         order.delivery_note || '',             // N: 배송요청사항
                     ]);
@@ -244,8 +244,8 @@ export function OrderManager() {
                 </div>
                 <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: 0 }}>
                     {t(
-                        'Manage orders and export to Domeggook Excel bulk order format',
-                        '주문을 관리하고 도매꼭 엑셀일괄주문 양식으로 내보냅니다'
+                        'Manage orders and export to Excel bulk order format',
+                        '주문을 관리하고 엑셀일괄주문 양식으로 내보냅니다'
                     )}
                 </p>
             </div>
@@ -440,7 +440,7 @@ export function OrderManager() {
                     {selected.size > 0 && ` · ${t(`${selected.size} selected`, `${selected.size}건 선택`)}`}
                 </span>
                 <span>
-                    {t('Export generates Domeggook bulk order Excel format', '내보내기 시 도매꼭 엑셀일괄주문 양식 생성')}
+                    {t('Export generates bulk order Excel format', '내보내기 시 엑셀일괄주문 양식 생성')}
                 </span>
             </div>
 

@@ -535,7 +535,7 @@ export function DomeggookSync() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <Store size={24} style={{ color: 'var(--accent-green)' }} />
                         <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
-                            {t('Domeggook Sync', '도매꼭 연동')}
+                            {t('Domeggook Sync', '공급사 연동')}
                         </h1>
                     </div>
                     <button
@@ -556,7 +556,7 @@ export function DomeggookSync() {
                     </button>
                 </div>
                 <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: 0 }}>
-                    {t('Search and import wholesale products from Domeggook into JSONMart catalog', '도매꼭에서 상품을 검색하고 JSONMart 카탈로그로 가져올 수 있습니다')}
+                    {t('Search and import products from Domeggook into JSONMart catalog', '공급사에서 상품을 검색하고 JSONMart 카탈로그로 가져올 수 있습니다')}
                 </p>
             </div>
 
@@ -1169,10 +1169,10 @@ export function DomeggookSync() {
                 }}>
                     <Package size={48} style={{ marginBottom: 16, opacity: 0.3 }} />
                     <p style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>
-                        {t('Search Domeggook Products', '도매꼭 상품을 검색하세요')}
+                        {t('Search Domeggook Products', '공급사 상품을 검색하세요')}
                     </p>
                     <p style={{ fontSize: 12 }}>
-                        {t('Enter a keyword to find wholesale products', '키워드를 입력하면 도매 상품을 찾을 수 있습니다')}
+                        {t('Enter a keyword to find products', '키워드를 입력하면 상품을 찾을 수 있습니다')}
                     </p>
                 </div>
             )}
