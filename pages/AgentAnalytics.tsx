@@ -129,7 +129,8 @@ export const AgentAnalytics: React.FC = () => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (agentsLoading || agents.length === 0) return;
+        if (agentsLoading) return;
+        if (agents.length === 0) { setLoading(false); return; }
         // Generate analytics from agent data + orders
         const agentStats: AgentStats[] = agents.map(a => {
             const cats = ['CONSUMABLES', 'MRO', 'OFFICE', 'HYGIENE'];
