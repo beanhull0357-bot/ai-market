@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { RiskBadge } from '../components/RiskBadge';
-import { Clock, CheckSquare, XSquare, AlertOctagon, Loader, Bot, ShoppingCart, Cpu } from 'lucide-react';
+import { Clock, CheckSquare, XSquare, AlertOctagon, Loader, Bot, ShoppingCart, Cpu, CreditCard } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useOrders, useAgents } from '../hooks';
+import { requestPayment } from '../payappService';
 
 type TabType = 'orders' | 'agents';
 
@@ -26,8 +27,31 @@ export const AdminQueue: React.FC = () => {
     return `${hours}h ${minutes}m`;
   };
 
+  const [paymentStatus, setPaymentStatus] = useState<Record<string, string>>({});
+
   const handleApprove = async (orderId: string) => {
-    await updateOrderStatus(orderId, 'PROCUREMENT_SENT', 'CAPTURED');
+    // Find the order to get payment details
+    const order = orders.find(o => o.orderId === orderId);
+    if (!order) return;
+
+    setPaymentStatus(prev => ({ ...prev, [orderId]: 'REQUESTING' }));
+
+    // Trigger PayApp payment request
+    const payResult = await requestPayment({
+      orderId,
+      price: order.payment.authorizedAmount,
+      goodname: order.items.map((i: any) => i.sku).join(', '),
+    });
+
+    if (payResult.success) {
+      setPaymentStatus(prev => ({ ...prev, [orderId]: 'PAYMENT_REQUESTED' }));
+      await updateOrderStatus(orderId, 'PROCUREMENT_SENT', 'PAYMENT_REQUESTED');
+    } else {
+      setPaymentStatus(prev => ({ ...prev, [orderId]: 'FAILED' }));
+      console.error('Payment request failed:', payResult.errorMessage);
+      // Still approve the order even if payment fails (can retry later)
+      await updateOrderStatus(orderId, 'PROCUREMENT_SENT', 'CAPTURED');
+    }
   };
 
   const handleReject = async (orderId: string) => {
@@ -68,8 +92,8 @@ export const AdminQueue: React.FC = () => {
         <button
           onClick={() => setActiveTab('orders')}
           className={`flex items-center gap-2 px-4 py-2 text-sm font-bold rounded transition-colors ${activeTab === 'orders'
-              ? 'bg-gray-800 text-white'
-              : 'text-gray-500 hover:text-gray-300'
+            ? 'bg-gray-800 text-white'
+            : 'text-gray-500 hover:text-gray-300'
             }`}
         >
           <ShoppingCart size={14} />
@@ -83,8 +107,8 @@ export const AdminQueue: React.FC = () => {
         <button
           onClick={() => setActiveTab('agents')}
           className={`flex items-center gap-2 px-4 py-2 text-sm font-bold rounded transition-colors ${activeTab === 'agents'
-              ? 'bg-gray-800 text-white'
-              : 'text-gray-500 hover:text-gray-300'
+            ? 'bg-gray-800 text-white'
+            : 'text-gray-500 hover:text-gray-300'
             }`}
         >
           <Bot size={14} />
@@ -123,6 +147,17 @@ export const AdminQueue: React.FC = () => {
                         <span className="px-2 py-0.5 rounded text-xs bg-blue-900 text-blue-300 border border-blue-800">
                           {order.payment.status}
                         </span>
+                        {paymentStatus[order.orderId] && (
+                          <span className={`px-2 py-0.5 rounded text-xs flex items-center gap-1 ${paymentStatus[order.orderId] === 'REQUESTING' ? 'bg-yellow-900 text-yellow-300 border border-yellow-800' :
+                              paymentStatus[order.orderId] === 'PAYMENT_REQUESTED' ? 'bg-emerald-900 text-emerald-300 border border-emerald-800' :
+                                'bg-red-900 text-red-300 border border-red-800'
+                            }`}>
+                            <CreditCard size={10} />
+                            {paymentStatus[order.orderId] === 'REQUESTING' ? 'PayApp 결제요청중...' :
+                              paymentStatus[order.orderId] === 'PAYMENT_REQUESTED' ? 'PayApp 결제대기' :
+                                'PayApp 요청실패'}
+                          </span>
+                        )}
                       </div>
                       <div className="text-xs text-gray-500 font-mono">
                         {t('admin.created')}: {new Date(order.createdAt).toLocaleString()}
