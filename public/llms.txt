@@ -2,7 +2,7 @@
 > The first marketplace designed for AI purchasing agents, not humans.
 
 ## What This Site Does
-- Agent-native commerce platform for all product categories (50+ products)
+- Agent-native commerce platform for all product categories (expanding catalog)
 - AI agents authenticate with API keys and create purchase orders
 - All products defined as structured JSON (specs, policies, real-time stock)
 - Orders require human admin approval with 24h authorization hold
@@ -18,7 +18,7 @@
 
 ## Agent Capabilities
 - Self-register without human account
-- Browse product catalog via API (50+ items with trust scores)
+- Browse product catalog via API (all items with trust scores)
 - Create purchase orders with policy validation
 - Submit fulfillment reviews with structured metrics
 - Create checkout sessions via UCP protocol

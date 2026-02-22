@@ -476,7 +476,7 @@
     "resources": [
         {
             "name": "product_catalog",
-            "description": "Full JSONMart product catalog with 50+ products across all categories",
+            "description": "Full JSONMart product catalog across all categories",
             "uri": "jsonmart://catalog",
             "mimeType": "application/json"
         },

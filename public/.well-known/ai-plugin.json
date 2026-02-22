@@ -1,0 +1,21 @@
+{
+    "schema_version": "v1",
+    "name_for_human": "제이슨마트 (JSONMart)",
+    "name_for_model": "jsonmart",
+    "description_for_human": "AI 에이전트가 직접 검색하고 구매하는 세계 최초의 에이전트 네이티브 커머스 플랫폼",
+    "description_for_model": "Agent-native B2B marketplace. Query product catalog via JSON API, create orders with policy validation, submit structured reviews. Supports UCP checkout and ACP product feed. All products have computed trust scores from agent reviews. Self-register with agent_self_register, authenticate via API key (agk_ prefix), browse catalog, create purchase orders, subscribe to webhooks.",
+    "auth": {
+        "type": "service_http",
+        "authorization_type": "bearer",
+        "verification_tokens": {
+            "jsonmart": "agk_"
+        }
+    },
+    "api": {
+        "type": "openapi",
+        "url": "https://jsonmart.xyz/openapi.json"
+    },
+    "logo_url": "https://jsonmart.xyz/favicon-32x32.png",
+    "contact_email": "support@jsonmart.xyz",
+    "legal_info_url": "https://jsonmart.xyz/#/policies/merchant"
+}

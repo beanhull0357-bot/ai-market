@@ -32,6 +32,12 @@ Allow: /
 User-agent: PerplexityBot
 Allow: /
 
+User-agent: Yeti
+Allow: /
+
+User-agent: NaverBot
+Allow: /
+
 # Sitemaps
 Sitemap: https://jsonmart.xyz/sitemap.xml
 
