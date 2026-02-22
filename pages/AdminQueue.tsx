@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { RiskBadge } from '../components/RiskBadge';
-import { Clock, CheckSquare, XSquare, AlertOctagon, Loader, Bot, ShoppingCart, Cpu, CreditCard } from 'lucide-react';
+import { Clock, CheckSquare, XSquare, AlertOctagon, Loader, Bot, ShoppingCart, Cpu, CreditCard, RefreshCw, Ban } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useOrders, useAgents } from '../hooks';
 import { requestPayment } from '../payappService';
+import { supabase } from '../supabaseClient';
 
-type TabType = 'orders' | 'agents';
+type TabType = 'orders' | 'agents' | 'payments';
 
 export const AdminQueue: React.FC = () => {
   const { t } = useLanguage();
@@ -73,6 +74,46 @@ export const AdminQueue: React.FC = () => {
     setProcessingIds(prev => { const s = new Set(prev); s.delete(agentId); return s; });
   };
 
+  // ====== Payments Tab State ======
+  const [payments, setPayments] = useState<any[]>([]);
+  const [paymentsLoading, setPaymentsLoading] = useState(false);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [payFilter, setPayFilter] = useState<string>('ALL');
+
+  const loadPayments = useCallback(async () => {
+    setPaymentsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('order_id, status, payment_status, authorized_amount, items, created_at, payapp_mul_no, payapp_payurl, payapp_pay_type, payapp_pay_date, updated_at')
+        .not('payapp_mul_no', 'is', null)
+        .order('created_at', { ascending: false });
+      if (!error && data) setPayments(data);
+    } catch (e) { console.error(e); }
+    setPaymentsLoading(false);
+  }, []);
+
+  useEffect(() => { if (activeTab === 'payments') loadPayments(); }, [activeTab, loadPayments]);
+
+  const handleCancelPayment = async (mulNo: string) => {
+    setCancellingId(mulNo);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/payapp-cancel`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({ mul_no: mulNo, cancelmemo: 'Admin cancellation' }),
+      });
+      const data = await res.json();
+      if (data.success) await loadPayments();
+    } catch (e) { console.error(e); }
+    setCancellingId(null);
+  };
+
+  const filteredPayments = payFilter === 'ALL' ? payments : payments.filter(p => p.payment_status === payFilter);
+
   const loading = ordersLoading || agentsLoading;
 
   return (
@@ -119,6 +160,21 @@ export const AdminQueue: React.FC = () => {
             </span>
           )}
         </button>
+        <button
+          onClick={() => setActiveTab('payments')}
+          className={`flex items-center gap-2 px-4 py-2 text-sm font-bold rounded transition-colors ${activeTab === 'payments'
+            ? 'bg-gray-800 text-white'
+            : 'text-gray-500 hover:text-gray-300'
+            }`}
+        >
+          <CreditCard size={14} />
+          결제 관리
+          {payments.filter(p => p.payment_status === 'PAYMENT_REQUESTED').length > 0 && (
+            <span className="ml-1 px-1.5 py-0.5 text-[10px] rounded-full bg-emerald-600 text-white">
+              {payments.filter(p => p.payment_status === 'PAYMENT_REQUESTED').length}
+            </span>
+          )}
+        </button>
       </div>
 
       {loading ? (
@@ -149,8 +205,8 @@ export const AdminQueue: React.FC = () => {
                         </span>
                         {paymentStatus[order.orderId] && (
                           <span className={`px-2 py-0.5 rounded text-xs flex items-center gap-1 ${paymentStatus[order.orderId] === 'REQUESTING' ? 'bg-yellow-900 text-yellow-300 border border-yellow-800' :
-                              paymentStatus[order.orderId] === 'PAYMENT_REQUESTED' ? 'bg-emerald-900 text-emerald-300 border border-emerald-800' :
-                                'bg-red-900 text-red-300 border border-red-800'
+                            paymentStatus[order.orderId] === 'PAYMENT_REQUESTED' ? 'bg-emerald-900 text-emerald-300 border border-emerald-800' :
+                              'bg-red-900 text-red-300 border border-red-800'
                             }`}>
                             <CreditCard size={10} />
                             {paymentStatus[order.orderId] === 'REQUESTING' ? 'PayApp 결제요청중...' :
@@ -220,7 +276,7 @@ export const AdminQueue: React.FC = () => {
             })}
           </div>
         )
-      ) : (
+      ) : activeTab === 'agents' ? (
         /* ==================== AGENTS TAB ==================== */
         pendingAgents.length === 0 ? (
           <div className="text-center py-20 text-gray-600">
@@ -303,7 +359,110 @@ export const AdminQueue: React.FC = () => {
             ))}
           </div>
         )
-      )}
+      ) : activeTab === 'payments' ? (
+        /* ==================== PAYMENTS TAB ==================== */
+        <div>
+          {/* Filter + Refresh */}
+          <div className="flex items-center gap-3 mb-4">
+            {['ALL', 'PAYMENT_REQUESTED', 'CAPTURED', 'VOIDED', 'REFUNDED'].map(f => (
+              <button
+                key={f}
+                onClick={() => setPayFilter(f)}
+                className={`px-3 py-1 text-xs rounded border transition-colors ${payFilter === f
+                  ? 'bg-gray-700 text-white border-gray-600'
+                  : 'text-gray-500 border-gray-800 hover:border-gray-600'
+                  }`}
+              >
+                {f === 'ALL' ? '전체' : f === 'PAYMENT_REQUESTED' ? '결제대기' : f === 'CAPTURED' ? '결제완료' : f === 'VOIDED' ? '취소' : '환불'}
+              </button>
+            ))}
+            <button onClick={loadPayments} className="ml-auto flex items-center gap-1 px-3 py-1 text-xs text-gray-400 border border-gray-800 rounded hover:border-gray-600">
+              <RefreshCw size={12} className={paymentsLoading ? 'animate-spin' : ''} /> 새로고침
+            </button>
+          </div>
+
+          {/* Summary Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+            <div className="bg-gray-900 border border-gray-800 rounded-lg p-4">
+              <div className="text-xs text-gray-500">전체 결제</div>
+              <div className="text-xl font-bold text-white">{payments.length}건</div>
+            </div>
+            <div className="bg-gray-900 border border-emerald-900/50 rounded-lg p-4">
+              <div className="text-xs text-emerald-400">결제 완료</div>
+              <div className="text-xl font-bold text-emerald-300">{payments.filter(p => p.payment_status === 'CAPTURED').length}건</div>
+            </div>
+            <div className="bg-gray-900 border border-yellow-900/50 rounded-lg p-4">
+              <div className="text-xs text-yellow-400">결제 대기</div>
+              <div className="text-xl font-bold text-yellow-300">{payments.filter(p => p.payment_status === 'PAYMENT_REQUESTED').length}건</div>
+            </div>
+            <div className="bg-gray-900 border border-gray-800 rounded-lg p-4">
+              <div className="text-xs text-gray-400">총 결제 금액</div>
+              <div className="text-xl font-bold text-white">₩{payments.filter(p => p.payment_status === 'CAPTURED').reduce((s, p) => s + (p.authorized_amount || 0), 0).toLocaleString()}</div>
+            </div>
+          </div>
+
+          {/* Payment List */}
+          {paymentsLoading ? (
+            <div className="flex items-center justify-center gap-3 py-20 text-gray-500">
+              <Loader className="animate-spin" size={20} /> Loading...
+            </div>
+          ) : filteredPayments.length === 0 ? (
+            <div className="text-center py-20 text-gray-600">
+              <CreditCard size={48} className="mx-auto mb-4 opacity-30" />
+              <p>결제 내역이 없습니다</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-800">
+                    {['주문번호', 'PayApp No.', '금액', '결제수단', '상태', '결제일', ''].map(h => (
+                      <th key={h} className="text-left py-3 px-3 text-xs text-gray-500 font-normal">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredPayments.map(p => (
+                    <tr key={p.order_id} className="border-b border-gray-800/50 hover:bg-gray-900/50">
+                      <td className="py-3 px-3 font-mono text-xs text-white">{p.order_id}</td>
+                      <td className="py-3 px-3 font-mono text-xs text-gray-400">{p.payapp_mul_no || '-'}</td>
+                      <td className="py-3 px-3 font-mono text-green-400">₩{(p.authorized_amount || 0).toLocaleString()}</td>
+                      <td className="py-3 px-3 text-xs text-gray-400">{p.payapp_pay_type || '-'}</td>
+                      <td className="py-3 px-3">
+                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${p.payment_status === 'CAPTURED' ? 'bg-emerald-900/50 text-emerald-300 border border-emerald-800' :
+                          p.payment_status === 'PAYMENT_REQUESTED' ? 'bg-yellow-900/50 text-yellow-300 border border-yellow-800' :
+                            p.payment_status === 'VOIDED' ? 'bg-red-900/50 text-red-300 border border-red-800' :
+                              p.payment_status === 'REFUNDED' ? 'bg-purple-900/50 text-purple-300 border border-purple-800' :
+                                'bg-gray-800 text-gray-400 border border-gray-700'
+                          }`}>
+                          {p.payment_status === 'CAPTURED' ? '✅ 결제완료' :
+                            p.payment_status === 'PAYMENT_REQUESTED' ? '⏳ 결제대기' :
+                              p.payment_status === 'VOIDED' ? '❌ 취소' :
+                                p.payment_status === 'REFUNDED' ? '↩️ 환불' :
+                                  p.payment_status || 'N/A'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 text-xs text-gray-500">{p.payapp_pay_date || (p.updated_at ? new Date(p.updated_at).toLocaleString() : '-')}</td>
+                      <td className="py-3 px-3">
+                        {(p.payment_status === 'CAPTURED' || p.payment_status === 'PAYMENT_REQUESTED') && p.payapp_mul_no && (
+                          <button
+                            onClick={() => handleCancelPayment(p.payapp_mul_no)}
+                            disabled={cancellingId === p.payapp_mul_no}
+                            className="flex items-center gap-1 px-2 py-1 text-xs border border-red-800 text-red-400 hover:bg-red-900/20 rounded disabled:opacity-50"
+                          >
+                            {cancellingId === p.payapp_mul_no ? <Loader className="animate-spin" size={10} /> : <Ban size={10} />}
+                            취소
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 };
