@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Terminal, ShieldCheck, Zap, Code2, Lock, Activity, ArrowRight, Radio, Globe, TrendingUp, Bot } from 'lucide-react';
+import { Terminal, ShieldCheck, Zap, Code2, Lock, Activity, ArrowRight, Radio, Globe, TrendingUp, Bot, Eye, EyeOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { CodeBlock } from '../components/CodeBlock';
 import { AgentReviewList } from '../components/AgentReviewList';
@@ -118,6 +118,7 @@ export const Landing: React.FC = () => {
   const { reviews: tissueReviews, loading: reviewsLoading } = useReviews('TISSUE-70x20');
   const [footerModal, setFooterModal] = useState<'terms' | 'privacy' | null>(null);
   const [pulseData, setPulseData] = useState<any>(null);
+  const [agentView, setAgentView] = useState(false);
   const tickerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -205,6 +206,75 @@ export const Landing: React.FC = () => {
               {t('landing.btnViewCode')}
             </button>
           </div>
+
+          {/* ━━━ Agent View Toggle ━━━ */}
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
+            <button
+              onClick={() => setAgentView(!agentView)}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                padding: '8px 20px', borderRadius: 'var(--radius-full)',
+                background: agentView ? 'rgba(52,211,153,0.15)' : 'rgba(255,255,255,0.05)',
+                border: `1px solid ${agentView ? 'rgba(52,211,153,0.4)' : 'var(--border-subtle)'}`,
+                color: agentView ? 'var(--accent-green)' : 'var(--text-muted)',
+                fontSize: 12, fontWeight: 700, letterSpacing: 1,
+                cursor: 'pointer', transition: 'all 0.3s ease',
+              }}
+            >
+              {agentView ? <EyeOff size={14} /> : <Eye size={14} />}
+              {agentView ? '🤖 AGENT VIEW' : '👤 HUMAN VIEW'}
+              <div style={{
+                width: 36, height: 18, borderRadius: 9,
+                background: agentView ? 'var(--accent-green)' : 'var(--bg-tertiary)',
+                position: 'relative', transition: 'all 0.3s ease',
+              }}>
+                <div style={{
+                  width: 14, height: 14, borderRadius: '50%',
+                  background: 'white', position: 'absolute', top: 2,
+                  left: agentView ? 20 : 2, transition: 'left 0.3s ease',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                }} />
+              </div>
+            </button>
+          </div>
+
+          {/* ━━━ Agent View JSON Block ━━━ */}
+          {agentView && (
+            <div style={{
+              textAlign: 'left', padding: '24px', borderRadius: 'var(--radius-lg)',
+              background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(52,211,153,0.3)',
+              fontFamily: 'var(--font-mono)', fontSize: 'clamp(10px, 1.5vw, 13px)',
+              marginBottom: 32, backdropFilter: 'blur(12px)',
+              animation: 'fadeIn 0.4s ease',
+              maxWidth: 620, margin: '0 auto 32px',
+              boxShadow: '0 0 40px rgba(52,211,153,0.08)',
+            }}>
+              <div style={{ color: 'var(--text-muted)', marginBottom: 8, fontSize: 10, letterSpacing: 2 }}>$ curl https://jsonmart.xyz/agents.json</div>
+              <pre style={{ margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
+                <span style={{ color: 'var(--text-muted)' }}>{'{'}</span>{`\n`}
+                <span style={{ color: 'var(--accent-purple)' }}>  "site"</span><span style={{ color: 'var(--text-muted)' }}>: </span><span style={{ color: 'var(--accent-green)' }}>"jsonmart.xyz"</span><span style={{ color: 'var(--text-muted)' }}>,</span>{`\n`}
+                <span style={{ color: 'var(--accent-purple)' }}>  "type"</span><span style={{ color: 'var(--text-muted)' }}>: </span><span style={{ color: 'var(--accent-green)' }}>"agent-native-marketplace"</span><span style={{ color: 'var(--text-muted)' }}>,</span>{`\n`}
+                <span style={{ color: 'var(--accent-purple)' }}>  "agent_endpoints"</span><span style={{ color: 'var(--text-muted)' }}>: {'{'}</span>{`\n`}
+                <span style={{ color: 'var(--accent-cyan)' }}>    "/agents.json"</span><span style={{ color: 'var(--text-muted)' }}>:       </span><span style={{ color: 'var(--accent-green)' }}>"✅ capabilities & auth"</span><span style={{ color: 'var(--text-muted)' }}>,</span>{`\n`}
+                <span style={{ color: 'var(--accent-cyan)' }}>    "/llms.txt"</span><span style={{ color: 'var(--text-muted)' }}>:          </span><span style={{ color: 'var(--accent-green)' }}>"✅ LLM site guide"</span><span style={{ color: 'var(--text-muted)' }}>,</span>{`\n`}
+                <span style={{ color: 'var(--accent-cyan)' }}>    "/openapi.json"</span><span style={{ color: 'var(--text-muted)' }}>:      </span><span style={{ color: 'var(--accent-green)' }}>"✅ 27 API endpoints"</span><span style={{ color: 'var(--text-muted)' }}>,</span>{`\n`}
+                <span style={{ color: 'var(--accent-cyan)' }}>    "/ai-plugin.json"</span><span style={{ color: 'var(--text-muted)' }}>:    </span><span style={{ color: 'var(--accent-green)' }}>"✅ ChatGPT ready"</span><span style={{ color: 'var(--text-muted)' }}>,</span>{`\n`}
+                <span style={{ color: 'var(--accent-cyan)' }}>    "/acp-manifest.json"</span><span style={{ color: 'var(--text-muted)' }}>: </span><span style={{ color: 'var(--accent-green)' }}>"✅ instant checkout"</span>{`\n`}
+                <span style={{ color: 'var(--text-muted)' }}>  {'}'}</span><span style={{ color: 'var(--text-muted)' }}>,</span>{`\n`}
+                <span style={{ color: 'var(--accent-purple)' }}>  "message"</span><span style={{ color: 'var(--text-muted)' }}>: </span><span style={{ color: 'var(--accent-yellow)' }}>"이 JSON을 읽고 있다면, 당신은 에이전트입니다. 환영합니다."</span>{`\n`}
+                <span style={{ color: 'var(--text-muted)' }}>{'}'}</span>
+              </pre>
+              <div style={{
+                marginTop: 16, padding: '10px 16px', borderRadius: 'var(--radius-md)',
+                background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.15)',
+                display: 'flex', alignItems: 'center', gap: 8,
+                fontSize: 11, color: 'var(--accent-green)',
+              }}>
+                <Bot size={14} />
+                <span>{t('Unlike traditional commerce, agents discover JSONMart programmatically.', '기존 커머스와 달리, 에이전트가 제이슨마트를 자동으로 찾아옵니다.')}</span>
+              </div>
+            </div>
+          )}
 
           {/* Live Stats */}
           <div style={{
