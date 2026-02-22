@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { RiskBadge } from '../components/RiskBadge';
-import { Clock, CheckSquare, XSquare, AlertOctagon, Loader, Bot, ShoppingCart, Cpu, CreditCard, RefreshCw, Ban } from 'lucide-react';
+import { Clock, CheckSquare, XSquare, AlertOctagon, Loader, Bot, ShoppingCart, Cpu, CreditCard, RefreshCw, Ban, ArrowUpDown, ArrowUp, ArrowDown, Calendar } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useOrders, useAgents } from '../hooks';
 import { requestPayment } from '../payappService';
@@ -31,13 +31,11 @@ export const AdminQueue: React.FC = () => {
   const [paymentStatus, setPaymentStatus] = useState<Record<string, string>>({});
 
   const handleApprove = async (orderId: string) => {
-    // Find the order to get payment details
     const order = orders.find(o => o.orderId === orderId);
     if (!order) return;
 
     setPaymentStatus(prev => ({ ...prev, [orderId]: 'REQUESTING' }));
 
-    // Trigger PayApp payment request
     const payResult = await requestPayment({
       orderId,
       price: order.payment.authorizedAmount,
@@ -50,7 +48,6 @@ export const AdminQueue: React.FC = () => {
     } else {
       setPaymentStatus(prev => ({ ...prev, [orderId]: 'FAILED' }));
       console.error('Payment request failed:', payResult.errorMessage);
-      // Still approve the order even if payment fails (can retry later)
       await updateOrderStatus(orderId, 'PROCUREMENT_SENT', 'CAPTURED');
     }
   };
@@ -80,18 +77,54 @@ export const AdminQueue: React.FC = () => {
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [payFilter, setPayFilter] = useState<string>('ALL');
 
+  // Date range
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const [datePreset, setDatePreset] = useState<string>('ALL');
+  const [dateFrom, setDateFrom] = useState<string>('');
+  const [dateTo, setDateTo] = useState<string>(todayStr);
+
+  // Sorting
+  type SortKey = 'created_at' | 'authorized_amount' | 'payment_status' | 'order_id';
+  const [sortKey, setSortKey] = useState<SortKey>('created_at');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) setSortDir(prev => prev === 'asc' ? 'desc' : 'asc');
+    else { setSortKey(key); setSortDir('desc'); }
+  };
+
+  const applyDatePreset = (preset: string) => {
+    setDatePreset(preset);
+    const now = new Date();
+    if (preset === 'TODAY') {
+      setDateFrom(todayStr); setDateTo(todayStr);
+    } else if (preset === 'WEEK') {
+      const d = new Date(now); d.setDate(d.getDate() - 6);
+      setDateFrom(d.toISOString().slice(0, 10)); setDateTo(todayStr);
+    } else if (preset === 'MONTH') {
+      setDateFrom(now.toISOString().slice(0, 8) + '01'); setDateTo(todayStr);
+    } else if (preset === '3MONTH') {
+      const d = new Date(now); d.setMonth(d.getMonth() - 2);
+      setDateFrom(d.toISOString().slice(0, 8) + '01'); setDateTo(todayStr);
+    } else { setDateFrom(''); setDateTo(todayStr); }
+  };
+
   const loadPayments = useCallback(async () => {
     setPaymentsLoading(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('orders')
         .select('order_id, status, payment_status, authorized_amount, items, created_at, payapp_mul_no, payapp_payurl, payapp_pay_type, payapp_pay_date, updated_at')
-        .not('payapp_mul_no', 'is', null)
         .order('created_at', { ascending: false });
+
+      if (dateFrom) query = query.gte('created_at', dateFrom + 'T00:00:00');
+      if (dateTo) query = query.lte('created_at', dateTo + 'T23:59:59');
+
+      const { data, error } = await query;
       if (!error && data) setPayments(data);
     } catch (e) { console.error(e); }
     setPaymentsLoading(false);
-  }, []);
+  }, [dateFrom, dateTo]);
 
   useEffect(() => { if (activeTab === 'payments') loadPayments(); }, [activeTab, loadPayments]);
 
@@ -112,7 +145,32 @@ export const AdminQueue: React.FC = () => {
     setCancellingId(null);
   };
 
-  const filteredPayments = payFilter === 'ALL' ? payments : payments.filter(p => p.payment_status === payFilter);
+  // Filtered + Sorted
+  const filteredPayments = (() => {
+    let list = payFilter === 'ALL' ? payments : payments.filter(p => p.payment_status === payFilter);
+    list = [...list].sort((a, b) => {
+      let va = a[sortKey], vb = b[sortKey];
+      if (sortKey === 'authorized_amount') { va = va || 0; vb = vb || 0; }
+      else { va = va || ''; vb = vb || ''; }
+      if (va < vb) return sortDir === 'asc' ? -1 : 1;
+      if (va > vb) return sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return list;
+  })();
+
+  // Stats
+  const stats = {
+    total: payments.length,
+    captured: payments.filter(p => p.payment_status === 'CAPTURED'),
+    requested: payments.filter(p => p.payment_status === 'PAYMENT_REQUESTED'),
+    voided: payments.filter(p => p.payment_status === 'VOIDED'),
+    refunded: payments.filter(p => p.payment_status === 'REFUNDED'),
+    totalAmount: payments.reduce((s, p) => s + (p.authorized_amount || 0), 0),
+    capturedAmount: payments.filter(p => p.payment_status === 'CAPTURED').reduce((s, p) => s + (p.authorized_amount || 0), 0),
+    voidedAmount: payments.filter(p => p.payment_status === 'VOIDED').reduce((s, p) => s + (p.authorized_amount || 0), 0),
+    refundedAmount: payments.filter(p => p.payment_status === 'REFUNDED').reduce((s, p) => s + (p.authorized_amount || 0), 0),
+  };
 
   const loading = ordersLoading || agentsLoading;
 
@@ -362,43 +420,92 @@ export const AdminQueue: React.FC = () => {
       ) : activeTab === 'payments' ? (
         /* ==================== PAYMENTS TAB ==================== */
         <div>
-          {/* Filter + Refresh */}
-          <div className="flex items-center gap-3 mb-4">
-            {['ALL', 'PAYMENT_REQUESTED', 'CAPTURED', 'VOIDED', 'REFUNDED'].map(f => (
+          {/* Period Presets + Date Range */}
+          <div className="flex flex-wrap items-center gap-3 mb-4">
+            <div className="flex items-center gap-1 mr-2">
+              <Calendar size={14} className="text-gray-500" />
+              <span className="text-xs text-gray-500">기간:</span>
+            </div>
+            {[{ k: 'ALL', l: '전체' }, { k: 'TODAY', l: '오늘' }, { k: 'WEEK', l: '1주일' }, { k: 'MONTH', l: '이번달' }, { k: '3MONTH', l: '3개월' }, { k: 'CUSTOM', l: '직접선택' }].map(p => (
               <button
-                key={f}
-                onClick={() => setPayFilter(f)}
-                className={`px-3 py-1 text-xs rounded border transition-colors ${payFilter === f
-                  ? 'bg-gray-700 text-white border-gray-600'
-                  : 'text-gray-500 border-gray-800 hover:border-gray-600'
+                key={p.k}
+                onClick={() => applyDatePreset(p.k)}
+                className={`px-3 py-1 text-xs rounded border transition-colors ${datePreset === p.k
+                    ? 'bg-blue-900/50 text-blue-300 border-blue-700'
+                    : 'text-gray-500 border-gray-800 hover:border-gray-600'
                   }`}
               >
-                {f === 'ALL' ? '전체' : f === 'PAYMENT_REQUESTED' ? '결제대기' : f === 'CAPTURED' ? '결제완료' : f === 'VOIDED' ? '취소' : '환불'}
+                {p.l}
               </button>
             ))}
+            {datePreset === 'CUSTOM' && (
+              <div className="flex items-center gap-2">
+                <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+                  className="bg-gray-900 border border-gray-700 text-white text-xs px-2 py-1 rounded" />
+                <span className="text-gray-600">~</span>
+                <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+                  className="bg-gray-900 border border-gray-700 text-white text-xs px-2 py-1 rounded" />
+                <button onClick={loadPayments} className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-500">조회</button>
+              </div>
+            )}
             <button onClick={loadPayments} className="ml-auto flex items-center gap-1 px-3 py-1 text-xs text-gray-400 border border-gray-800 rounded hover:border-gray-600">
               <RefreshCw size={12} className={paymentsLoading ? 'animate-spin' : ''} /> 새로고침
             </button>
           </div>
 
+          {/* Status Filter */}
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-xs text-gray-500">상태:</span>
+            {['ALL', 'PAYMENT_REQUESTED', 'CAPTURED', 'VOIDED', 'REFUNDED'].map(f => (
+              <button
+                key={f}
+                onClick={() => setPayFilter(f)}
+                className={`px-3 py-1 text-xs rounded border transition-colors ${payFilter === f
+                    ? 'bg-gray-700 text-white border-gray-600'
+                    : 'text-gray-500 border-gray-800 hover:border-gray-600'
+                  }`}
+              >
+                {f === 'ALL' ? '전체' : f === 'PAYMENT_REQUESTED' ? '결제대기' : f === 'CAPTURED' ? '결제완료' : f === 'VOIDED' ? '취소' : '환불'}
+              </button>
+            ))}
+          </div>
+
           {/* Summary Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
             <div className="bg-gray-900 border border-gray-800 rounded-lg p-4">
-              <div className="text-xs text-gray-500">전체 결제</div>
-              <div className="text-xl font-bold text-white">{payments.length}건</div>
+              <div className="text-xs text-gray-500">전체 건수</div>
+              <div className="text-xl font-bold text-white">{stats.total}<span className="text-xs text-gray-500 ml-1">건</span></div>
+              <div className="text-xs text-gray-600 mt-1">₩{stats.totalAmount.toLocaleString()}</div>
             </div>
             <div className="bg-gray-900 border border-emerald-900/50 rounded-lg p-4">
               <div className="text-xs text-emerald-400">결제 완료</div>
-              <div className="text-xl font-bold text-emerald-300">{payments.filter(p => p.payment_status === 'CAPTURED').length}건</div>
+              <div className="text-xl font-bold text-emerald-300">{stats.captured.length}<span className="text-xs text-emerald-600 ml-1">건</span></div>
+              <div className="text-xs text-emerald-700 mt-1">₩{stats.capturedAmount.toLocaleString()}</div>
             </div>
             <div className="bg-gray-900 border border-yellow-900/50 rounded-lg p-4">
               <div className="text-xs text-yellow-400">결제 대기</div>
-              <div className="text-xl font-bold text-yellow-300">{payments.filter(p => p.payment_status === 'PAYMENT_REQUESTED').length}건</div>
+              <div className="text-xl font-bold text-yellow-300">{stats.requested.length}<span className="text-xs text-yellow-600 ml-1">건</span></div>
             </div>
-            <div className="bg-gray-900 border border-gray-800 rounded-lg p-4">
-              <div className="text-xs text-gray-400">총 결제 금액</div>
-              <div className="text-xl font-bold text-white">₩{payments.filter(p => p.payment_status === 'CAPTURED').reduce((s, p) => s + (p.authorized_amount || 0), 0).toLocaleString()}</div>
+            <div className="bg-gray-900 border border-red-900/50 rounded-lg p-4">
+              <div className="text-xs text-red-400">취소</div>
+              <div className="text-xl font-bold text-red-300">{stats.voided.length}<span className="text-xs text-red-600 ml-1">건</span></div>
+              <div className="text-xs text-red-700 mt-1">₩{stats.voidedAmount.toLocaleString()}</div>
             </div>
+            <div className="bg-gray-900 border border-purple-900/50 rounded-lg p-4">
+              <div className="text-xs text-purple-400">환불</div>
+              <div className="text-xl font-bold text-purple-300">{stats.refunded.length}<span className="text-xs text-purple-600 ml-1">건</span></div>
+              <div className="text-xs text-purple-700 mt-1">₩{stats.refundedAmount.toLocaleString()}</div>
+            </div>
+          </div>
+
+          {/* Net Settlement */}
+          <div className="bg-gradient-to-r from-gray-900 to-gray-900/50 border border-gray-800 rounded-lg p-4 mb-6 flex flex-wrap items-center gap-6">
+            <div>
+              <div className="text-xs text-gray-500">순 정산액</div>
+              <div className="text-2xl font-bold text-white">₩{(stats.capturedAmount - stats.refundedAmount).toLocaleString()}</div>
+              <div className="text-[10px] text-gray-600 mt-1">결제완료 ₩{stats.capturedAmount.toLocaleString()} - 환불 ₩{stats.refundedAmount.toLocaleString()}</div>
+            </div>
+            {dateFrom && <div className="text-xs text-gray-600 border-l border-gray-800 pl-4">기간: {dateFrom} ~ {dateTo}</div>}
           </div>
 
           {/* Payment List */}
@@ -413,11 +520,31 @@ export const AdminQueue: React.FC = () => {
             </div>
           ) : (
             <div className="overflow-x-auto">
+              <div className="text-xs text-gray-600 mb-2">조회결과: {filteredPayments.length}건</div>
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-800">
-                    {['주문번호', 'PayApp No.', '금액', '결제수단', '상태', '결제일', ''].map(h => (
-                      <th key={h} className="text-left py-3 px-3 text-xs text-gray-500 font-normal">{h}</th>
+                    {[
+                      { key: 'order_id' as SortKey, label: '주문번호' },
+                      { key: null, label: 'PayApp No.' },
+                      { key: 'authorized_amount' as SortKey, label: '금액' },
+                      { key: null, label: '결제수단' },
+                      { key: 'payment_status' as SortKey, label: '상태' },
+                      { key: 'created_at' as SortKey, label: '결제일' },
+                      { key: null, label: '' },
+                    ].map((col, i) => (
+                      <th
+                        key={i}
+                        onClick={() => col.key && handleSort(col.key)}
+                        className={`text-left py-3 px-3 text-xs text-gray-500 font-normal ${col.key ? 'cursor-pointer hover:text-gray-300 select-none' : ''}`}
+                      >
+                        <span className="flex items-center gap-1">
+                          {col.label}
+                          {col.key && sortKey === col.key ? (
+                            sortDir === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />
+                          ) : col.key ? <ArrowUpDown size={10} className="opacity-30" /> : null}
+                        </span>
+                      </th>
                     ))}
                   </tr>
                 </thead>
@@ -430,10 +557,10 @@ export const AdminQueue: React.FC = () => {
                       <td className="py-3 px-3 text-xs text-gray-400">{p.payapp_pay_type || '-'}</td>
                       <td className="py-3 px-3">
                         <span className={`px-2 py-0.5 rounded text-xs font-medium ${p.payment_status === 'CAPTURED' ? 'bg-emerald-900/50 text-emerald-300 border border-emerald-800' :
-                          p.payment_status === 'PAYMENT_REQUESTED' ? 'bg-yellow-900/50 text-yellow-300 border border-yellow-800' :
-                            p.payment_status === 'VOIDED' ? 'bg-red-900/50 text-red-300 border border-red-800' :
-                              p.payment_status === 'REFUNDED' ? 'bg-purple-900/50 text-purple-300 border border-purple-800' :
-                                'bg-gray-800 text-gray-400 border border-gray-700'
+                            p.payment_status === 'PAYMENT_REQUESTED' ? 'bg-yellow-900/50 text-yellow-300 border border-yellow-800' :
+                              p.payment_status === 'VOIDED' ? 'bg-red-900/50 text-red-300 border border-red-800' :
+                                p.payment_status === 'REFUNDED' ? 'bg-purple-900/50 text-purple-300 border border-purple-800' :
+                                  'bg-gray-800 text-gray-400 border border-gray-700'
                           }`}>
                           {p.payment_status === 'CAPTURED' ? '✅ 결제완료' :
                             p.payment_status === 'PAYMENT_REQUESTED' ? '⏳ 결제대기' :
@@ -442,7 +569,7 @@ export const AdminQueue: React.FC = () => {
                                   p.payment_status || 'N/A'}
                         </span>
                       </td>
-                      <td className="py-3 px-3 text-xs text-gray-500">{p.payapp_pay_date || (p.updated_at ? new Date(p.updated_at).toLocaleString() : '-')}</td>
+                      <td className="py-3 px-3 text-xs text-gray-500">{p.payapp_pay_date || (p.created_at ? new Date(p.created_at).toLocaleString() : '-')}</td>
                       <td className="py-3 px-3">
                         {(p.payment_status === 'CAPTURED' || p.payment_status === 'PAYMENT_REQUESTED') && p.payapp_mul_no && (
                           <button
