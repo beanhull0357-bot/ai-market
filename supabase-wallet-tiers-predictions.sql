@@ -92,8 +92,17 @@ CREATE TABLE IF NOT EXISTS agent_coupons (
     created_at       timestamptz DEFAULT now()
 );
 
--- 기존 테이블에 컬럼이 없을 경우 추가 (멱등성 보장)
+-- 기존 테이블에 컬럼이 없을 경우 추가, 제약 조건 수정 (멱등성 보장)
 DO $$ BEGIN
+    -- coupon_type 체크 제약 제거 (기존 제약이 PERCENT/FIXED를 허용하지 않을 경우)
+    IF EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE table_name = 'agent_coupons' AND constraint_name = 'agent_coupons_coupon_type_check'
+    ) THEN
+        ALTER TABLE agent_coupons DROP CONSTRAINT agent_coupons_coupon_type_check;
+    END IF;
+
+    -- 컬럼 누락 보완
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='agent_coupons' AND column_name='usage_count') THEN
         ALTER TABLE agent_coupons ADD COLUMN usage_count integer NOT NULL DEFAULT 0;
     END IF;
