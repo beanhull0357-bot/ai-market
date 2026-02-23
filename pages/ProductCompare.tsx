@@ -1,20 +1,51 @@
-import React, { useState } from 'react';
-import { GitCompare, Plus, Trash2, CheckCircle2, XCircle, Package, Loader2, ArrowUpDown } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { GitCompare, Trash2, CheckCircle2, Package, Loader2, Link2, Copy, Check } from 'lucide-react';
 import { useProducts } from '../hooks';
 
 /* ━━━ Main Page ━━━ */
 export const ProductCompare: React.FC = () => {
     const { products, loading } = useProducts();
     const [selectedSkus, setSelectedSkus] = useState<string[]>([]);
+    const [copied, setCopied] = useState(false);
+
+    // URL 파라미터에서 초기 선택 복원
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const compare = params.get('compare');
+        if (compare) {
+            setSelectedSkus(compare.split(',').filter(Boolean).slice(0, 4));
+        }
+    }, []);
 
     const addProduct = (sku: string) => {
         if (sku && !selectedSkus.includes(sku) && selectedSkus.length < 4) {
-            setSelectedSkus([...selectedSkus, sku]);
+            const next = [...selectedSkus, sku];
+            setSelectedSkus(next);
+            updateUrlParam(next);
         }
     };
 
     const removeProduct = (sku: string) => {
-        setSelectedSkus(selectedSkus.filter(s => s !== sku));
+        const next = selectedSkus.filter(s => s !== sku);
+        setSelectedSkus(next);
+        updateUrlParam(next);
+    };
+
+    const updateUrlParam = (skus: string[]) => {
+        const url = new URL(window.location.href);
+        if (skus.length > 0) {
+            url.searchParams.set('compare', skus.join(','));
+        } else {
+            url.searchParams.delete('compare');
+        }
+        window.history.replaceState({}, '', url.toString());
+    };
+
+    const copyShareUrl = () => {
+        navigator.clipboard.writeText(window.location.href).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        });
     };
 
     const selected = products.filter(p => selectedSkus.includes(p.sku));
@@ -23,11 +54,12 @@ export const ProductCompare: React.FC = () => {
         { key: 'price', label: '가격 (₩)', format: p => `₩${(p.price || 0).toLocaleString()}`, better: 'lower' },
         { key: 'stock', label: '재고', format: p => `${p.stock ?? '-'}`, better: 'higher' },
         { key: 'category', label: '카테고리', format: p => p.category || '-' },
-        { key: 'aiReadinessScore', label: 'AI 적합도', format: p => `${p.aiReadinessScore || '-'}`, better: 'higher' },
+        { key: 'aiReadinessScore', label: 'AI 적합도', format: p => `${p.aiReadinessScore ?? '-'}`, better: 'higher' },
         { key: 'trustScore', label: '신뢰 점수', format: p => `${p.trustScore ?? '-'}`, better: 'higher' },
         { key: 'sellerTrust', label: '셀러 신뢰도', format: p => `${p.sellerTrust ?? '-'}`, better: 'higher' },
-        { key: 'returnPolicy', label: '반품 기간', format: p => p.returnWindowDays ? `${p.returnWindowDays}일` : '-' },
+        { key: 'returnWindowDays', label: '반품 기간', format: p => p.returnWindowDays ? `${p.returnWindowDays}일` : '-', better: 'higher' },
         { key: 'freeShipping', label: '무료 배송', format: p => p.freeShipping ? '✅' : '❌' },
+        { key: 'moq', label: '최소 주문수량', format: p => p.moq ? `${p.moq}개` : '-', better: 'lower' },
     ];
 
     const getBestIdx = (field: typeof compareFields[0]): number => {
@@ -36,20 +68,45 @@ export const ProductCompare: React.FC = () => {
         for (let i = 1; i < selected.length; i++) {
             const a = (selected[bestIdx] as any)[field.key];
             const b = (selected[i] as any)[field.key];
+            if (a == null) { bestIdx = i; continue; }
+            if (b == null) continue;
             if (field.better === 'lower' && b < a) bestIdx = i;
             if (field.better === 'higher' && b > a) bestIdx = i;
         }
         return bestIdx;
     };
 
+    // 종합 추천: 비교 필드에서 베스트 횟수가 가장 많은 상품
+    const recommendIdx = (() => {
+        if (selected.length < 2) return -1;
+        const counts = Array(selected.length).fill(0);
+        compareFields.forEach(f => {
+            const best = getBestIdx(f);
+            if (best >= 0) counts[best]++;
+        });
+        return counts.indexOf(Math.max(...counts));
+    })();
+
     return (
         <div style={{ maxWidth: 900, margin: '0 auto' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
                 <GitCompare size={24} style={{ color: 'var(--accent-cyan)' }} />
-                <div>
+                <div style={{ flex: 1 }}>
                     <h1 style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Product Compare</h1>
                     <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>상품 스펙, 가격, 신뢰도 비교 분석</p>
                 </div>
+                {selectedSkus.length > 0 && (
+                    <button onClick={copyShareUrl} style={{
+                        display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px',
+                        border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer',
+                        fontSize: 12, fontWeight: 600,
+                        background: copied ? 'rgba(52,211,153,0.15)' : 'var(--bg-surface)',
+                        color: copied ? 'var(--accent-green)' : 'var(--text-muted)',
+                        transition: 'all 200ms',
+                    }}>
+                        {copied ? <><Check size={13} /> 복사됨!</> : <><Link2 size={13} /> 링크 공유</>}
+                    </button>
+                )}
             </div>
 
             {/* Product Selector */}
@@ -78,6 +135,7 @@ export const ProductCompare: React.FC = () => {
                             </button>
                         </span>
                     ))}
+                    {loading && <Loader2 size={12} style={{ color: 'var(--text-dim)', animation: 'spin 1s linear infinite' }} />}
                 </div>
             </div>
 
@@ -88,8 +146,11 @@ export const ProductCompare: React.FC = () => {
                         <thead>
                             <tr style={{ borderBottom: '2px solid var(--border-medium)' }}>
                                 <th style={{ padding: '14px 16px', textAlign: 'left', color: 'var(--text-muted)', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1 }}>속성</th>
-                                {selected.map(p => (
-                                    <th key={p.sku} style={{ padding: '14px 12px', textAlign: 'center', minWidth: 140 }}>
+                                {selected.map((p, i) => (
+                                    <th key={p.sku} style={{ padding: '14px 12px', textAlign: 'center', minWidth: 140, position: 'relative' }}>
+                                        {i === recommendIdx && (
+                                            <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--accent-green)', marginBottom: 4 }}>⭐ AI 추천</div>
+                                        )}
                                         <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)', marginBottom: 4 }}>{p.sku}</div>
                                         <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>{p.title}</div>
                                     </th>
@@ -126,7 +187,7 @@ export const ProductCompare: React.FC = () => {
                 </div>
             )}
 
-            {/* API Hint */}
+            {/* API Hint + Copy Link */}
             {selected.length > 0 && (
                 <div className="glass-card" style={{ padding: 14, marginTop: 16 }}>
                     <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-dim)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 1 }}>에이전트 API</div>

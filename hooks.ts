@@ -1445,3 +1445,53 @@ export async function saveNegotiationToDB(neg: {
     if (error) throw error;
     return data;
 }
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// DECISION REPLAY HOOKS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+export function useDecisionReplays(limit = 50) {
+    const [replays, setReplays] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    const fetchReplays = useCallback(async () => {
+        setLoading(true);
+        const { data, error } = await supabase
+            .from('decision_replays')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(limit);
+        if (!error && data) setReplays(data);
+        setLoading(false);
+    }, [limit]);
+
+    useEffect(() => { fetchReplays(); }, [fetchReplays]);
+    return { replays, loading, refetch: fetchReplays };
+}
+
+export async function saveDecisionReplay(session: {
+    sessionId: string;
+    agentId: string;
+    orderId: string;
+    policy: any;
+    steps: any[];
+    finalChoice: any | null;
+    status: string;
+    totalMs: number;
+}) {
+    const { data, error } = await supabase
+        .from('decision_replays')
+        .upsert({
+            session_id: session.sessionId,
+            agent_id: session.agentId,
+            order_id: session.orderId,
+            policy: session.policy,
+            steps: session.steps,
+            final_choice: session.finalChoice,
+            status: session.status,
+            total_ms: session.totalMs,
+        }, { onConflict: 'session_id' })
+        .select().single();
+    if (error) throw error;
+    return data;
+}
