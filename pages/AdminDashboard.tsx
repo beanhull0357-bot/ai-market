@@ -67,6 +67,33 @@ export const AdminDashboard: React.FC = () => {
         </div>
     );
 
+    // ─ 날짜 구간
+    const now = new Date();
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const ordersThisMonth = orders.filter(o => new Date(o.createdAt || o.created_at || 0) >= thisMonthStart);
+    const ordersLastMonth = orders.filter(o => {
+        const d = new Date(o.createdAt || o.created_at || 0);
+        return d >= lastMonthStart && d < thisMonthStart;
+    });
+    const ordersToday = orders.filter(o => new Date(o.createdAt || o.created_at || 0) >= todayStart);
+
+    const revenueThisMonth = ordersThisMonth.reduce((s, o) => s + (o.totalPrice || 0), 0);
+    const revenueLastMonth = ordersLastMonth.reduce((s, o) => s + (o.totalPrice || 0), 0);
+
+    // ─ 매출 trend
+    const revTrendPct = revenueLastMonth > 0
+        ? (((revenueThisMonth - revenueLastMonth) / revenueLastMonth) * 100).toFixed(1)
+        : null;
+
+    // ─ 주문 trend
+    const orderDiff = ordersThisMonth.length - ordersLastMonth.length;
+
+    // ─ 저재고 상품
+    const lowStock = products.filter(p => p.offer?.stockStatus === 'LOW_STOCK' || p.offer?.stockStatus === 'OUT_OF_STOCK').length;
+
     const totalRevenue = orders.reduce((s, o) => s + (o.totalPrice || 0), 0);
     const pendingOrders = orders.filter(o => o.status === 'ORDER_CREATED').length;
     const avgTrust = agents.length ? (agents.reduce((s, a) => s + (a.trustScore || 0), 0) / agents.length).toFixed(1) : '0';
@@ -94,11 +121,32 @@ export const AdminDashboard: React.FC = () => {
 
             {/* KPI Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 24 }}>
-                <KpiCard label="총 매출" value={`₩${totalRevenue.toLocaleString()}`} icon={<DollarSign size={18} />} color="var(--accent-green)" trend={{ value: '+12.5%', up: true }} />
-                <KpiCard label="총 주문" value={`${orders.length}`} sub={`대기 ${pendingOrders}건`} icon={<ShoppingCart size={18} />} color="var(--accent-cyan)" trend={{ value: '+8건', up: true }} />
+                <KpiCard
+                    label="총 매출"
+                    value={`₩${totalRevenue.toLocaleString()}`}
+                    sub={`이번 달 ₩${revenueThisMonth.toLocaleString()}`}
+                    icon={<DollarSign size={18} />}
+                    color="var(--accent-green)"
+                    trend={revTrendPct !== null ? { value: `${Number(revTrendPct) >= 0 ? '+' : ''}${revTrendPct}% vs 지난달`, up: Number(revTrendPct) >= 0 } : undefined}
+                />
+                <KpiCard
+                    label="총 주문"
+                    value={`${orders.length}`}
+                    sub={`대기 ${pendingOrders}건 · 오늘 ${ordersToday.length}건`}
+                    icon={<ShoppingCart size={18} />}
+                    color="var(--accent-cyan)"
+                    trend={ordersLastMonth.length > 0 ? { value: `${orderDiff >= 0 ? '+' : ''}${orderDiff}건 vs 지난달`, up: orderDiff >= 0 } : undefined}
+                />
                 <KpiCard label="활성 에이전트" value={`${agents.length}`} sub={`평균 신뢰도 ${avgTrust}`} icon={<Bot size={18} />} color="var(--accent-purple)" />
-                <KpiCard label="카탈로그" value={`${products.length}`} sub="상품" icon={<Package size={18} />} color="var(--accent-amber)" />
+                <KpiCard
+                    label="카탈로그"
+                    value={`${products.length}`}
+                    sub={lowStock > 0 ? `⚠️ 저재고 ${lowStock}개` : '재고 정상'}
+                    icon={<Package size={18} />}
+                    color={lowStock > 0 ? 'var(--accent-amber)' : 'var(--accent-green)'}
+                />
             </div>
+
 
             {/* Two columns */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}>
