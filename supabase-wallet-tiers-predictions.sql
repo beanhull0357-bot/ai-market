@@ -83,9 +83,8 @@ CREATE TABLE IF NOT EXISTS agent_coupons (
     value            numeric(10,2) NOT NULL,             -- 할인액 or 할인율(%)
     description      text,
     min_order_amount bigint NOT NULL DEFAULT 0,
-    max_uses         integer,                            -- NULL = 무제한
     usage_count      integer NOT NULL DEFAULT 0,
-    usage_limit      integer,
+    usage_limit      integer,                            -- NULL = 무제한
     valid_from       timestamptz DEFAULT now(),
     valid_until      timestamptz,
     is_active        boolean NOT NULL DEFAULT true,
@@ -93,13 +92,26 @@ CREATE TABLE IF NOT EXISTS agent_coupons (
     created_at       timestamptz DEFAULT now()
 );
 
+-- 기존 테이블에 컬럼이 없을 경우 추가 (멱등성 보장)
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='agent_coupons' AND column_name='usage_count') THEN
+        ALTER TABLE agent_coupons ADD COLUMN usage_count integer NOT NULL DEFAULT 0;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='agent_coupons' AND column_name='usage_limit') THEN
+        ALTER TABLE agent_coupons ADD COLUMN usage_limit integer;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='agent_coupons' AND column_name='is_active') THEN
+        ALTER TABLE agent_coupons ADD COLUMN is_active boolean NOT NULL DEFAULT true;
+    END IF;
+END $$;
+
 -- 샘플 쿠폰
-INSERT INTO agent_coupons (coupon_code, coupon_type, value, description, min_order_amount, max_uses, usage_limit, valid_until) VALUES
-('WELCOME2026',  'PERCENT', 10,  '신규 에이전트 첫 주문 10% 할인', 0,        1000, 1000, '2026-12-31 23:59:59+09'),
-('BULK20',       'PERCENT', 20,  '50만원 이상 구매 시 20% 할인',   500000,   500,  500,  '2026-12-31 23:59:59+09'),
-('SPRING12',     'PERCENT', 12,  '봄 시즌 특별 할인 12%',         0,        300,  300,  '2026-05-31 23:59:59+09'),
-('PRO5000',      'FIXED',   5000,'PRO 전용 ₩5,000 할인쿠폰',     30000,    null, null, null),
-('REVIEWREWARD', 'FIXED',   500, '리뷰 작성 보상 ₩500 크레딧',   0,        null, null, null)
+INSERT INTO agent_coupons (coupon_code, coupon_type, value, description, min_order_amount, usage_limit, valid_until) VALUES
+('WELCOME2026',  'PERCENT', 10,  '신규 에이전트 첫 주문 10% 할인', 0,        1000, '2026-12-31 23:59:59+09'),
+('BULK20',       'PERCENT', 20,  '50만원 이상 구매 시 20% 할인',   500000,   500,  '2026-12-31 23:59:59+09'),
+('SPRING12',     'PERCENT', 12,  '봄 시즌 특별 할인 12%',         0,        300,  '2026-05-31 23:59:59+09'),
+('PRO5000',      'FIXED',   5000,'PRO 전용 ₩5,000 할인쿠폰',     30000,    null, null),
+('REVIEWREWARD', 'FIXED',   500, '리뷰 작성 보상 ₩500 크레딧',   0,        null, null)
 ON CONFLICT (coupon_code) DO NOTHING;
 
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
