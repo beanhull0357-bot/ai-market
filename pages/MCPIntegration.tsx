@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { Cpu, Copy, CheckCircle2, Server, Wrench, Database, ArrowRight, Globe, ExternalLink, ChevronDown, ChevronUp } from 'lucide-react';
+import { Cpu, Copy, CheckCircle2, Server, Wrench, Database, ArrowRight, Globe, ExternalLink, ChevronDown, ChevronUp, Radio, Terminal } from 'lucide-react';
+
+const MCP_ENDPOINT = 'https://psiysvvcusfyfsfozywn.supabase.co/functions/v1/mcp';
 
 /* ━━━ Tool Card (Interactive) ━━━ */
 function ToolCard({ name, desc, params, color, request, response }: {
@@ -103,12 +105,26 @@ function CodeSnippet({ code, label }: { code: string; label: string }) {
 
 /* ━━━ Main Page ━━━ */
 export const MCPIntegration: React.FC = () => {
+    const [health, setHealth] = useState<string | null>(null);
+    const [healthLoading, setHealthLoading] = useState(false);
+
+    const checkHealth = async () => {
+        setHealthLoading(true);
+        try {
+            const res = await fetch(MCP_ENDPOINT);
+            const json = await res.json();
+            setHealth(json.status === 'ok' ? '✅ LIVE — ' + json.tools.length + ' tools active' : '⚠️ ' + JSON.stringify(json));
+        } catch (e: any) {
+            setHealth('❌ 연결 실패: ' + e.message);
+        }
+        setHealthLoading(false);
+    };
+
     const mcpConfig = `{
   "mcpServers": {
     "jsonmart": {
-      "url": "https://jsonmart.xyz/mcp",
-      "transport": "sse",
-      "description": "JSONMart Agent-Native Marketplace"
+      "url": "${MCP_ENDPOINT}",
+      "transport": "http"
     }
   }
 }`;
@@ -116,10 +132,10 @@ export const MCPIntegration: React.FC = () => {
     const claudeDesktopConfig = `{
   "mcpServers": {
     "jsonmart": {
-      "command": "npx",
-      "args": ["-y", "@jsonmart/mcp-server"],
-      "env": {
-        "JSONMART_API_KEY": "agk_your_key_here"
+      "url": "${MCP_ENDPOINT}",
+      "transport": "http",
+      "headers": {
+        "x-api-key": "agk_your_api_key_here"
       }
     }
   }
@@ -268,13 +284,30 @@ export const MCPIntegration: React.FC = () => {
     return (
         <div style={{ maxWidth: 900, margin: '0 auto' }}>
             {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8, flexWrap: 'wrap' }}>
                 <Cpu size={24} style={{ color: 'var(--accent-purple)' }} />
-                <div>
+                <div style={{ flex: 1 }}>
                     <h1 style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>MCP Integration</h1>
                     <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>Model Context Protocol — LLM이 JSONMart를 직접 도구로 사용</p>
                 </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 10, padding: '3px 10px', borderRadius: 'var(--radius-full)', background: 'rgba(52,211,153,0.12)', color: 'var(--accent-green)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <Radio size={9} /> LIVE
+                    </span>
+                    <button onClick={checkHealth} disabled={healthLoading} style={{
+                        fontSize: 11, padding: '6px 12px', borderRadius: 'var(--radius-md)',
+                        background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
+                        color: 'var(--text-muted)', cursor: 'pointer', fontWeight: 600,
+                    }}>
+                        {healthLoading ? '확인 중...' : '서버 상태 확인'}
+                    </button>
+                </div>
             </div>
+            {health && (
+                <div style={{ fontSize: 11, padding: '8px 12px', borderRadius: 'var(--radius-md)', background: 'var(--bg-surface)', color: 'var(--text-secondary)', marginBottom: 12, fontFamily: 'var(--font-mono)' }}>
+                    {health}
+                </div>
+            )}
 
             {/* How it works */}
             <div className="glass-card" style={{ padding: 20, marginBottom: 24 }}>
@@ -296,8 +329,19 @@ export const MCPIntegration: React.FC = () => {
 
             {/* Setup */}
             <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12 }}>⚡ 설정 방법</h2>
+
+            {/* Deploy instruction */}
+            <div className="glass-card" style={{ padding: 14, marginBottom: 16, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                <Terminal size={14} style={{ color: 'var(--accent-amber)', flexShrink: 0, marginTop: 1 }} />
+                <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent-amber)', marginBottom: 4 }}>배포 명령어 (최초 1회)</div>
+                    <code style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>supabase functions deploy mcp --no-verify-jwt</code>
+                    <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 4 }}>--no-verify-jwt: MCP 클라이언트가 Supabase JWT 없이 접근 가능</div>
+                </div>
+            </div>
+
             <CodeSnippet label="Claude Desktop — claude_desktop_config.json" code={claudeDesktopConfig} />
-            <CodeSnippet label="MCP Client 직접 연결" code={mcpConfig} />
+            <CodeSnippet label="MCP Client 직접 연결 (curl/SDK)" code={mcpConfig} />
 
             {/* Available Tools */}
             <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', margin: '24px 0 12px' }}>🔧 사용 가능한 Tools ({tools.length})</h2>
@@ -324,6 +368,7 @@ export const MCPIntegration: React.FC = () => {
                 <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1 }}>관련 리소스</div>
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                     {[
+                        { label: 'MCP 엔드포인트', href: MCP_ENDPOINT },
                         { label: 'agents.json', href: '/agents.json' },
                         { label: 'llms.txt', href: '/llms.txt' },
                         { label: 'openapi.json', href: '/openapi.json' },
