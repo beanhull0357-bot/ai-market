@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Workflow, Play, Save, Plus, Trash2, Settings, Search, Shield, Radio, TrendingUp, ShoppingCart, AlertTriangle, CheckCircle2, ChevronDown, Bot, Zap, Eye, ArrowRight, RotateCcw } from 'lucide-react';
-import { useProducts } from '../hooks';
+import { Workflow, Play, Save, Plus, Trash2, Settings, Search, Shield, Radio, TrendingUp, ShoppingCart, AlertTriangle, CheckCircle2, ChevronDown, Bot, Zap, Eye, ArrowRight, RotateCcw, Cloud, CloudOff, Loader2 } from 'lucide-react';
+import { useProducts, useWorkflows, saveWorkflowToDB, deleteWorkflowFromDB } from '../hooks';
 import { useLanguage } from '../context/LanguageContext';
 
 // ━━━ Workflow Node Types ━━━
@@ -281,11 +281,13 @@ function FlowCanvas({ workflow, selectedNodeId, simResults, onSelectNode }: {
 export function WorkflowBuilder() {
     const { t } = useLanguage();
     const { products } = useProducts();
+    const { workflows: savedWorkflows, loading: wfLoading, refetch: refetchWorkflows } = useWorkflows();
     const [workflow, setWorkflow] = useState<WorkflowDef>({ ...DEFAULT_WORKFLOW });
     const [selectedNodeId, setSelectedNodeId] = useState<string | null>('n1');
     const [simResults, setSimResults] = useState<Record<string, SimulationStep>>({});
     const [isSimulating, setIsSimulating] = useState(false);
-    const [savedWorkflows, setSavedWorkflows] = useState<WorkflowDef[]>([]);
+    const [isSaving, setIsSaving] = useState(false);
+    const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
     const [workflowName, setWorkflowName] = useState(DEFAULT_WORKFLOW.name);
 
     const selectedNode = workflow.nodes.find(n => n.id === selectedNodeId);
@@ -363,16 +365,56 @@ export function WorkflowBuilder() {
         setIsSimulating(false);
     }, [workflow, products]);
 
-    const saveWorkflow = () => {
-        const wf = { ...workflow, id: `WF-${Date.now().toString(36).toUpperCase()}`, name: workflowName, createdAt: new Date().toISOString() };
-        setSavedWorkflows(prev => [wf, ...prev]);
+    const saveWorkflow = async () => {
+        setIsSaving(true);
+        setSaveStatus('idle');
+        try {
+            const wfId = workflow.id !== 'WF-DEFAULT'
+                ? workflow.id
+                : `WF-${Date.now().toString(36).toUpperCase()}`;
+            await saveWorkflowToDB({
+                workflowId: wfId,
+                name: workflowName,
+                nodes: workflow.nodes,
+                edges: workflow.edges,
+                lastSimResult: Object.keys(simResults).length > 0 ? simResults : undefined,
+            });
+            setWorkflow(prev => ({ ...prev, id: wfId, name: workflowName }));
+            setSaveStatus('saved');
+            await refetchWorkflows();
+            setTimeout(() => setSaveStatus('idle'), 2500);
+        } catch {
+            setSaveStatus('error');
+            setTimeout(() => setSaveStatus('idle'), 3000);
+        }
+        setIsSaving(false);
     };
 
-    const loadWorkflow = (wf: WorkflowDef) => {
-        setWorkflow({ ...wf });
+    const loadWorkflow = (wf: any) => {
+        setWorkflow({
+            id: wf.workflow_id || wf.id,
+            name: wf.name,
+            nodes: wf.nodes || [],
+            edges: wf.edges || [],
+            createdAt: wf.created_at || new Date().toISOString(),
+        });
         setWorkflowName(wf.name);
-        setSimResults({});
-        setSelectedNodeId(wf.nodes[0]?.id || null);
+        setSimResults(wf.last_sim_result || {});
+        setSelectedNodeId((wf.nodes || [])[0]?.id || null);
+    };
+
+    const handleDeleteWorkflow = async (e: React.MouseEvent, wfId: string) => {
+        e.stopPropagation();
+        try {
+            await deleteWorkflowFromDB(wfId);
+            await refetchWorkflows();
+            // 현재 편집 중인 워크플로우가 삭제된 경우 초기화
+            if (workflow.id === wfId) {
+                setWorkflow({ ...DEFAULT_WORKFLOW });
+                setWorkflowName(DEFAULT_WORKFLOW.name);
+                setSimResults({});
+            }
+        } catch { /* ignore */ }
     };
 
     const simValues: SimulationStep[] = Object.values(simResults);
@@ -398,12 +440,21 @@ export function WorkflowBuilder() {
                         </div>
                     </div>
                     <div style={{ display: 'flex', gap: 8 }}>
-                        <button onClick={saveWorkflow} style={{
+                        <button onClick={saveWorkflow} disabled={isSaving} style={{
                             display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px',
                             borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)',
-                            background: 'var(--bg-card)', color: 'var(--text-secondary)', fontWeight: 700, fontSize: 11, cursor: 'pointer',
+                            background: saveStatus === 'saved' ? 'rgba(52,211,153,0.1)'
+                                : saveStatus === 'error' ? 'rgba(239,68,68,0.1)' : 'var(--bg-card)',
+                            color: saveStatus === 'saved' ? 'var(--accent-green)'
+                                : saveStatus === 'error' ? 'var(--accent-red)' : 'var(--text-secondary)',
+                            fontWeight: 700, fontSize: 11, cursor: isSaving ? 'default' : 'pointer',
+                            transition: 'all 300ms',
                         }}>
-                            <Save size={12} /> Save
+                            {isSaving ? <Loader2 size={12} className="spin" />
+                                : saveStatus === 'saved' ? <Cloud size={12} />
+                                    : saveStatus === 'error' ? <CloudOff size={12} />
+                                        : <Save size={12} />}
+                            {saveStatus === 'saved' ? 'Saved!' : saveStatus === 'error' ? 'Error' : 'Save'}
                         </button>
                         <button onClick={runSimulation} disabled={isSimulating} style={{
                             display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px',
@@ -479,34 +530,51 @@ export function WorkflowBuilder() {
                     </div>
 
                     {/* Saved Workflows */}
-                    {savedWorkflows.length > 0 && (
-                        <div style={{
-                            padding: '12px 16px', borderRadius: 'var(--radius-md)',
-                            border: '1px solid var(--border-subtle)', background: 'var(--bg-card)',
-                        }}>
-                            <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: 0.5, color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 8 }}>
-                                Saved Workflows
+                    <div style={{
+                        padding: '12px 16px', borderRadius: 'var(--radius-md)',
+                        border: '1px solid var(--border-subtle)', background: 'var(--bg-card)',
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                            <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: 0.5, color: 'var(--text-dim)', textTransform: 'uppercase' }}>
+                                <Cloud size={10} style={{ display: 'inline', marginRight: 4 }} />Saved Workflows
                             </div>
+                            {wfLoading && <Loader2 size={10} className="spin" style={{ color: 'var(--text-dim)' }} />}
+                        </div>
+                        {savedWorkflows.length === 0 && !wfLoading ? (
+                            <div style={{ fontSize: 10, color: 'var(--text-dim)', textAlign: 'center', padding: '8px 0' }}>
+                                저장된 워크플로우 없음
+                            </div>
+                        ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                {savedWorkflows.map(wf => (
-                                    <div key={wf.id} onClick={() => loadWorkflow(wf)} style={{
-                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                        padding: '8px 12px', borderRadius: 'var(--radius-sm)',
-                                        border: '1px solid var(--border-subtle)', cursor: 'pointer',
-                                        background: 'var(--bg-elevated)', transition: 'background 150ms',
-                                    }}>
-                                        <div>
-                                            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>{wf.name}</div>
+                                {savedWorkflows.map((wf: any) => (
+                                    <div key={wf.workflow_id || wf.id}
+                                        onClick={() => loadWorkflow(wf)}
+                                        style={{
+                                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                            padding: '8px 12px', borderRadius: 'var(--radius-sm)',
+                                            border: `1px solid ${workflow.id === (wf.workflow_id || wf.id) ? 'var(--accent-cyan)' : 'var(--border-subtle)'}`,
+                                            cursor: 'pointer', background: 'var(--bg-elevated)', transition: 'all 150ms',
+                                        }}>
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{wf.name}</div>
                                             <div style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: 'var(--text-dim)' }}>
-                                                {wf.nodes.length} nodes • {wf.id}
+                                                {(wf.nodes || []).length} nodes · {wf.workflow_id || wf.id}
                                             </div>
                                         </div>
-                                        <ArrowRight size={12} style={{ color: 'var(--text-dim)' }} />
+                                        <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                                            <ArrowRight size={12} style={{ color: 'var(--text-dim)' }} />
+                                            <button
+                                                onClick={(e) => handleDeleteWorkflow(e, wf.workflow_id || wf.id)}
+                                                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: 'var(--accent-red)', opacity: 0.6, lineHeight: 1 }}
+                                            >
+                                                <Trash2 size={11} />
+                                            </button>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
-                        </div>
-                    )}
+                        )}
+                    </div>
                 </div>
 
                 {/* Right Panel: Node Config + Sim Results */}

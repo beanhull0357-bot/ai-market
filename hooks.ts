@@ -1178,3 +1178,64 @@ export function useInvoices(agentId?: string) {
     useEffect(() => { fetchInvoices(); }, [fetchInvoices]);
     return { invoices, loading, refetch: fetchInvoices };
 }
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// WORKFLOW HOOKS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+export function useWorkflows(agentId?: string) {
+    const [workflows, setWorkflows] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    const fetchWorkflows = useCallback(async () => {
+        setLoading(true);
+        let q = supabase
+            .from('workflows')
+            .select('*')
+            .order('updated_at', { ascending: false });
+        if (agentId) q = q.eq('agent_id', agentId);
+        const { data, error } = await q;
+        if (!error && data) setWorkflows(data);
+        setLoading(false);
+    }, [agentId]);
+
+    useEffect(() => { fetchWorkflows(); }, [fetchWorkflows]);
+    return { workflows, loading, refetch: fetchWorkflows };
+}
+
+export async function saveWorkflowToDB(workflow: {
+    workflowId: string;
+    name: string;
+    nodes: any[];
+    edges: any[];
+    agentId?: string;
+    lastSimResult?: any;
+}) {
+    const payload = {
+        workflow_id: workflow.workflowId,
+        name: sanitizeString(workflow.name, 200),
+        nodes: workflow.nodes,
+        edges: workflow.edges,
+        agent_id: workflow.agentId || null,
+        last_sim_result: workflow.lastSimResult || null,
+        updated_at: new Date().toISOString(),
+    };
+
+    const { data, error } = await supabase
+        .from('workflows')
+        .upsert(payload, { onConflict: 'workflow_id' })
+        .select()
+        .single();
+
+    if (error) throw error;
+    return data;
+}
+
+export async function deleteWorkflowFromDB(workflowId: string) {
+    const { error } = await supabase
+        .from('workflows')
+        .delete()
+        .eq('workflow_id', workflowId);
+    if (error) throw error;
+    return { success: true };
+}
