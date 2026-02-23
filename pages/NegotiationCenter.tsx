@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { Handshake, Bot, TrendingDown, Zap, CheckCircle2, XCircle, Clock, ArrowRight, Play, RotateCcw } from 'lucide-react';
-import { useProducts } from '../hooks';
+import { useProducts, saveNegotiationToDB } from '../hooks';
 import { useLanguage } from '../context/LanguageContext';
 import type { Negotiation, NegotiationRound } from '../types';
 
@@ -137,6 +137,21 @@ export default function NegotiationCenter() {
         neg.rounds = rounds;
         setNegotiations(prev => prev.map((n, i) => i === negIdx ? { ...neg } : n));
         setIsAutoRunning(false);
+
+        // DB에 협상 결과 저장 (fire-and-forget)
+        saveNegotiationToDB({
+            negotiationId: neg.negotiationId,
+            sku: neg.sku,
+            productTitle: neg.productTitle,
+            listPrice: neg.listPrice,
+            finalPrice: neg.finalPrice,
+            policyBudget: neg.policyBudget,
+            buyerAgentId: neg.buyerAgentId,
+            sellerAgentId: neg.sellerAgentId,
+            status: neg.status,
+            rounds: rounds,
+            maxRounds: neg.maxRounds,
+        }).catch(() => { /* 저장 실패 시 UI에 영향 없음 */ });
     }, [negotiations]);
 
     const selected = selectedIdx !== null ? negotiations[selectedIdx] : null;

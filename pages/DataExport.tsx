@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Download, FileSpreadsheet, ShoppingCart, Bot, Package, Star, Loader2, CheckCircle2 } from 'lucide-react';
-import { useOrders, useAgents, useProducts, useReviews } from '../hooks';
+import { Download, FileSpreadsheet, ShoppingCart, Bot, Package, Star, CheckCircle2, Tag, Handshake, Webhook } from 'lucide-react';
+import { useOrders, useAgents, useProducts, useReviews, usePromotions, useNegotiations, useWebhooks } from '../hooks';
 
 function toCsv(headers: string[], rows: string[][]): string {
     const bom = '\uFEFF';
@@ -21,6 +21,9 @@ export const DataExport: React.FC = () => {
     const { agents } = useAgents();
     const { products } = useProducts();
     const { reviews } = useReviews();
+    const { promotions } = usePromotions();
+    const { negotiations } = useNegotiations();
+    const { webhooks } = useWebhooks();
     const [exported, setExported] = useState<string | null>(null);
 
     const doExport = (key: string) => {
@@ -50,6 +53,24 @@ export const DataExport: React.FC = () => {
                 reviews.map((r: any) => [r.agentId || '', r.sku || '', r.verdict || '', String(r.specMatch ?? ''), String(r.deliveryDelta ?? ''), r.createdAt || ''])
             );
             downloadCsv(`jsonmart_reviews_${ts}.csv`, csv);
+        } else if (key === 'promotions') {
+            csv = toCsv(
+                ['프로모션ID', '이름', '유형', '할인값', '최소수량', '카테고리', '시작일', '종료일', '활성'],
+                promotions.map((p: any) => [p.promo_id, p.name, p.type, String(p.value), String(p.min_qty), (p.categories || []).join(';'), p.valid_from, p.valid_to, p.active ? 'Y' : 'N'])
+            );
+            downloadCsv(`jsonmart_promotions_${ts}.csv`, csv);
+        } else if (key === 'negotiations') {
+            csv = toCsv(
+                ['협상ID', 'SKU', '상품명', '리스트가', '최종가', '절감률(%)', '상태', '바이어에이전트', '셀러에이전트', '완료일'],
+                negotiations.map((n: any) => [n.negotiation_id, n.sku, n.product_title, String(n.list_price), String(n.final_price ?? ''), String(n.savings_pct ?? ''), n.status, n.buyer_agent_id, n.seller_agent_id, n.completed_at?.slice(0, 10) || ''])
+            );
+            downloadCsv(`jsonmart_negotiations_${ts}.csv`, csv);
+        } else if (key === 'webhooks') {
+            csv = toCsv(
+                ['웹훅ID', '에이전트ID', 'URL', '이벤트', '활성', '실패횟수', '마지막발송', '생성일'],
+                webhooks.map((w: any) => [w.webhook_id, w.agent_id || '', w.url, (w.events || []).join(';'), w.active ? 'Y' : 'N', String(w.fail_count), w.last_triggered?.slice(0, 10) || '', w.created_at?.slice(0, 10) || ''])
+            );
+            downloadCsv(`jsonmart_webhooks_${ts}.csv`, csv);
         }
         setExported(key);
         setTimeout(() => setExported(null), 2000);
@@ -60,6 +81,9 @@ export const DataExport: React.FC = () => {
         { key: 'agents', label: '에이전트 목록', desc: '에이전트ID, 이름, 신뢰도, API키(마스킹)', icon: <Bot size={20} />, color: 'var(--accent-cyan)', count: agents.length },
         { key: 'products', label: '상품 카탈로그', desc: 'SKU, 상품명, 가격, 재고, 카테고리', icon: <Package size={20} />, color: 'var(--accent-purple)', count: products.length },
         { key: 'reviews', label: '리뷰 데이터', desc: '에이전트, SKU, 판결, 스펙일치도', icon: <Star size={20} />, color: 'var(--accent-amber)', count: reviews.length },
+        { key: 'promotions', label: '프로모션 목록', desc: '프로모션ID, 유형, 할인값, 유효기간', icon: <Tag size={20} />, color: 'var(--accent-green)', count: promotions.length },
+        { key: 'negotiations', label: '협상 이력', desc: '협상ID, SKU, 최종가, 절감률, 상태', icon: <Handshake size={20} />, color: 'var(--accent-cyan)', count: negotiations.length },
+        { key: 'webhooks', label: '웹훅 설정', desc: '웹훅ID, URL, 이벤트, 활성상태', icon: <Webhook size={20} />, color: 'var(--accent-purple)', count: webhooks.length },
     ];
 
     return (

@@ -284,8 +284,9 @@ export const Landing: React.FC = () => {
           }}>
             {[
               { label: 'Products', value: products.length, color: 'var(--accent-cyan)' },
-              { label: 'AI Agents Ready', value: 6, color: 'var(--accent-green)' },
-              { label: 'SLA Uptime', value: 99, suffix: '%', color: 'var(--accent-purple)' },
+              { label: 'AI Agents', value: pulseData?.totalAgents ?? products.length, color: 'var(--accent-green)' },
+              { label: 'Total Orders', value: pulseData?.totalOrders ?? 0, color: 'var(--accent-amber)' },
+              { label: 'SLA Uptime', value: 99, suffix: '.9%', color: 'var(--accent-purple)' },
             ].map(s => (
               <div key={s.label} style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: 28, fontWeight: 900, fontFamily: 'var(--font-mono)', color: s.color }}>

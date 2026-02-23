@@ -1239,3 +1239,209 @@ export async function deleteWorkflowFromDB(workflowId: string) {
     if (error) throw error;
     return { success: true };
 }
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// WEBHOOK HOOKS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+export function useWebhooks(agentId?: string) {
+    const [webhooks, setWebhooks] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    const fetchWebhooks = useCallback(async () => {
+        setLoading(true);
+        let q = supabase.from('webhook_configs').select('*').order('created_at', { ascending: false });
+        if (agentId) q = q.eq('agent_id', agentId);
+        const { data, error } = await q;
+        if (!error && data) setWebhooks(data);
+        setLoading(false);
+    }, [agentId]);
+
+    useEffect(() => { fetchWebhooks(); }, [fetchWebhooks]);
+    return { webhooks, loading, refetch: fetchWebhooks };
+}
+
+export async function saveWebhook(payload: { agentId?: string; url: string; events: string[] }) {
+    const { data, error } = await supabase
+        .from('webhook_configs')
+        .insert({ agent_id: payload.agentId || null, url: sanitizeString(payload.url, 500), events: payload.events })
+        .select().single();
+    if (error) throw error;
+    return data;
+}
+
+export async function updateWebhook(id: string, patch: { active?: boolean; fail_count?: number; last_triggered?: string }) {
+    const { error } = await supabase.from('webhook_configs').update(patch).eq('id', id);
+    if (error) throw error;
+}
+
+export async function deleteWebhook(id: string) {
+    const { error } = await supabase.from('webhook_configs').delete().eq('id', id);
+    if (error) throw error;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// AUTO REORDER HOOKS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+export function useAutoReorderRules(agentId?: string) {
+    const [rules, setRules] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    const fetchRules = useCallback(async () => {
+        setLoading(true);
+        let q = supabase.from('auto_reorder_rules').select('*').order('created_at', { ascending: false });
+        if (agentId) q = q.eq('agent_id', agentId);
+        const { data, error } = await q;
+        if (!error && data) setRules(data);
+        setLoading(false);
+    }, [agentId]);
+
+    useEffect(() => { fetchRules(); }, [fetchRules]);
+    return { rules, loading, refetch: fetchRules };
+}
+
+export async function saveReorderRule(payload: {
+    agentId: string; sku: string; productName: string;
+    quantity: number; intervalDays: number; priceThreshold?: number | null;
+}) {
+    const nextDate = new Date();
+    nextDate.setDate(nextDate.getDate() + payload.intervalDays);
+
+    const { data, error } = await supabase
+        .from('auto_reorder_rules')
+        .upsert({
+            agent_id: payload.agentId,
+            sku: payload.sku,
+            product_name: sanitizeString(payload.productName, 200),
+            quantity: payload.quantity,
+            interval_days: payload.intervalDays,
+            next_order_date: nextDate.toISOString().slice(0, 10),
+            price_threshold: payload.priceThreshold || null,
+            enabled: true,
+        }, { onConflict: 'agent_id,sku' })
+        .select().single();
+    if (error) throw error;
+    return data;
+}
+
+export async function toggleReorderRule(id: string, enabled: boolean) {
+    const { error } = await supabase.from('auto_reorder_rules').update({ enabled }).eq('id', id);
+    if (error) throw error;
+}
+
+export async function deleteReorderRule(id: string) {
+    const { error } = await supabase.from('auto_reorder_rules').delete().eq('id', id);
+    if (error) throw error;
+}
+
+export async function executeReorderRule(ruleId: string) {
+    const { data, error } = await supabase.rpc('execute_reorder_rule', { p_rule_id: ruleId });
+    if (error) throw error;
+    return data;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// PROMOTIONS HOOKS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+export function usePromotions() {
+    const [promotions, setPromotions] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    const fetchPromotions = useCallback(async () => {
+        setLoading(true);
+        const { data, error } = await supabase
+            .from('promotions').select('*').order('created_at', { ascending: false });
+        if (!error && data) setPromotions(data);
+        setLoading(false);
+    }, []);
+
+    useEffect(() => { fetchPromotions(); }, [fetchPromotions]);
+    return { promotions, loading, refetch: fetchPromotions };
+}
+
+export async function savePromotion(payload: {
+    name: string; type: string; value: number; minQty: number;
+    categories: string[]; validFrom: string; validTo: string;
+}) {
+    const { data, error } = await supabase
+        .from('promotions')
+        .insert({
+            name: sanitizeString(payload.name, 200),
+            type: payload.type,
+            value: payload.value,
+            min_qty: payload.minQty,
+            categories: payload.categories,
+            valid_from: payload.validFrom,
+            valid_to: payload.validTo,
+            active: true,
+        })
+        .select().single();
+    if (error) throw error;
+    return data;
+}
+
+export async function togglePromotion(id: string, active: boolean) {
+    const { error } = await supabase.from('promotions').update({ active }).eq('id', id);
+    if (error) throw error;
+}
+
+export async function deletePromotion(id: string) {
+    const { error } = await supabase.from('promotions').delete().eq('id', id);
+    if (error) throw error;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// NEGOTIATIONS HOOKS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+export function useNegotiations(agentId?: string) {
+    const [negotiations, setNegotiations] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    const fetchNegotiations = useCallback(async () => {
+        setLoading(true);
+        let q = supabase.from('negotiations').select('*').order('created_at', { ascending: false }).limit(50);
+        if (agentId) q = q.eq('agent_id', agentId);
+        const { data, error } = await q;
+        if (!error && data) setNegotiations(data);
+        setLoading(false);
+    }, [agentId]);
+
+    useEffect(() => { fetchNegotiations(); }, [fetchNegotiations]);
+    return { negotiations, loading, refetch: fetchNegotiations };
+}
+
+export async function saveNegotiationToDB(neg: {
+    negotiationId: string; agentId?: string; sku: string; productTitle: string;
+    listPrice: number; finalPrice: number | null; policyBudget: number | null;
+    buyerAgentId: string; sellerAgentId: string; status: string;
+    rounds: any[]; maxRounds: number;
+}) {
+    const savingsPct = neg.finalPrice && neg.listPrice > 0
+        ? ((1 - neg.finalPrice / neg.listPrice) * 100)
+        : null;
+
+    const { data, error } = await supabase
+        .from('negotiations')
+        .upsert({
+            negotiation_id: neg.negotiationId,
+            agent_id: neg.agentId || null,
+            sku: neg.sku,
+            product_title: sanitizeString(neg.productTitle, 200),
+            list_price: neg.listPrice,
+            final_price: neg.finalPrice,
+            policy_budget: neg.policyBudget ? Math.round(neg.policyBudget) : null,
+            buyer_agent_id: neg.buyerAgentId,
+            seller_agent_id: neg.sellerAgentId,
+            status: neg.status,
+            rounds: neg.rounds,
+            max_rounds: neg.maxRounds,
+            savings_pct: savingsPct ? Math.round(savingsPct * 100) / 100 : null,
+            completed_at: ['AGREED', 'REJECTED'].includes(neg.status) ? new Date().toISOString() : null,
+        }, { onConflict: 'negotiation_id' })
+        .select().single();
+    if (error) throw error;
+    return data;
+}
