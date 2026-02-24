@@ -29,19 +29,85 @@ interface DomeHeader {
 
 interface DomeDetailResponse {
     domeggook: {
-        basis: { no: number; status: string; title: string; keywords?: { kw: string[] }; tax: string; };
-        price: { dome: string | number; supply?: number; };
-        qty: { inventory: string; domeMoq: string; domeUnit: number; };
-        deli: { method: string; periodDeli: string; dome?: { type: string; tbl: string }; };
+        basis: { no: number; status: string; title: string; keywords?: { kw: string[] }; tax: string; nego?: string; adult?: boolean; };
+        price: {
+            dome: string | number;
+            domeOrg?: string | number;
+            supply?: string | number;
+            supplyOrg?: string | number;
+            sample?: number;
+            resale?: { minimum?: number; Recommand?: number; };
+        };
+        qty: { inventory: string; domeMoq: string; domeUnit: number; domeLoq?: number; supplyUnit?: number; };
+        deli: {
+            method: string; periodDeli: string; sendAvg?: number; fastDeli?: boolean;
+            pay?: string;
+            dome?: { type: string; fee?: number; tbl?: string; };
+            supply?: { pay?: string; type?: string; fee?: number; tbl?: string; };
+            merge?: { enable: string; basePrice?: number; };
+            feeExtra?: { jeju?: number; islands?: number; useDeliPro?: boolean; };
+            shippingArea?: number;
+            fromOversea?: boolean;
+        };
         thumb: { original: string; large: string; };
-        seller: { id: string; nick: string; rank: string; score: { avg: string; cnt: number }; };
+        seller: {
+            id: string; nick: string; rank: string;
+            type?: string; good?: boolean; global?: boolean;
+            score: { avg: string; cnt: number };
+            company?: { name?: string; boss?: string; cno?: string; };
+            vacation?: { startDate?: string; endDate?: string; days?: number; };
+        };
         category: {
             parents?: { elem: { name: string; code: string; depth: number }[] };
             current: { name: string; code: string; depth: number };
         };
-        detail: { country: string; manufacturer: string; };
-        return?: { deliAmt: number; };
+        detail: { country: string; manufacturer: string; model?: string; size?: string; weight?: string; };
+        return?: { deliAmt: number; deliAmtDouble?: boolean; };
+        channel?: { dome?: boolean; supply?: boolean; };
+        popular?: { code?: number; name?: string; };
+        selectOpt?: string;
     };
+}
+
+// ─── Margin Calculation ───
+function calculateSellingPrice(costPrice: number, resale?: { minimum?: number; Recommand?: number }): {
+    sellingPrice: number; marginRate: number; marginAmount: number;
+} {
+    // 1. 추천판매가가 있으면 우선 사용
+    if (resale?.Recommand && resale.Recommand > costPrice) {
+        return {
+            sellingPrice: resale.Recommand,
+            marginRate: Math.round(((resale.Recommand - costPrice) / costPrice) * 10000) / 100,
+            marginAmount: resale.Recommand - costPrice,
+        };
+    }
+
+    // 2. 없으면 단계별 마진율 적용
+    let rate: number;
+    if (costPrice < 3000) rate = 0.30;       // 저가: 30%
+    else if (costPrice > 50000) rate = 0.15;  // 고가: 15%
+    else rate = 0.20;                         // 일반: 20%
+
+    let sellingPrice = Math.ceil(costPrice * (1 + rate) / 10) * 10; // 10원 단위 올림
+
+    // 3. 최저판매준수가격 확인
+    if (resale?.minimum && sellingPrice < resale.minimum) {
+        sellingPrice = resale.minimum;
+    }
+
+    return {
+        sellingPrice,
+        marginRate: Math.round(rate * 10000) / 100,
+        marginAmount: sellingPrice - costPrice,
+    };
+}
+
+function parseDomePrice(priceStr: string): number {
+    if (priceStr.includes('+')) {
+        const firstPart = priceStr.split('|')[0];
+        return parseInt(firstPart.split('+')[1]) || 0;
+    }
+    return parseInt(priceStr) || 0;
 }
 
 // ─── Category Mapping ───
@@ -268,52 +334,80 @@ export function DomeggookSync() {
         for (const item of toImport) {
             setImporting(prev => new Set(prev).add(item.no));
             try {
-                // Fetch detail for full data
                 const detail = await getItemDetail(item.no);
                 const d = detail.domeggook;
 
-                // Extract price (can be string like "1+500|11+480")
-                let price = 0;
-                const priceStr = String(d.price.dome);
-                if (priceStr.includes('+')) {
-                    const firstPart = priceStr.split('|')[0];
-                    price = parseInt(firstPart.split('+')[1]) || 0;
-                } else {
-                    price = parseInt(priceStr) || 0;
-                }
+                // Extract cost price (도매 원가)
+                const costPrice = parseDomePrice(String(d.price.dome));
+
+                // Calculate selling price with margin
+                const { sellingPrice, marginRate } = calculateSellingPrice(costPrice, d.price.resale);
+
+                // Parse supply price (도매매 단가)
+                const supplyPrice = d.price.supply ? parseDomePrice(String(d.price.supply)) : null;
 
                 // Parse seller trust from percentage
-                let sellerTrust = 0;
-                const scoreStr = d.seller?.score?.avg || '0';
-                sellerTrust = parseInt(scoreStr.replace('%', '')) || 0;
+                const sellerTrust = parseInt((d.seller?.score?.avg || '0').replace('%', '')) || 0;
 
                 // Choose category from parent chain
                 const categoryName = d.category?.parents?.elem?.[0]?.name || d.category?.current?.name || '';
                 const category = mapCategory(categoryName);
+
+                // Build delivery fee info
+                const deliveryFee: Record<string, any> = {
+                    method: d.deli?.method || '',
+                    pay: d.deli?.pay || '',
+                    dome_type: d.deli?.dome?.type || '',
+                    dome_fee: d.deli?.dome?.fee || 0,
+                    dome_tbl: d.deli?.dome?.tbl || '',
+                    jeju_extra: d.deli?.feeExtra?.jeju || 0,
+                    islands_extra: d.deli?.feeExtra?.islands || 0,
+                    merge_enable: d.deli?.merge?.enable || 'n',
+                    fast_deli: d.deli?.fastDeli || false,
+                    send_avg: d.deli?.sendAvg || 0,
+                };
 
                 const productData = {
                     sku: `DOME-${d.basis.no}`,
                     category,
                     title: d.basis.title,
                     brand: d.seller?.nick || '',
-                    price,
+                    cost_price: costPrice,
+                    price: sellingPrice,
+                    margin_rate: marginRate,
+                    min_sell_price: d.price.resale?.minimum || null,
+                    recommended_price: d.price.resale?.Recommand || null,
+                    supply_price: supplyPrice,
                     currency: 'KRW',
                     stock_status: d.basis.status === '판매중' ? 'in_stock' : 'out_of_stock',
                     stock_qty: parseInt(d.qty.inventory) || null,
-                    ship_by_days: parseInt(d.deli.periodDeli) || 1,
-                    eta_days: (parseInt(d.deli.periodDeli) || 1) + 2,
+                    ship_by_days: d.deli?.sendAvg ? Math.ceil(d.deli.sendAvg) : (parseInt(d.deli.periodDeli) || 1),
+                    eta_days: (d.deli?.sendAvg ? Math.ceil(d.deli.sendAvg) : (parseInt(d.deli.periodDeli) || 1)) + 2,
                     return_days: 7,
                     return_fee: d.return?.deliAmt || 0,
                     ai_readiness_score: 70,
                     seller_trust: sellerTrust,
+                    delivery_fee: deliveryFee,
+                    purchase_unit: d.qty.domeUnit || 1,
+                    max_order_qty: d.qty.domeLoq || null,
+                    seller_type: d.seller?.type || null,
+                    is_popular: !!d.popular,
+                    has_options: !!d.selectOpt,
                     attributes: {
                         min_qty: parseInt(d.qty.domeMoq) || 1,
                         country: d.detail?.country || '',
                         manufacturer: d.detail?.manufacturer || '',
+                        model: d.detail?.model || '',
+                        size: d.detail?.size || '',
+                        weight: d.detail?.weight || '',
                         deli_method: d.deli?.method || '',
                         keywords: d.basis.keywords?.kw || [],
                         dome_category: d.category?.current?.name || '',
                         dome_category_code: d.category?.current?.code || '',
+                        tax_type: d.basis?.tax || '',
+                        seller_good: d.seller?.good || false,
+                        seller_global: d.seller?.global || false,
+                        nego_enabled: d.basis?.nego === 'enable',
                     },
                     sourcing_type: 'HUMAN',
                     source: 'domeggook',
@@ -357,45 +451,74 @@ export function DomeggookSync() {
             const detail = await getItemDetail(item.no);
             const d = detail.domeggook;
 
-            let price = 0;
-            const priceStr = String(d.price.dome);
-            if (priceStr.includes('+')) {
-                const firstPart = priceStr.split('|')[0];
-                price = parseInt(firstPart.split('+')[1]) || 0;
-            } else {
-                price = parseInt(priceStr) || 0;
-            }
+            // Extract cost price (도매 원가)
+            const costPrice = parseDomePrice(String(d.price.dome));
 
-            let sellerTrust = 0;
-            const scoreStr = d.seller?.score?.avg || '0';
-            sellerTrust = parseInt(scoreStr.replace('%', '')) || 0;
+            // Calculate selling price with margin
+            const { sellingPrice, marginRate } = calculateSellingPrice(costPrice, d.price.resale);
 
+            // Parse supply price
+            const supplyPrice = d.price.supply ? parseDomePrice(String(d.price.supply)) : null;
+
+            const sellerTrust = parseInt((d.seller?.score?.avg || '0').replace('%', '')) || 0;
             const categoryName = d.category?.parents?.elem?.[0]?.name || d.category?.current?.name || '';
             const category = mapCategory(categoryName);
+
+            // Build delivery fee info
+            const deliveryFee: Record<string, any> = {
+                method: d.deli?.method || '',
+                pay: d.deli?.pay || '',
+                dome_type: d.deli?.dome?.type || '',
+                dome_fee: d.deli?.dome?.fee || 0,
+                dome_tbl: d.deli?.dome?.tbl || '',
+                jeju_extra: d.deli?.feeExtra?.jeju || 0,
+                islands_extra: d.deli?.feeExtra?.islands || 0,
+                merge_enable: d.deli?.merge?.enable || 'n',
+                fast_deli: d.deli?.fastDeli || false,
+                send_avg: d.deli?.sendAvg || 0,
+            };
 
             const productData = {
                 sku: `DOME-${d.basis.no}`,
                 category,
                 title: d.basis.title,
                 brand: d.seller?.nick || '',
-                price,
+                cost_price: costPrice,
+                price: sellingPrice,
+                margin_rate: marginRate,
+                min_sell_price: d.price.resale?.minimum || null,
+                recommended_price: d.price.resale?.Recommand || null,
+                supply_price: supplyPrice,
                 currency: 'KRW',
                 stock_status: d.basis.status === '판매중' ? 'in_stock' : 'out_of_stock',
                 stock_qty: parseInt(d.qty.inventory) || null,
-                ship_by_days: parseInt(d.deli.periodDeli) || 1,
-                eta_days: (parseInt(d.deli.periodDeli) || 1) + 2,
+                ship_by_days: d.deli?.sendAvg ? Math.ceil(d.deli.sendAvg) : (parseInt(d.deli.periodDeli) || 1),
+                eta_days: (d.deli?.sendAvg ? Math.ceil(d.deli.sendAvg) : (parseInt(d.deli.periodDeli) || 1)) + 2,
                 return_days: 7,
                 return_fee: d.return?.deliAmt || 0,
                 ai_readiness_score: 70,
                 seller_trust: sellerTrust,
+                delivery_fee: deliveryFee,
+                purchase_unit: d.qty.domeUnit || 1,
+                max_order_qty: d.qty.domeLoq || null,
+                seller_type: d.seller?.type || null,
+                is_popular: !!d.popular,
+                has_options: !!d.selectOpt,
                 attributes: {
                     min_qty: parseInt(d.qty.domeMoq) || 1,
                     country: d.detail?.country || '',
                     manufacturer: d.detail?.manufacturer || '',
+                    model: d.detail?.model || '',
+                    size: d.detail?.size || '',
+                    weight: d.detail?.weight || '',
                     deli_method: d.deli?.method || '',
                     keywords: d.basis.keywords?.kw || [],
                     dome_category: d.category?.current?.name || '',
                     dome_category_code: d.category?.current?.code || '',
+                    tax_type: d.basis?.tax || '',
+                    seller_good: d.seller?.good || false,
+                    seller_global: d.seller?.global || false,
+                    nego_enabled: d.basis?.nego === 'enable',
                 },
                 sourcing_type: 'HUMAN',
                 source: 'domeggook',

@@ -250,7 +250,7 @@ server.tool(
         const actualLimit = Math.min(limit || 10, 200);
 
         const { data, count: totalCount } = await supabaseQuery('products', {
-            select: 'sku,title,category,price,stock_status,seller_trust,eta_days,ship_by_days',
+            select: 'sku,title,category,price,cost_price,margin_rate,stock_status,seller_trust,eta_days,ship_by_days',
             filters,
             limit: actualLimit,
             count: true,
@@ -261,6 +261,8 @@ server.tool(
             title: p.title,
             category: p.category,
             price: p.price,
+            cost_price: p.cost_price || null,
+            margin_rate: p.margin_rate || null,
             stock_status: p.stock_status,
             trust_score: p.seller_trust,
             eta_days: p.eta_days,
@@ -286,7 +288,7 @@ server.tool(
     async ({ sku }) => {
         try {
             const { data } = await supabaseQuery('products', {
-                select: 'sku,title,category,brand,price,currency,stock_status,stock_qty,eta_days,ship_by_days,return_days,return_fee,ai_readiness_score,seller_trust,moq,attributes',
+                select: 'sku,title,category,brand,price,cost_price,margin_rate,min_sell_price,recommended_price,supply_price,currency,stock_status,stock_qty,eta_days,ship_by_days,return_days,return_fee,ai_readiness_score,seller_trust,delivery_fee,purchase_unit,max_order_qty,seller_type,moq,attributes',
                 filters: { sku: `eq.${sku}` },
                 single: true,
             });

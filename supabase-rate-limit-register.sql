@@ -2,7 +2,11 @@
 -- agent_self_register에 IP/시간 기반 rate limiting 추가
 -- 동일 IP에서 1시간 내 5회 이상 등록 시도 차단
 
+-- 0. 기존 함수 삭제 (리턴 타입 변경 시 필수)
+DROP FUNCTION IF EXISTS agent_self_register(text, text[], text);
+
 -- 1. 등록 시도 로그 테이블 (없으면 생성)
+
 CREATE TABLE IF NOT EXISTS agent_register_attempts (
     id          BIGSERIAL PRIMARY KEY,
     ip_addr     TEXT NOT NULL,

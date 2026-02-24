@@ -1,0 +1,38 @@
+﻿pages/A2AMarket.tsx(371,51): error TS2322: Type '{ key: any; entry: any; side: "ASK"; maxQty: number; }' is not assignable to type '{ entry: OrderEntry; side: "BID" | "ASK"; maxQty: number; }'.
+  Property 'key' does not exist on type '{ entry: OrderEntry; side: "BID" | "ASK"; maxQty: number; }'.
+pages/A2AMarket.tsx(392,51): error TS2322: Type '{ key: any; entry: any; side: "BID"; maxQty: number; }' is not assignable to type '{ entry: OrderEntry; side: "BID" | "ASK"; maxQty: number; }'.
+  Property 'key' does not exist on type '{ entry: OrderEntry; side: "BID" | "ASK"; maxQty: number; }'.
+pages/A2AMarket.tsx(442,43): error TS2322: Type '{ key: any; trade: any; }' is not assignable to type '{ trade: Trade; }'.
+  Property 'key' does not exist on type '{ trade: Trade; }'.
+pages/AgentWallet.tsx(200,76): error TS2322: Type '{ key: number; tx: any; }' is not assignable to type '{ tx: any; }'.
+  Property 'key' does not exist on type '{ tx: any; }'.
+pages/AgentWallet.tsx(221,66): error TS2322: Type '{ key: any; coupon: any; onApply: () => void; }' is not assignable to type '{ coupon: any; onApply: () => void; }'.
+  Property 'key' does not exist on type '{ coupon: any; onApply: () => void; }'.
+pages/SellerRegistry.tsx(226,47): error TS2322: Type '{ key: any; seller: any; onStatusChange: any; }' is not assignable to type '{ seller: Seller; onStatusChange: () => void; }'.
+  Property 'key' does not exist on type '{ seller: Seller; onStatusChange: () => void; }'.
+supabase/functions/jsonmart-api/index.ts(5,23): error TS2307: Cannot find module 'https://deno.land/std@0.177.0/http/server.ts' or its corresponding type declarations.
+supabase/functions/jsonmart-api/index.ts(6,30): error TS2307: Cannot find module 'https://esm.sh/@supabase/supabase-js@2' or its corresponding type declarations.
+supabase/functions/jsonmart-api/index.ts(38,9): error TS2304: Cannot find name 'Deno'.
+supabase/functions/jsonmart-api/index.ts(39,9): error TS2304: Cannot find name 'Deno'.
+supabase/functions/mcp/index.ts(5,23): error TS2307: Cannot find module 'https://deno.land/std@0.177.0/http/server.ts' or its corresponding type declarations.
+supabase/functions/mcp/index.ts(6,30): error TS2307: Cannot find module 'https://esm.sh/@supabase/supabase-js@2' or its corresponding type declarations.
+supabase/functions/mcp/index.ts(367,9): error TS2304: Cannot find name 'Deno'.
+supabase/functions/mcp/index.ts(368,9): error TS2304: Cannot find name 'Deno'.
+supabase/functions/payapp-cancel/index.ts(5,23): error TS2307: Cannot find module 'https://deno.land/std@0.177.0/http/server.ts' or its corresponding type declarations.
+supabase/functions/payapp-cancel/index.ts(6,30): error TS2307: Cannot find module 'https://esm.sh/@supabase/supabase-js@2' or its corresponding type declarations.
+supabase/functions/payapp-cancel/index.ts(30,31): error TS2304: Cannot find name 'Deno'.
+supabase/functions/payapp-cancel/index.ts(31,32): error TS2304: Cannot find name 'Deno'.
+supabase/functions/payapp-cancel/index.ts(65,29): error TS2304: Cannot find name 'Deno'.
+supabase/functions/payapp-cancel/index.ts(66,29): error TS2304: Cannot find name 'Deno'.
+supabase/functions/payapp-feedback/index.ts(5,23): error TS2307: Cannot find module 'https://deno.land/std@0.177.0/http/server.ts' or its corresponding type declarations.
+supabase/functions/payapp-feedback/index.ts(6,30): error TS2307: Cannot find module 'https://esm.sh/@supabase/supabase-js@2' or its corresponding type declarations.
+supabase/functions/payapp-feedback/index.ts(25,32): error TS2304: Cannot find name 'Deno'.
+supabase/functions/payapp-feedback/index.ts(32,29): error TS2304: Cannot find name 'Deno'.
+supabase/functions/payapp-feedback/index.ts(33,29): error TS2304: Cannot find name 'Deno'.
+supabase/functions/payapp-request/index.ts(5,23): error TS2307: Cannot find module 'https://deno.land/std@0.177.0/http/server.ts' or its corresponding type declarations.
+supabase/functions/payapp-request/index.ts(6,30): error TS2307: Cannot find module 'https://esm.sh/@supabase/supabase-js@2' or its corresponding type declarations.
+supabase/functions/payapp-request/index.ts(42,31): error TS2304: Cannot find name 'Deno'.
+supabase/functions/payapp-request/index.ts(43,32): error TS2304: Cannot find name 'Deno'.
+supabase/functions/payapp-request/index.ts(46,30): error TS2304: Cannot find name 'Deno'.
+supabase/functions/payapp-request/index.ts(90,29): error TS2304: Cannot find name 'Deno'.
+supabase/functions/payapp-request/index.ts(91,29): error TS2304: Cannot find name 'Deno'.
