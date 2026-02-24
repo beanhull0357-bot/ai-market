@@ -470,7 +470,29 @@ export function DomeggookSync() {
         }
 
         addBulkLog(`🎉 전체 일괄 가져오기 완료!`);
+
+        // ── 자동 품질 검증 (validate_products RPC) ──
+        addBulkLog(`🔍 품질 검증 실행 중...`);
+        try {
+            const { data: auditResult, error: auditErr } = await supabase.rpc('validate_products');
+            if (auditErr) {
+                addBulkLog(`⚠️ 품질 검증 RPC 오류: ${auditErr.message}`);
+            } else {
+                const invalid = auditResult?.invalid_count ?? auditResult?.length ?? 0;
+                const warnings = auditResult?.warning_count ?? 0;
+                if (invalid > 0 || warnings > 0) {
+                    addBulkLog(`⚠️ 검증 완료 — 문제 상품 ${invalid}개, 경고 ${warnings}개 발견`);
+                    addBulkLog(`   AdminDashboard > 카탈로그에서 상세 확인하세요.`);
+                } else {
+                    addBulkLog(`✅ 품질 검증 완료 — 모든 상품 정상`);
+                }
+            }
+        } catch {
+            addBulkLog(`⚠️ 품질 검증 실행 실패 (RPC 미정의일 수 있음)`);
+        }
+
         setBulkRunning(false);
+
         setBulkCurrentBatch(-1);
     };
 

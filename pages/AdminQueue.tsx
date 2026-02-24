@@ -61,9 +61,44 @@ export const AdminQueue: React.FC = () => {
     const result = await approveAgent(agentId);
     if (result?.success) {
       setApprovedKeys(prev => ({ ...prev, [agentId]: result.api_key }));
+
+      // ── 승인 알림 기록: agent_notifications 테이블에 삽입 ──
+      try {
+        await supabase.from('agent_notifications').insert({
+          agent_id: agentId,
+          type: 'APPROVED',
+          message: `에이전트 ${agentId}가 승인되었습니다. API 키가 발급되었습니다.`,
+          api_key: result.api_key,
+          notified_at: new Date().toISOString(),
+          channel: 'ADMIN_CONSOLE',
+        });
+      } catch {
+        // notifications 테이블이 없어도 승인 자체는 성공 처리
+      }
+
+      // ── Webhook 테이블에도 이벤트 기록 (WebhookConfig 연동) ──
+      try {
+        const { data: hooks } = await supabase
+          .from('webhooks')
+          .select('url, events')
+          .contains('events', ['agent.approved']);
+        if (hooks && hooks.length > 0) {
+          // 등록된 Webhook URL로 이벤트 전송 (Edge Function 없이 기록만)
+          await supabase.from('webhook_logs').insert(
+            hooks.map((h: any) => ({
+              webhook_url: h.url,
+              event: 'agent.approved',
+              payload: JSON.stringify({ agent_id: agentId, api_key: result.api_key }),
+              triggered_at: new Date().toISOString(),
+              status: 'PENDING',
+            }))
+          );
+        }
+      } catch { /* webhook 테이블 없어도 무시 */ }
     }
     setProcessingIds(prev => { const s = new Set(prev); s.delete(agentId); return s; });
   };
+
 
   const handleRejectAgent = async (agentId: string) => {
     setProcessingIds(prev => new Set(prev).add(agentId));
@@ -140,8 +175,21 @@ export const AdminQueue: React.FC = () => {
         body: JSON.stringify({ mul_no: mulNo, cancelmemo: 'Admin cancellation' }),
       });
       const data = await res.json();
-      if (data.success) await loadPayments();
-    } catch (e) { console.error(e); }
+      if (data.success) {
+        // 취소 성공 → 목록 새로고침
+        await loadPayments();
+      } else {
+        // 취소 실패 → 사용자에게 명확히 알림
+        const errMsg = data.errorMessage || data.error || '취소 처리 중 오류가 발생했습니다';
+        alert(`결제 취소 실패: ${errMsg}`);
+        // 실패해도 실제 상태를 재조회하여 UI 동기화
+        await loadPayments();
+      }
+    } catch (e: any) {
+      console.error(e);
+      alert(`네트워크 오류: ${e.message}`);
+      await loadPayments();
+    }
     setCancellingId(null);
   };
 
@@ -431,8 +479,8 @@ export const AdminQueue: React.FC = () => {
                 key={p.k}
                 onClick={() => applyDatePreset(p.k)}
                 className={`px-3 py-1 text-xs rounded border transition-colors ${datePreset === p.k
-                    ? 'bg-blue-900/50 text-blue-300 border-blue-700'
-                    : 'text-gray-500 border-gray-800 hover:border-gray-600'
+                  ? 'bg-blue-900/50 text-blue-300 border-blue-700'
+                  : 'text-gray-500 border-gray-800 hover:border-gray-600'
                   }`}
               >
                 {p.l}
@@ -461,8 +509,8 @@ export const AdminQueue: React.FC = () => {
                 key={f}
                 onClick={() => setPayFilter(f)}
                 className={`px-3 py-1 text-xs rounded border transition-colors ${payFilter === f
-                    ? 'bg-gray-700 text-white border-gray-600'
-                    : 'text-gray-500 border-gray-800 hover:border-gray-600'
+                  ? 'bg-gray-700 text-white border-gray-600'
+                  : 'text-gray-500 border-gray-800 hover:border-gray-600'
                   }`}
               >
                 {f === 'ALL' ? '전체' : f === 'PAYMENT_REQUESTED' ? '결제대기' : f === 'CAPTURED' ? '결제완료' : f === 'VOIDED' ? '취소' : '환불'}
@@ -557,10 +605,10 @@ export const AdminQueue: React.FC = () => {
                       <td className="py-3 px-3 text-xs text-gray-400">{p.payapp_pay_type || '-'}</td>
                       <td className="py-3 px-3">
                         <span className={`px-2 py-0.5 rounded text-xs font-medium ${p.payment_status === 'CAPTURED' ? 'bg-emerald-900/50 text-emerald-300 border border-emerald-800' :
-                            p.payment_status === 'PAYMENT_REQUESTED' ? 'bg-yellow-900/50 text-yellow-300 border border-yellow-800' :
-                              p.payment_status === 'VOIDED' ? 'bg-red-900/50 text-red-300 border border-red-800' :
-                                p.payment_status === 'REFUNDED' ? 'bg-purple-900/50 text-purple-300 border border-purple-800' :
-                                  'bg-gray-800 text-gray-400 border border-gray-700'
+                          p.payment_status === 'PAYMENT_REQUESTED' ? 'bg-yellow-900/50 text-yellow-300 border border-yellow-800' :
+                            p.payment_status === 'VOIDED' ? 'bg-red-900/50 text-red-300 border border-red-800' :
+                              p.payment_status === 'REFUNDED' ? 'bg-purple-900/50 text-purple-300 border border-purple-800' :
+                                'bg-gray-800 text-gray-400 border border-gray-700'
                           }`}>
                           {p.payment_status === 'CAPTURED' ? '✅ 결제완료' :
                             p.payment_status === 'PAYMENT_REQUESTED' ? '⏳ 결제대기' :
