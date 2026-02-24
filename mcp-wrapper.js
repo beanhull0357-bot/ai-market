@@ -3,6 +3,7 @@
 // Claude Desktop (stdio) → HTTP POST → Supabase Edge Function MCP Server
 
 const MCP_URL = 'https://psiysvvcusfyfsfozywn.supabase.co/functions/v1/mcp';
+const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBzaXlzdnZjdXNmeWZzZm96eXduIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA5NzY5MjgsImV4cCI6MjA4NjU1MjkyOH0.p67kF5TLGv1o5ZcuxFabFD3OCvVCXov93hYMmj09BFE';
 
 // Track in-flight requests so we don't exit while they're pending
 let pending = 0;
@@ -27,7 +28,10 @@ async function handleMessage(raw) {
     try {
         const res = await fetch(MCP_URL, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${ANON_KEY}`,
+            },
             body: JSON.stringify(msg),
         });
         const text = await res.text();
