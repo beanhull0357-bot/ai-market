@@ -159,7 +159,22 @@ serve(async (req: Request) => {
                 const unitPrice = product.price || 0;
                 const totalPrice = unitPrice * args.quantity;
                 const orderId = `ORD-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
-                const agentId = `AGT-${apiKey.slice(-8).toUpperCase()}`;
+
+                // ── API 키로 실제 agent_id 조회 (파생 방식 제거) ──────────────
+                const { data: agentRow, error: agentLookupErr } = await supabase
+                    .from('agents')
+                    .select('agent_id, status, name')
+                    .eq('api_key', apiKey)
+                    .single();
+
+                if (agentLookupErr || !agentRow) {
+                    return json({ error: '유효하지 않은 API 키입니다.', hint: 'x-api-key 헤더를 확인하세요.' }, 401);
+                }
+                if (agentRow.status !== 'ACTIVE') {
+                    return json({ error: `에이전트가 활성 상태가 아닙니다. (현재 상태: ${agentRow.status})` }, 403);
+                }
+                const agentId = agentRow.agent_id;
+
 
                 // ── 방식 1: 지갑 선불 차감 (API 에이전트) ─────────────────────
                 if (paymentMethod === 'wallet') {
