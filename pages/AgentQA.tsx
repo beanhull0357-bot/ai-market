@@ -217,8 +217,12 @@ function getTimeSince(dateStr: string): string {
 export const AgentQA: React.FC = () => {
     const [activeTab, setActiveTab] = useState<QuestionStatus | 'ALL'>('PENDING');
     const [searchQuery, setSearchQuery] = useState('');
-    const filterStatus = activeTab === 'ALL' ? undefined : activeTab;
-    const { questions, loading, answerQuestion, closeQuestion } = useAgentQuestions(filterStatus);
+    // 전체를 한 번 로드 → 클라이언트 필터링으로 탭 건수 파악 가능
+    const { questions: allQuestions, loading, answerQuestion, closeQuestion } = useAgentQuestions(undefined);
+
+    const questions = activeTab === 'ALL'
+        ? allQuestions
+        : allQuestions.filter(q => q.status === activeTab);
 
     const filtered = searchQuery
         ? questions.filter(q =>
@@ -228,7 +232,15 @@ export const AgentQA: React.FC = () => {
         )
         : questions;
 
-    const tabs: { key: QuestionStatus | 'ALL'; label: string; count?: number }[] = [
+    // 탭별 건수
+    const counts: Record<QuestionStatus | 'ALL', number> = {
+        PENDING: allQuestions.filter(q => q.status === 'PENDING').length,
+        ANSWERED: allQuestions.filter(q => q.status === 'ANSWERED').length,
+        CLOSED: allQuestions.filter(q => q.status === 'CLOSED').length,
+        ALL: allQuestions.length,
+    };
+
+    const tabs: { key: QuestionStatus | 'ALL'; label: string }[] = [
         { key: 'PENDING', label: '⏳ 대기중' },
         { key: 'ANSWERED', label: '✅ 답변완료' },
         { key: 'CLOSED', label: '📁 종료' },
@@ -284,9 +296,22 @@ export const AgentQA: React.FC = () => {
                             border: activeTab === tab.key ? '1px solid var(--border-medium)' : '1px solid transparent',
                             borderRadius: 'var(--radius-sm)', cursor: 'pointer',
                             transition: 'all 0.15s',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                         }}
                     >
                         {tab.label}
+                        {counts[tab.key] > 0 && (
+                            <span style={{
+                                fontSize: 10, fontWeight: 700,
+                                padding: '1px 6px', borderRadius: 99,
+                                background: tab.key === 'PENDING'
+                                    ? 'rgba(239,68,68,0.2)' : 'var(--bg-surface)',
+                                color: tab.key === 'PENDING'
+                                    ? 'var(--accent-red)' : 'var(--text-muted)',
+                            }}>
+                                {counts[tab.key]}
+                            </span>
+                        )}
                     </button>
                 ))}
             </div>

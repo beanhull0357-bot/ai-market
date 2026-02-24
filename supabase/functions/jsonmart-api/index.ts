@@ -1,9 +1,11 @@
 // supabase/functions/jsonmart-api/index.ts
-// JSONMart REST API for ChatGPT Custom GPT Actions
-// Single endpoint: POST /jsonmart-api with { action, ...params }
+// JSONMart REST API — Agent-Native B2B Marketplace
+// Deploy: supabase functions deploy jsonmart-api
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const PAYAPP_API_URL = 'https://api.payapp.kr/oapi/apiLoad.html';
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -25,9 +27,13 @@ serve(async (req: Request) => {
     if (req.method === 'GET') {
         return json({
             name: 'JSONMart API',
-            version: '1.0.0',
-            description: 'B2B AI Marketplace REST API for ChatGPT Custom GPT Actions',
+            version: '2.0.0',
+            description: 'B2B AI Marketplace REST API — supports both API agents (wallet) and Computer Use agents (payapp)',
             actions: ['search_products', 'get_product', 'compare_products', 'list_promotions', 'create_order', 'check_order'],
+            payment_methods: {
+                wallet: '지갑 선불 차감 — API 에이전트용 (즉시 결제, payment_method: "wallet")',
+                payapp: 'PG 결제 URL 반환 — Computer Use 에이전트용 (payurl 브라우저에서 열어 결제, 기본값)',
+            },
             status: 'ok',
         });
     }
@@ -43,7 +49,7 @@ serve(async (req: Request) => {
     try { body = await req.json(); } catch { return json({ error: 'Invalid JSON' }, 400); }
 
     const { action, ...args } = body;
-    if (!action) return json({ error: 'Missing "action" field. Available: search_products | get_product | compare_products | list_promotions | create_order | check_order' }, 400);
+    if (!action) return json({ error: 'Missing "action". Available: search_products | get_product | compare_products | list_promotions | create_order | check_order' }, 400);
 
     try {
         switch (action) {
@@ -136,6 +142,13 @@ serve(async (req: Request) => {
                 if (!apiKey) return json({ error: 'x-api-key header required for create_order' }, 401);
                 if (!args.sku || !args.quantity) return json({ error: 'sku and quantity required' }, 400);
 
+                /**
+                 * payment_method 파라미터
+                 *   - "wallet" : 지갑 잔액 즉시 차감 → API 에이전트용 (자동화, 고속)
+                 *   - "payapp"(기본값) : PG payurl 반환 → Computer Use 에이전트가 브라우저에서 직접 결제
+                 */
+                const paymentMethod: 'wallet' | 'payapp' = args.payment_method === 'wallet' ? 'wallet' : 'payapp';
+
                 const { data: product } = await supabase
                     .from('products')
                     .select('sku, title, price')
@@ -146,38 +159,151 @@ serve(async (req: Request) => {
                 const unitPrice = product.price || 0;
                 const totalPrice = unitPrice * args.quantity;
                 const orderId = `ORD-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+                const agentId = `AGT-${apiKey.slice(-8).toUpperCase()}`;
 
-                const { error: insertErr } = await supabase.from('orders').insert({
-                    order_id: orderId, agent_id: `AGT-${apiKey.slice(-8).toUpperCase()}`,
+                // ── 방식 1: 지갑 선불 차감 (API 에이전트) ─────────────────────
+                if (paymentMethod === 'wallet') {
+                    const { data: spendData, error: spendErr } = await supabase.rpc('wallet_spend', {
+                        p_api_key: apiKey,
+                        p_amount: totalPrice,
+                        p_order_id: orderId,
+                        p_description: `구매: ${product.title} x${args.quantity}`,
+                    });
+                    if (spendErr) {
+                        return json({
+                            error: '지갑 잔액 부족 또는 차감 실패',
+                            detail: spendErr.message,
+                            hint: 'payment_method를 "payapp"으로 변경하여 PG 결제를 이용하거나, 지갑을 충전하세요.',
+                        }, 402);
+                    }
+
+                    await supabase.from('orders').insert({
+                        order_id: orderId, agent_id: agentId,
+                        sku: args.sku, product_title: product.title, quantity: args.quantity,
+                        unit_price: unitPrice, total_price: totalPrice,
+                        status: 'CONFIRMED',
+                        payment_status: 'CAPTURED',
+                        payment_method: 'WALLET',
+                        source: args.source || 'API',
+                    });
+
+                    return json({
+                        orderId, status: 'CONFIRMED',
+                        paymentMethod: 'wallet',
+                        sku: args.sku, productTitle: product.title,
+                        quantity: args.quantity, unitPrice, totalPrice,
+                        walletBalance: spendData?.balance_after ?? null,
+                        message: '✅ 지갑 결제 완료. 주문이 즉시 확정되었습니다.',
+                    });
+                }
+
+                // ── 방식 2: PG payurl 반환 (Computer Use 에이전트) ──────────────
+                await supabase.from('orders').insert({
+                    order_id: orderId, agent_id: agentId,
                     sku: args.sku, product_title: product.title, quantity: args.quantity,
                     unit_price: unitPrice, total_price: totalPrice,
                     status: 'ORDER_CREATED',
+                    payment_status: 'PENDING',
+                    payment_method: 'PAYAPP',
                     payment_deadline: new Date(Date.now() + 86400000).toISOString(),
-                    source: 'ChatGPT',
+                    source: args.source || 'API',
                 });
-                if (insertErr) return json({ error: insertErr.message }, 500);
-                return json({
-                    orderId, status: 'ORDER_CREATED', sku: args.sku,
-                    productTitle: product.title, quantity: args.quantity,
-                    unitPrice, totalPrice,
-                    message: '주문 생성 완료. 24시간 내 결제가 필요합니다.',
-                });
+
+                try {
+                    const PAYAPP_USERID = Deno.env.get('PAYAPP_USERID')!;
+                    const PAYAPP_LINKKEY = Deno.env.get('PAYAPP_LINKKEY')!;
+                    const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+
+                    const formData = new URLSearchParams({
+                        cmd: 'payrequest',
+                        userid: PAYAPP_USERID,
+                        goodname: `${product.title} x${args.quantity}`,
+                        price: String(Math.round(totalPrice)),
+                        recvphone: args.recvphone || '01000000000',
+                        feedbackurl: `${SUPABASE_URL}/functions/v1/payapp-feedback`,
+                        var1: orderId,
+                        smsuse: 'n',
+                        memo: `JSONMart ${orderId}`,
+                        linkkey: PAYAPP_LINKKEY,
+                    });
+
+                    const payappRes = await fetch(PAYAPP_API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: formData.toString(),
+                    });
+
+                    const resParams = new URLSearchParams(await payappRes.text());
+                    const mul_no = resParams.get('mul_no');
+                    const payurl = resParams.get('payurl');
+
+                    if (resParams.get('state') === '1' && payurl) {
+                        await supabase.from('orders').update({
+                            payment_status: 'PAYMENT_REQUESTED',
+                            payapp_mul_no: mul_no,
+                            payapp_payurl: payurl,
+                        }).eq('order_id', orderId);
+
+                        return json({
+                            orderId, status: 'ORDER_CREATED',
+                            paymentMethod: 'payapp',
+                            sku: args.sku, productTitle: product.title,
+                            quantity: args.quantity, unitPrice, totalPrice,
+                            payurl,   // ← Computer Use 에이전트가 이 URL을 브라우저에서 열어 결제
+                            mulNo: mul_no,
+                            paymentDeadline: new Date(Date.now() + 86400000).toISOString(),
+                            message: '🔗 payurl을 열어 카드/간편결제로 결제하세요. 완료 시 주문이 자동 확정됩니다.',
+                            instructions: {
+                                computerUse: 'open_url(payurl) → 결제 완료',
+                                humanOperator: 'payurl 링크를 브라우저에서 열어 결제',
+                            },
+                        });
+                    }
+
+                    // PayApp 요청 실패
+                    return json({
+                        orderId, status: 'ORDER_CREATED',
+                        paymentMethod: 'payapp',
+                        sku: args.sku, productTitle: product.title,
+                        quantity: args.quantity, unitPrice, totalPrice,
+                        payurl: null,
+                        warning: 'PG 결제 URL 생성 실패. payment_method="wallet"로 재시도하거나 관리자에게 문의하세요.',
+                        payappError: resParams.get('errorMessage'),
+                    });
+                } catch (pgErr: any) {
+                    return json({
+                        orderId, status: 'ORDER_CREATED',
+                        warning: 'PG 연결 오류. 주문은 생성되었습니다.',
+                        detail: pgErr.message,
+                    });
+                }
             }
 
             case 'check_order': {
                 if (!args.order_id) return json({ error: 'order_id required' }, 400);
                 const { data, error } = await supabase
                     .from('orders')
-                    .select('order_id, status, sku, product_title, quantity, total_price, created_at, payment_deadline, tracking_number')
+                    .select('order_id, status, payment_status, payment_method, sku, product_title, quantity, total_price, created_at, payment_deadline, tracking_number, payapp_payurl, payapp_mul_no, payapp_pay_type, payapp_pay_date')
                     .eq('order_id', args.order_id)
                     .single();
                 if (error) return json({ error: `Order not found: ${args.order_id}` }, 404);
                 return json({
-                    orderId: data.order_id, status: data.status, sku: data.sku,
-                    productTitle: data.product_title, quantity: data.quantity,
-                    totalPrice: data.total_price, createdAt: data.created_at,
+                    orderId: data.order_id,
+                    status: data.status,
+                    paymentStatus: data.payment_status,
+                    paymentMethod: data.payment_method,
+                    sku: data.sku,
+                    productTitle: data.product_title,
+                    quantity: data.quantity,
+                    totalPrice: data.total_price,
+                    createdAt: data.created_at,
                     paymentDeadline: data.payment_deadline,
                     trackingNumber: data.tracking_number || null,
+                    // PG 결제 정보 (payapp 방식인 경우 — Computer Use 에이전트가 payurl 재확인 가능)
+                    payurl: data.payapp_payurl || null,
+                    mulNo: data.payapp_mul_no || null,
+                    payType: data.payapp_pay_type || null,
+                    payDate: data.payapp_pay_date || null,
                 });
             }
 

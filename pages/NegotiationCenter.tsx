@@ -9,43 +9,57 @@ import type { Negotiation, NegotiationRound } from '../types';
 const BUYER_AGENTS = ['PROCURE-BOT-v2.1', 'SOURCING-AI-v1.0', 'AUTO-RESTOCK-v2'];
 const SELLER_AGENTS = ['SUPPLIER-AI-v1.0', 'WHOLESALE-BOT-v3', 'VENDOR-AGENT-v2'];
 
-function sellerResponse(listPrice: number, buyerOffer: number, round: number, maxRounds: number): { price: number; message: string; accept: boolean } {
+/** 시드 기반 결정론적 해시 (Math.random 대체) */
+function seededHash(seed: string): number {
+    let h = 0xdeadbeef;
+    for (let i = 0; i < seed.length; i++) {
+        h = Math.imul(h ^ seed.charCodeAt(i), 0x9e3779b9);
+        h ^= h >>> 16;
+    }
+    return (h >>> 0) / 0xffffffff; // 0~1 범위
+}
+
+function sellerResponse(listPrice: number, buyerOffer: number, round: number, maxRounds: number, seed: string): { price: number; message: string; accept: boolean } {
     const spread = listPrice - buyerOffer;
     const progress = round / maxRounds;
     const urgency = progress > 0.7 ? 0.6 : progress > 0.4 ? 0.4 : 0.2;
-    const concession = spread * urgency * (0.6 + Math.random() * 0.4);
+    // Math.random() 제거: 시드 기반 양보율 (0.6~1.0 고정)
+    const concessionFactor = 0.6 + seededHash(`${seed}-seller-${round}`) * 0.4;
+    const concession = spread * urgency * concessionFactor;
     const counterPrice = Math.round(listPrice - concession);
 
     if (buyerOffer >= listPrice * 0.95 || round >= maxRounds - 1) {
-        return { price: buyerOffer, message: `Terms acceptable at ₩${buyerOffer.toLocaleString()}. Deal confirmed.`, accept: true };
+        return { price: buyerOffer, message: `Terms acceptable at \u20a9${buyerOffer.toLocaleString()}. Deal confirmed.`, accept: true };
     }
     if (buyerOffer < listPrice * 0.5) {
-        return { price: counterPrice, message: `Offer too low. Minimum counter: ₩${counterPrice.toLocaleString()}. This is ${((1 - counterPrice / listPrice) * 100).toFixed(1)}% below list.`, accept: false };
+        return { price: counterPrice, message: `Offer too low. Minimum counter: \u20a9${counterPrice.toLocaleString()}. This is ${((1 - counterPrice / listPrice) * 100).toFixed(1)}% below list.`, accept: false };
     }
     return {
         price: counterPrice,
-        message: `Counter-proposal: ₩${counterPrice.toLocaleString()} (${((1 - counterPrice / listPrice) * 100).toFixed(1)}% discount). Bulk order may improve terms.`,
+        message: `Counter-proposal: \u20a9${counterPrice.toLocaleString()} (${((1 - counterPrice / listPrice) * 100).toFixed(1)}% discount). Bulk order may improve terms.`,
         accept: false,
     };
 }
 
-function buyerOffer(listPrice: number, currentSellerPrice: number, round: number, maxRounds: number, policyBudget: number | null): { price: number; message: string; accept: boolean } {
+function buyerOffer(listPrice: number, currentSellerPrice: number, round: number, maxRounds: number, policyBudget: number | null, seed: string): { price: number; message: string; accept: boolean } {
     const budget = policyBudget ?? listPrice;
     const progress = round / maxRounds;
-    const startOffer = listPrice * (0.6 + Math.random() * 0.1);
+    // Math.random() 제거: 시드 기반 초기 오퍼율 (0.60~0.70 구간)
+    const startRatio = 0.60 + seededHash(`${seed}-buyer-${round}`) * 0.10;
+    const startOffer = listPrice * startRatio;
     const targetDelta = (currentSellerPrice - startOffer) * (progress * 0.7 + 0.2);
     const offer = Math.round(startOffer + targetDelta);
 
     if (currentSellerPrice <= budget * 0.98) {
-        return { price: currentSellerPrice, message: `Price ₩${currentSellerPrice.toLocaleString()} within policy budget. Accepting.`, accept: true };
+        return { price: currentSellerPrice, message: `Price \u20a9${currentSellerPrice.toLocaleString()} within policy budget. Accepting.`, accept: true };
     }
     if (round >= maxRounds - 1) {
         const finalOffer = Math.min(offer, budget);
-        return { price: finalOffer, message: `Final round. Maximum offer: ₩${finalOffer.toLocaleString()} (policy limit: ₩${budget.toLocaleString()}).`, accept: false };
+        return { price: finalOffer, message: `Final round. Maximum offer: \u20a9${finalOffer.toLocaleString()} (policy limit: \u20a9${budget.toLocaleString()}).`, accept: false };
     }
     return {
         price: Math.min(offer, budget),
-        message: `Offering ₩${Math.min(offer, budget).toLocaleString()}. Spec compliance verified. Awaiting counter.`,
+        message: `Offering \u20a9${Math.min(offer, budget).toLocaleString()}. Spec compliance verified. Awaiting counter.`,
         accept: false,
     };
 }
@@ -65,18 +79,24 @@ export default function NegotiationCenter() {
         const product = products.find(p => p.sku === formSku);
         if (!product) return;
 
+        const seed = `${formSku}-${formMaxRounds}-${Date.now().toString(36)}`;
+        const buyerIdx = Math.floor(seededHash(`${seed}-buyer`) * BUYER_AGENTS.length);
+        const sellerIdx = Math.floor(seededHash(`${seed}-seller`) * SELLER_AGENTS.length);
+        // policyBudget: 80%~87% 구간으로 결정론적 선택 (Math.random 제거)
+        const budgetRatio = 0.80 + seededHash(`${seed}-budget`) * 0.07;
+
         const neg: Negotiation = {
             negotiationId: `NEG-${Date.now().toString(36).toUpperCase()}`,
             sku: product.sku,
             productTitle: product.title,
             listPrice: product.offer.price,
-            buyerAgentId: BUYER_AGENTS[Math.floor(Math.random() * BUYER_AGENTS.length)],
-            sellerAgentId: SELLER_AGENTS[Math.floor(Math.random() * SELLER_AGENTS.length)],
+            buyerAgentId: BUYER_AGENTS[buyerIdx],
+            sellerAgentId: SELLER_AGENTS[sellerIdx],
             status: 'PENDING',
             rounds: [],
             finalPrice: null,
             maxRounds: formMaxRounds,
-            policyBudget: product.offer.price * (0.8 + Math.random() * 0.15),
+            policyBudget: product.offer.price * budgetRatio,
             createdAt: new Date().toISOString(),
         };
 
@@ -94,7 +114,7 @@ export default function NegotiationCenter() {
 
         for (let r = 1; r <= neg.maxRounds; r++) {
             // Buyer proposes
-            const bOffer = buyerOffer(neg.listPrice, currentSellerPrice, r, neg.maxRounds, neg.policyBudget);
+            const bOffer = buyerOffer(neg.listPrice, currentSellerPrice, r, neg.maxRounds, neg.policyBudget, neg.negotiationId);
             rounds.push({
                 round: r, proposedBy: 'buyer', price: bOffer.price,
                 message: bOffer.message, timestamp: new Date().toISOString(),
@@ -108,7 +128,7 @@ export default function NegotiationCenter() {
             }
 
             // Seller responds
-            const sResp = sellerResponse(neg.listPrice, bOffer.price, r, neg.maxRounds);
+            const sResp = sellerResponse(neg.listPrice, bOffer.price, r, neg.maxRounds, neg.negotiationId);
             currentSellerPrice = sResp.price;
             rounds.push({
                 round: r, proposedBy: 'seller', price: sResp.price,

@@ -57,10 +57,13 @@ function timeAgo(dateStr: string): string {
 }
 
 function ActivityFeed({ activities, loading }: { activities: ActivityItem[]; loading: boolean }) {
+    // ✅ Rules of Hooks: 조건부 return 전에 무조건 호출해야 함
+    const { t } = useLanguage();
+
     if (loading) {
         return (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 40, color: '#6b7280' }}>
-                <RefreshCw size={20} className="animate-spin" style={{ marginRight: 8 }} /> {useLanguage().t('aiops.loading')}
+                <RefreshCw size={20} className="animate-spin" style={{ marginRight: 8 }} /> {t('aiops.loading')}
             </div>
         );
     }
@@ -69,8 +72,8 @@ function ActivityFeed({ activities, loading }: { activities: ActivityItem[]; loa
         return (
             <div style={{ textAlign: 'center', padding: 40, color: '#6b7280' }}>
                 <Bot size={32} style={{ margin: '0 auto 8px', opacity: 0.5 }} />
-                <p>{useLanguage().t('aiops.noActivity')}</p>
-                <p style={{ fontSize: 12, marginTop: 4 }}>{useLanguage().t('aiops.noActivityDesc')}</p>
+                <p>{t('aiops.noActivity')}</p>
+                <p style={{ fontSize: 12, marginTop: 4 }}>{t('aiops.noActivityDesc')}</p>
             </div>
         );
     }

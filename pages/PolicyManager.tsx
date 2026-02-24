@@ -3,7 +3,11 @@ import { Shield, Plus, Trash2, Edit3, Check, X, Loader, Package, Truck, Star, Do
 import { useLanguage } from '../context/LanguageContext';
 import { usePolicies, AgentPolicy } from '../hooks';
 
-const CATEGORIES = ['CONSUMABLES', 'MRO'] as const;
+const CATEGORIES = [
+    'CONSUMABLES', 'MRO', 'OFFICE', 'FOOD', 'HOUSEHOLD',
+    'BEAUTY', 'FASHION', 'DIGITAL', 'SPORTS', 'FURNITURE',
+    'AUTOMOTIVE', 'MEDICAL', 'INDUSTRIAL',
+] as const;
 
 const PolicyCard: React.FC<{
     policy: AgentPolicy;
@@ -65,12 +69,12 @@ const PolicyCard: React.FC<{
                     </div>
                     <div>
                         <label className="text-xs text-gray-500 uppercase mb-2 block">{t('policies.categories')}</label>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 flex-wrap">
                             {CATEGORIES.map(cat => (
                                 <button key={cat} onClick={() => toggleCategory(cat)}
                                     className={`px-3 py-1.5 text-xs rounded border transition-colors ${allowedCategories.includes(cat)
-                                            ? 'bg-purple-900/30 text-purple-300 border-purple-700'
-                                            : 'bg-gray-800 text-gray-500 border-gray-700'
+                                        ? 'bg-purple-900/30 text-purple-300 border-purple-700'
+                                        : 'bg-gray-800 text-gray-500 border-gray-700'
                                         }`}>
                                     {cat}
                                 </button>
@@ -237,12 +241,12 @@ export const PolicyManager: React.FC = () => {
                             </div>
                             <div>
                                 <label className="block text-xs text-gray-500 uppercase mb-2">{t('policies.categories')}</label>
-                                <div className="flex gap-2">
+                                <div className="flex gap-2 flex-wrap">
                                     {CATEGORIES.map(cat => (
                                         <button key={cat} type="button" onClick={() => toggleNewCategory(cat)}
                                             className={`flex-1 px-3 py-2 text-xs rounded border transition-colors ${newCategories.includes(cat)
-                                                    ? 'bg-blue-900/30 text-blue-300 border-blue-700'
-                                                    : 'bg-gray-800 text-gray-500 border-gray-700'
+                                                ? 'bg-blue-900/30 text-blue-300 border-blue-700'
+                                                : 'bg-gray-800 text-gray-500 border-gray-700'
                                                 }`}>
                                             {cat}
                                         </button>

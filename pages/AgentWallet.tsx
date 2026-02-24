@@ -34,8 +34,9 @@ const TxRow: React.FC<{ tx: any }> = ({ tx }) => {
 }
 
 /* ━━━ Coupon Card ━━━ */
-const CouponCard: React.FC<{ coupon: any; onApply: () => void }> = ({ coupon, onApply }) => {
+const CouponCard: React.FC<{ coupon: any; onApply: () => Promise<void>; applying: boolean }> = ({ coupon, onApply, applying }) => {
     const isExpired = coupon.valid_until && new Date(coupon.valid_until) < new Date();
+    const disabled = isExpired || applying;
     return (
         <div className="glass-card" style={{ padding: 14, opacity: isExpired ? 0.5 : 1, position: 'relative', overflow: 'hidden' }}>
             <div style={{ position: 'absolute', right: -10, top: -10, width: 60, height: 60, borderRadius: '50%', background: 'rgba(0,255,200,0.05)' }} />
@@ -52,11 +53,27 @@ const CouponCard: React.FC<{ coupon: any; onApply: () => void }> = ({ coupon, on
                     {coupon.coupon_code}
                 </div>
             </div>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 6 }}>{coupon.description}</div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 9, color: 'var(--text-dim)' }}>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 8 }}>{coupon.description}</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 9, color: 'var(--text-dim)', marginBottom: 8 }}>
                 <span>{coupon.min_order_amount > 0 ? `최소 ₩${Number(coupon.min_order_amount).toLocaleString()}` : '제한 없음'} · 사용 {coupon.usage_count}/{coupon.usage_limit}</span>
                 <span>{coupon.valid_until ? `~${new Date(coupon.valid_until).toLocaleDateString('ko')}` : '무기한'}</span>
             </div>
+            {!isExpired && (
+                <button
+                    onClick={onApply}
+                    disabled={disabled}
+                    style={{
+                        width: '100%', padding: '6px 0', borderRadius: 6, border: 'none',
+                        background: disabled ? 'var(--bg-surface)' : 'var(--accent-cyan)',
+                        color: disabled ? 'var(--text-dim)' : '#000',
+                        fontWeight: 700, fontSize: 11, cursor: disabled ? 'not-allowed' : 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+                    }}
+                >
+                    {applying ? <Loader2 size={11} className="spin" /> : <Tag size={11} />}
+                    {applying ? '적용 중...' : '쿠폰 적용'}
+                </button>
+            )}
         </div>
     );
 }
@@ -69,6 +86,14 @@ export const AgentWallet: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [depositAmt, setDepositAmt] = useState('');
     const [depositing, setDepositing] = useState(false);
+    // 쿠폰 적용 상태
+    const [applyingCouponId, setApplyingCouponId] = useState<string | null>(null);
+    const [couponMsg, setCouponMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+    // 환불 상태
+    const [refundOrderId, setRefundOrderId] = useState('');
+    const [refundAmt, setRefundAmt] = useState('');
+    const [refundReason, setRefundReason] = useState('');
+    const [refunding, setRefunding] = useState(false);
     const { coupons, loading: couponsLoading } = useCoupons();
     const { invoices, loading: invoicesLoading } = useInvoices();
 
@@ -94,6 +119,38 @@ export const AgentWallet: React.FC = () => {
         setDepositing(false);
     };
 
+    const handleApplyCoupon = async (couponCode: string, couponId: string) => {
+        if (!apiKey) { setCouponMsg({ type: 'err', text: 'API 키를 먼저 입력하세요' }); return; }
+        setApplyingCouponId(couponId);
+        setCouponMsg(null);
+        try {
+            // orderAmount 0 = 지갑 단독 쿠폰 적용 (주문 연계 없이)
+            const res = await applyCoupon(apiKey, couponCode, 0);
+            if (res?.success) {
+                setCouponMsg({ type: 'ok', text: `쿠폰 적용 완료: ${couponCode}` });
+                await loadWallet();
+            } else {
+                setCouponMsg({ type: 'err', text: res?.error || '쿠폰 적용 실패' });
+            }
+        } catch (e: any) {
+            setCouponMsg({ type: 'err', text: e.message || '쿠폰 적용 실패' });
+        }
+        setApplyingCouponId(null);
+    };
+
+    const handleRefund = async () => {
+        const amt = parseInt(refundAmt);
+        if (!apiKey || !refundOrderId || !amt || amt <= 0) return;
+        setRefunding(true);
+        try {
+            await walletRefund(apiKey, refundOrderId, amt);
+            setRefundOrderId(''); setRefundAmt(''); setRefundReason('');
+            await loadWallet();
+            alert('환불이 처리되었습니다');
+        } catch (e: any) { alert('환불 실패: ' + e.message); }
+        setRefunding(false);
+    };
+
     const tabBtn = (t: Tab, label: string, icon: React.ReactNode) => (
         <button key={t} onClick={() => setTab(t)}
             style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '8px 16px', borderRadius: 8, border: 'none', background: tab === t ? 'var(--accent-cyan)' : 'var(--bg-surface)', color: tab === t ? '#000' : 'var(--text-muted)', fontWeight: 700, fontSize: 12, cursor: 'pointer', transition: 'all 0.2s' }}>
@@ -111,7 +168,7 @@ export const AgentWallet: React.FC = () => {
                 <Wallet size={24} style={{ color: 'var(--accent-green)' }} />
                 <div>
                     <h1 style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Agent Wallet</h1>
-                    <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>가상 지갑 · 쿠폰 · 인보이스 · 적립금</p>
+                    <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>크레딧 지갑 · 쿠폰 · 인보이스 · 적립금</p>
                 </div>
             </div>
 
@@ -174,9 +231,10 @@ export const AgentWallet: React.FC = () => {
                             )}
 
                             {/* Deposit */}
-                            <div className="glass-card" style={{ padding: 14, marginBottom: 16 }}>
-                                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>💰 크레딧 충전 (PG 연동 전 — 가상 충전)</div>
-                                <div style={{ display: 'flex', gap: 6 }}>
+                            <div className="glass-card" style={{ padding: 14, marginBottom: 12 }}>
+                                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>💰 크레딧 충전 (관리자 직접 지급)</div>
+                                <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 8 }}>에이전트는 지갑 잔액으로 자동 구매 · Computer Use 에이전트는 주문 시 발급되는 payurl로 PG 결제 가능</div>
+                                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                                     {[10000, 50000, 100000, 500000].map(a => (
                                         <button key={a} onClick={() => setDepositAmt(String(a))}
                                             style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: depositAmt === String(a) ? 'var(--accent-cyan)' : 'transparent', color: depositAmt === String(a) ? '#000' : 'var(--text-muted)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
@@ -188,6 +246,23 @@ export const AgentWallet: React.FC = () => {
                                     <button onClick={handleDeposit} disabled={!depositAmt || depositing}
                                         style={{ padding: '6px 16px', borderRadius: 6, border: 'none', background: 'var(--accent-green)', color: '#000', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
                                         {depositing ? <Loader2 size={12} className="spin" /> : '충전'}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Refund */}
+                            <div className="glass-card" style={{ padding: 14, marginBottom: 16, border: '1px solid rgba(239,68,68,0.2)' }}>
+                                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent-red)', marginBottom: 8 }}>↩️ 환불 처리</div>
+                                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                    <input value={refundOrderId} onChange={e => setRefundOrderId(e.target.value)} placeholder="주문 ID"
+                                        style={{ flex: 2, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-primary)', padding: '6px 10px', borderRadius: 6, fontSize: 12, fontFamily: 'var(--font-mono)', outline: 'none', minWidth: 120 }} />
+                                    <input value={refundAmt} onChange={e => setRefundAmt(e.target.value.replace(/\D/g, ''))} placeholder="환불금액"
+                                        style={{ flex: 1, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-primary)', padding: '6px 10px', borderRadius: 6, fontSize: 12, fontFamily: 'var(--font-mono)', outline: 'none', minWidth: 80 }} />
+                                    <input value={refundReason} onChange={e => setRefundReason(e.target.value)} placeholder="사유 (선택)"
+                                        style={{ flex: 2, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-primary)', padding: '6px 10px', borderRadius: 6, fontSize: 12, outline: 'none', minWidth: 100 }} />
+                                    <button onClick={handleRefund} disabled={!refundOrderId || !refundAmt || refunding}
+                                        style={{ padding: '6px 16px', borderRadius: 6, border: 'none', background: 'var(--accent-red)', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+                                        {refunding ? <Loader2 size={12} className="spin" /> : '환불'}
                                     </button>
                                 </div>
                             </div>
@@ -212,13 +287,30 @@ export const AgentWallet: React.FC = () => {
             {tab === 'coupons' && (
                 <div>
                     <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12 }}>🎫 사용 가능한 쿠폰</div>
+                    {couponMsg && (
+                        <div style={{
+                            padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 12,
+                            background: couponMsg.type === 'ok' ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
+                            color: couponMsg.type === 'ok' ? 'var(--accent-green)' : 'var(--accent-red)',
+                            border: `1px solid ${couponMsg.type === 'ok' ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`,
+                        }}>
+                            {couponMsg.type === 'ok' ? '✅ ' : '❌ '}{couponMsg.text}
+                        </div>
+                    )}
                     {couponsLoading ? (
                         <div style={{ textAlign: 'center', padding: 40 }}><Loader2 size={24} className="spin" style={{ color: 'var(--accent-cyan)' }} /></div>
                     ) : coupons.length === 0 ? (
                         <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-dim)', fontSize: 12 }}>사용 가능한 쿠폰이 없습니다</div>
                     ) : (
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 }}>
-                            {coupons.map((c: any) => <CouponCard key={c.id} coupon={c} onApply={() => { }} />)}
+                            {coupons.map((c: any) => (
+                                <CouponCard
+                                    key={c.id}
+                                    coupon={c}
+                                    applying={applyingCouponId === c.id}
+                                    onApply={() => handleApplyCoupon(c.coupon_code, c.id)}
+                                />
+                            ))}
                         </div>
                     )}
 

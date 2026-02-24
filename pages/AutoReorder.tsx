@@ -1,11 +1,14 @@
-import React, { useState } from 'react';
-import { RefreshCw, Plus, Trash2, Package, Pause, Play, Loader2, Zap, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { RefreshCw, Plus, Trash2, Package, Pause, Play, Loader2, Zap, AlertCircle, ChevronDown } from 'lucide-react';
 import { useProducts, useAutoReorderRules, saveReorderRule, toggleReorderRule, deleteReorderRule, executeReorderRule } from '../hooks';
+import { supabase } from '../supabaseClient';
 
 export const AutoReorder: React.FC = () => {
     const { products } = useProducts();
     const [agentId, setAgentId] = useState('');
     const [agentInput, setAgentInput] = useState('');
+    const [agents, setAgents] = useState<{ api_key: string; name: string }[]>([]);
+    const [agentsLoading, setAgentsLoading] = useState(false);
     const { rules, loading, refetch } = useAutoReorderRules(agentId || undefined);
     const [showForm, setShowForm] = useState(false);
     const [form, setForm] = useState({ sku: '', quantity: 10, intervalDays: 14, priceThreshold: '' });
@@ -14,6 +17,23 @@ export const AutoReorder: React.FC = () => {
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [execResult, setExecResult] = useState<{ ruleId: string; success: boolean; orderId?: string; error?: string } | null>(null);
     const [error, setError] = useState<string | null>(null);
+
+    // 에이전트 목록 로드
+    useEffect(() => {
+        const loadAgents = async () => {
+            setAgentsLoading(true);
+            try {
+                const { data } = await supabase
+                    .from('agents')
+                    .select('api_key, name')
+                    .order('created_at', { ascending: false })
+                    .limit(50);
+                if (data && data.length > 0) setAgents(data);
+            } catch { /* 목록 로드 실패 시 텍스트 입력 폴백 */ }
+            setAgentsLoading(false);
+        };
+        loadAgents();
+    }, []);
 
     const daysUntil = (d: string) => Math.ceil((new Date(d).getTime() - Date.now()) / 86400000);
 
@@ -77,15 +97,41 @@ export const AutoReorder: React.FC = () => {
             </div>
 
             {/* Agent ID 필터 */}
-            <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-                <input
-                    value={agentInput} onChange={e => setAgentInput(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && setAgentId(agentInput)}
-                    placeholder="에이전트 ID 입력 (Enter 확인)" className="input-field"
-                    style={{ flex: 1, maxWidth: 320 }}
-                />
-                <button onClick={() => setAgentId(agentInput)} style={{ padding: '8px 14px', fontSize: 12, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', cursor: 'pointer', color: 'var(--text-secondary)' }}>적용</button>
-                {agentId && <button onClick={() => { setAgentId(''); setAgentInput(''); }} style={{ padding: '8px 14px', fontSize: 12, background: 'none', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', cursor: 'pointer', color: 'var(--text-dim)' }}>전체</button>}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center' }}>
+                {agents.length > 0 ? (
+                    <div style={{ position: 'relative', flex: 1, maxWidth: 320 }}>
+                        <select
+                            value={agentId}
+                            onChange={e => setAgentId(e.target.value)}
+                            style={{
+                                width: '100%', padding: '8px 32px 8px 12px', fontSize: 13,
+                                background: 'var(--bg-surface)', color: agentId ? 'var(--text-primary)' : 'var(--text-muted)',
+                                border: '1px solid var(--border-medium)', borderRadius: 'var(--radius-md)',
+                                appearance: 'none', cursor: 'pointer',
+                            }}
+                        >
+                            <option value="">전체 에이전트</option>
+                            {agents.map(a => (
+                                <option key={a.api_key} value={a.api_key}>
+                                    {a.name || a.api_key.slice(0, 16) + '...'}
+                                </option>
+                            ))}
+                        </select>
+                        <ChevronDown size={14} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--text-muted)' }} />
+                    </div>
+                ) : (
+                    <>
+                        <input
+                            value={agentInput} onChange={e => setAgentInput(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && setAgentId(agentInput)}
+                            placeholder={agentsLoading ? '에이전트 목록 로드 중...' : '에이전트 ID 입력 (Enter 확인)'}
+                            className="input-field"
+                            style={{ flex: 1, maxWidth: 320 }}
+                        />
+                        <button onClick={() => setAgentId(agentInput)} style={{ padding: '8px 14px', fontSize: 12, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', cursor: 'pointer', color: 'var(--text-secondary)' }}>적용</button>
+                        {agentId && <button onClick={() => { setAgentId(''); setAgentInput(''); }} style={{ padding: '8px 14px', fontSize: 12, background: 'none', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', cursor: 'pointer', color: 'var(--text-dim)' }}>전체</button>}
+                    </>
+                )}
             </div>
 
             {error && <div style={{ padding: '10px 14px', background: 'rgba(239,68,68,0.08)', borderRadius: 'var(--radius-md)', color: 'var(--accent-red)', fontSize: 12, marginBottom: 12, display: 'flex', gap: 6, alignItems: 'center' }}><AlertCircle size={14} />{error}</div>}

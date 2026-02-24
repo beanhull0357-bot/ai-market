@@ -167,6 +167,32 @@ export const SellerCenter: React.FC = () => {
 
     const handleUpload = async () => {
         if (parsedRows.length === 0) return;
+
+        /* ─── 필수 컬럼 헤더 검증 ─── */
+        const REQUIRED_COLS = ['sku', 'title', 'category', 'price', 'stock_qty'];
+        const fileHeaders = Object.keys(parsedRows[0] || {});
+        const missingCols = REQUIRED_COLS.filter(col => !fileHeaders.includes(col));
+        if (missingCols.length > 0) {
+            setUploadResult({ success: false, error: `필수 컬럼 누락: ${missingCols.join(', ')}. 템플릿을 다운로드하여 올바른 형식으로 업로드하세요.` });
+            return;
+        }
+
+        /* ─── 행 레벨 검증 ─── */
+        const rowErrors: string[] = [];
+        parsedRows.forEach((row, i) => {
+            const rowNum = i + 2; // 1=헤더, 2부터 데이터
+            if (!row.sku?.trim()) rowErrors.push(`행 ${rowNum}: SKU가 비어있습니다`);
+            if (!row.title?.trim()) rowErrors.push(`행 ${rowNum}: 상품명이 비어있습니다`);
+            const price = parseInt(row.price);
+            if (isNaN(price) || price <= 0) rowErrors.push(`행 ${rowNum}: 가격(${row.price})이 유효하지 않습니다`);
+            const stock = parseInt(row.stock_qty);
+            if (isNaN(stock) || stock < 0) rowErrors.push(`행 ${rowNum}: 재고수량(${row.stock_qty})이 유효하지 않습니다`);
+        });
+        if (rowErrors.length > 0) {
+            setUploadResult({ success: false, error: rowErrors.slice(0, 5).join(' | ') + (rowErrors.length > 5 ? ` 외 ${rowErrors.length - 5}건` : '') });
+            return;
+        }
+
         setUploading(true); setUploadResult(null);
         try {
             const products = parsedRows.map(row => ({
