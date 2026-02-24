@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import { useLanguage } from '../context/LanguageContext';
-import { Search, Download, Package, ExternalLink, Check, Loader2, AlertCircle, ChevronLeft, ChevronRight, Store, ShieldCheck, TriangleAlert, Info, ChevronDown, ChevronUp, Zap, Pause, Play, RotateCcw, TrendingUp } from 'lucide-react';
+import { Search, Download, Package, ExternalLink, Check, Loader2, AlertCircle, ChevronLeft, ChevronRight, Store, ShieldCheck, TriangleAlert, Info, ChevronDown, ChevronUp, Zap, Pause, Play, RotateCcw, TrendingUp, Filter, SlidersHorizontal } from 'lucide-react';
 
 // ─── Types ───
 interface DomeItem {
@@ -9,14 +9,19 @@ interface DomeItem {
     title: string;
     thumb: string;
     price: string;
+    priceOrg?: string;       // 할인 전 단가 (사업자전용)
     unitQty: string;
     url: string;
     nick?: string;
     id?: string;
+    idxCOM?: number;          // 유료등록옵션 (0:포토포커스~3:기본등록)
+    comOnly?: boolean;        // 사업자전용상품 여부
+    adultOnly?: boolean;      // 성인전용상품 여부
+    lwp?: boolean;            // 최저가확인 상품 여부
     domePrice?: string;
-    deli?: { who: string; fee: number; add: string; fromOversea: string; type?: string; tbl?: string; periodDeli?: string; };
-    market?: { domeggook: string; supply: string; };
-    qty?: { inventory?: string; domeUnit?: string; };
+    deli?: { who: string; fee: number; add: string | boolean; fromOversea: string | boolean; type?: string; tbl?: string; periodDeli?: string; shippingArea?: number; };
+    market?: { domeggook: string | boolean; supply: string | boolean; };
+    qty?: { inventory?: string; domeUnit?: string; domeLoq?: string; };
     useopt?: string;
 }
 
@@ -164,11 +169,32 @@ function mapCategory(categoryName: string): string {
 }
 
 // ─── API Helpers (via Supabase RPC — bypasses CORS) ───
-async function searchDomeggook(keyword: string, page: number = 1, size: number = 20): Promise<{ items: DomeItem[]; header: DomeHeader }> {
+interface SearchFilters {
+    sort?: string;          // se(정확도), rd(랭킹), ha(인기), aa(낮은가격), ad(높은가격), da(최신순)
+    category?: string;      // ex) 01_01_00_00_00
+    minPrice?: number;
+    maxPrice?: number;
+    shipping?: string;      // S(무료배송), B(착불), P(선결제), C(선택가능)
+    origin?: string;        // kr(국내산), fr(국외산)
+    goodSeller?: boolean;
+    fastDelivery?: boolean;
+    market?: string;        // dome(도매꾹), supply(도매매)
+}
+
+async function searchDomeggook(keyword: string, page: number = 1, size: number = 20, filters?: SearchFilters): Promise<{ items: DomeItem[]; header: DomeHeader }> {
     const { data, error } = await supabase.rpc('domeggook_search', {
         p_keyword: keyword,
         p_page: page,
         p_size: size,
+        p_sort: filters?.sort || '',
+        p_category: filters?.category || '',
+        p_min_price: filters?.minPrice || null,
+        p_max_price: filters?.maxPrice || null,
+        p_shipping: filters?.shipping || '',
+        p_origin: filters?.origin || '',
+        p_good_seller: filters?.goodSeller || false,
+        p_fast_delivery: filters?.fastDelivery || false,
+        p_market: filters?.market || 'dome',
     });
     if (error) throw new Error(error.message);
     if (data?.error) throw new Error(data.message || data.error);
@@ -268,6 +294,15 @@ export function DomeggookSync() {
     const [imported, setImported] = useState<Set<string>>(new Set());
     const [importedSkus, setImportedSkus] = useState<Set<string>>(new Set());
 
+    // Search filters state
+    const [sortBy, setSortBy] = useState('');
+    const [filterShipping, setFilterShipping] = useState('');
+    const [filterOrigin, setFilterOrigin] = useState('');
+    const [filterGoodSeller, setFilterGoodSeller] = useState(false);
+    const [filterFastDeli, setFilterFastDeli] = useState(false);
+    const [filterMarket, setFilterMarket] = useState('dome');
+    const [filtersOpen, setFiltersOpen] = useState(false);
+
     // Data Quality Audit state
     const [auditResults, setAuditResults] = useState<ValidationIssue[] | null>(null);
     const [auditLoading, setAuditLoading] = useState(false);
@@ -298,7 +333,15 @@ export function DomeggookSync() {
         setLoading(true);
         setError('');
         try {
-            const result = await searchDomeggook(keyword.trim(), pg);
+            const filters: SearchFilters = {
+                sort: sortBy || undefined,
+                shipping: filterShipping || undefined,
+                origin: filterOrigin || undefined,
+                goodSeller: filterGoodSeller || undefined,
+                fastDelivery: filterFastDeli || undefined,
+                market: filterMarket || 'dome',
+            };
+            const result = await searchDomeggook(keyword.trim(), pg, 20, filters);
             setItems(result.items);
             setHeader(result.header);
             setPage(pg);
@@ -309,7 +352,7 @@ export function DomeggookSync() {
         } finally {
             setLoading(false);
         }
-    }, [keyword]);
+    }, [keyword, sortBy, filterShipping, filterOrigin, filterGoodSeller, filterFastDeli, filterMarket]);
 
     const toggleSelect = (no: string) => {
         setSelected(prev => {
@@ -320,10 +363,11 @@ export function DomeggookSync() {
     };
 
     const selectAll = () => {
-        if (selected.size === items.length) {
+        if (selected.size === items.filter(i => !i.comOnly && !i.adultOnly).length) {
             setSelected(new Set());
         } else {
-            setSelected(new Set(items.map(i => i.no)));
+            // comOnly / adultOnly 상품은 선택에서 제외
+            setSelected(new Set(items.filter(i => !i.comOnly && !i.adultOnly).map(i => i.no)));
         }
     };
 
@@ -332,6 +376,11 @@ export function DomeggookSync() {
         if (toImport.length === 0) return;
 
         for (const item of toImport) {
+            // Skip comOnly/adultOnly items
+            if (item.comOnly || item.adultOnly) {
+                console.warn(`Skipping ${item.no}: ${item.comOnly ? '사업자전용' : '성인전용'}`);
+                continue;
+            }
             setImporting(prev => new Set(prev).add(item.no));
             try {
                 const detail = await getItemDetail(item.no);
@@ -445,6 +494,10 @@ export function DomeggookSync() {
 
     const importSingleItem = async (item: DomeItem, localImportedSet: Set<string>): Promise<'imported' | 'skipped' | 'failed'> => {
         if (localImportedSet.has(item.no) || importedSkus.has(item.no)) {
+            return 'skipped';
+        }
+        // Skip comOnly/adultOnly items
+        if (item.comOnly || item.adultOnly) {
             return 'skipped';
         }
         try {
@@ -1138,6 +1191,148 @@ export function DomeggookSync() {
                 </button>
             </div>
 
+            {/* ── Search Filters Panel ── */}
+            <div style={{
+                marginBottom: 16, background: 'var(--bg-card)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 'var(--radius-md)', overflow: 'hidden',
+            }}>
+                <button
+                    onClick={() => setFiltersOpen(!filtersOpen)}
+                    style={{
+                        width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        padding: '10px 16px', border: 'none', background: 'transparent', cursor: 'pointer',
+                        color: 'var(--text-secondary)', fontSize: 13,
+                    }}
+                >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <SlidersHorizontal size={14} />
+                        <span style={{ fontWeight: 600 }}>{t('Search Filters', '검색 필터')}</span>
+                        {(sortBy || filterShipping || filterOrigin || filterGoodSeller || filterFastDeli || filterMarket !== 'dome') && (
+                            <span style={{
+                                fontSize: 10, padding: '1px 6px', borderRadius: 99,
+                                background: 'rgba(0,255,136,0.15)', color: 'var(--accent-green)',
+                            }}>ON</span>
+                        )}
+                    </div>
+                    {filtersOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                </button>
+
+                {filtersOpen && (
+                    <div style={{
+                        borderTop: '1px solid var(--border-subtle)', padding: '12px 16px',
+                        display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end',
+                    }}>
+                        {/* Sort */}
+                        <div style={{ minWidth: 120 }}>
+                            <label style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block', marginBottom: 4, fontWeight: 600 }}>
+                                {t('Sort', '정렬')}
+                            </label>
+                            <select
+                                value={sortBy}
+                                onChange={e => setSortBy(e.target.value)}
+                                style={{
+                                    padding: '6px 8px', fontSize: 12, borderRadius: 'var(--radius-sm)',
+                                    border: '1px solid var(--border-medium)', background: 'var(--bg-surface)',
+                                    color: 'var(--text-primary)', width: '100%',
+                                }}
+                            >
+                                <option value="">{t('Default (Ranking)', '기본 (랭킹순)')}</option>
+                                <option value="ha">{t('Popular', '인기순')}</option>
+                                <option value="aa">{t('Price: Low', '낮은가격순')}</option>
+                                <option value="ad">{t('Price: High', '높은가격순')}</option>
+                                <option value="da">{t('Newest', '최신순')}</option>
+                                <option value="qa">{t('Min Qty: Low', '적은판매단위순')}</option>
+                            </select>
+                        </div>
+
+                        {/* Market */}
+                        <div style={{ minWidth: 100 }}>
+                            <label style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block', marginBottom: 4, fontWeight: 600 }}>
+                                {t('Market', '마켓')}
+                            </label>
+                            <select
+                                value={filterMarket}
+                                onChange={e => setFilterMarket(e.target.value)}
+                                style={{
+                                    padding: '6px 8px', fontSize: 12, borderRadius: 'var(--radius-sm)',
+                                    border: '1px solid var(--border-medium)', background: 'var(--bg-surface)',
+                                    color: 'var(--text-primary)', width: '100%',
+                                }}
+                            >
+                                <option value="dome">{t('Domeggook', '도매꾹')}</option>
+                                <option value="supply">{t('Domemae', '도매매')}</option>
+                            </select>
+                        </div>
+
+                        {/* Shipping */}
+                        <div style={{ minWidth: 110 }}>
+                            <label style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block', marginBottom: 4, fontWeight: 600 }}>
+                                {t('Shipping', '배송비')}
+                            </label>
+                            <select
+                                value={filterShipping}
+                                onChange={e => setFilterShipping(e.target.value)}
+                                style={{
+                                    padding: '6px 8px', fontSize: 12, borderRadius: 'var(--radius-sm)',
+                                    border: '1px solid var(--border-medium)', background: 'var(--bg-surface)',
+                                    color: 'var(--text-primary)', width: '100%',
+                                }}
+                            >
+                                <option value="">{t('All', '전체')}</option>
+                                <option value="S">{t('Free Shipping', '무료배송')}</option>
+                                <option value="P">{t('Prepaid', '선결제')}</option>
+                                <option value="B">{t('Cash on Delivery', '착불')}</option>
+                            </select>
+                        </div>
+
+                        {/* Origin */}
+                        <div style={{ minWidth: 90 }}>
+                            <label style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block', marginBottom: 4, fontWeight: 600 }}>
+                                {t('Origin', '원산지')}
+                            </label>
+                            <select
+                                value={filterOrigin}
+                                onChange={e => setFilterOrigin(e.target.value)}
+                                style={{
+                                    padding: '6px 8px', fontSize: 12, borderRadius: 'var(--radius-sm)',
+                                    border: '1px solid var(--border-medium)', background: 'var(--bg-surface)',
+                                    color: 'var(--text-primary)', width: '100%',
+                                }}
+                            >
+                                <option value="">{t('All', '전체')}</option>
+                                <option value="kr">{t('Domestic', '국산')}</option>
+                                <option value="fr">{t('Imported', '수입')}</option>
+                            </select>
+                        </div>
+
+                        {/* Checkboxes */}
+                        <div style={{ display: 'flex', gap: 12, alignItems: 'center', paddingBottom: 2 }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                                <input type="checkbox" checked={filterGoodSeller} onChange={e => setFilterGoodSeller(e.target.checked)} />
+                                {t('Good Seller', '우수판매자')}
+                            </label>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                                <input type="checkbox" checked={filterFastDeli} onChange={e => setFilterFastDeli(e.target.checked)} />
+                                {t('Fast Delivery', '빠른배송')}
+                            </label>
+                        </div>
+
+                        {/* Reset */}
+                        <button
+                            onClick={() => { setSortBy(''); setFilterShipping(''); setFilterOrigin(''); setFilterGoodSeller(false); setFilterFastDeli(false); setFilterMarket('dome'); }}
+                            style={{
+                                padding: '6px 12px', fontSize: 11, fontWeight: 600,
+                                border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)',
+                                background: 'var(--bg-surface)', color: 'var(--text-muted)', cursor: 'pointer',
+                            }}
+                        >
+                            {t('Reset Filters', '필터 초기화')}
+                        </button>
+                    </div>
+                )}
+            </div>
+
             {/* Error */}
             {error && (
                 <div style={{
@@ -1303,6 +1498,38 @@ export function DomeggookSync() {
                                             background: 'var(--bg-surface)', color: 'var(--text-tertiary)',
                                         }}>
                                             {t('Shipping', '배송비')}: ₩{item.deli.fee.toLocaleString()}
+                                        </span>
+                                    )}
+                                    {item.deli?.who === 'S' && (
+                                        <span style={{
+                                            padding: '2px 6px', borderRadius: 'var(--radius-sm)',
+                                            background: 'rgba(0,255,136,0.1)', color: 'var(--accent-green)',
+                                        }}>
+                                            {t('Free Ship', '무료배송')}
+                                        </span>
+                                    )}
+                                    {item.lwp && (
+                                        <span style={{
+                                            padding: '2px 6px', borderRadius: 'var(--radius-sm)',
+                                            background: 'rgba(59,130,246,0.1)', color: '#3b82f6',
+                                        }}>
+                                            {t('Lowest', '최저가')}
+                                        </span>
+                                    )}
+                                    {item.comOnly && (
+                                        <span style={{
+                                            padding: '2px 6px', borderRadius: 'var(--radius-sm)',
+                                            background: 'rgba(239,68,68,0.1)', color: '#ef4444',
+                                        }}>
+                                            {t('Biz Only', '사업자전용')}
+                                        </span>
+                                    )}
+                                    {item.adultOnly && (
+                                        <span style={{
+                                            padding: '2px 6px', borderRadius: 'var(--radius-sm)',
+                                            background: 'rgba(239,68,68,0.1)', color: '#ef4444',
+                                        }}>
+                                            {t('Adult', '19+')}
                                         </span>
                                     )}
                                 </div>
