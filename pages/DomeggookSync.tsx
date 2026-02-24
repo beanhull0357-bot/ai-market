@@ -1260,12 +1260,12 @@ export function DomeggookSync() {
                                     color: 'var(--text-primary)', width: '100%',
                                 }}
                             >
-                                <option value="">{t('Default (Ranking)', '기본 (랭킹순)')}</option>
-                                <option value="ha">{t('Popular', '인기순')}</option>
-                                <option value="aa">{t('Price: Low', '낮은가격순')}</option>
-                                <option value="ad">{t('Price: High', '높은가격순')}</option>
-                                <option value="da">{t('Newest', '최신순')}</option>
-                                <option value="qa">{t('Min Qty: Low', '적은판매단위순')}</option>
+                                <option value="" style={{ color: '#222', background: '#fff' }}>{t('Default (Ranking)', '기본 (랭킹순)')}</option>
+                                <option value="ha" style={{ color: '#222', background: '#fff' }}>{t('Popular', '인기순')}</option>
+                                <option value="aa" style={{ color: '#222', background: '#fff' }}>{t('Price: Low', '낮은가격순')}</option>
+                                <option value="ad" style={{ color: '#222', background: '#fff' }}>{t('Price: High', '높은가격순')}</option>
+                                <option value="da" style={{ color: '#222', background: '#fff' }}>{t('Newest', '최신순')}</option>
+                                <option value="qa" style={{ color: '#222', background: '#fff' }}>{t('Min Qty: Low', '적은판매단위순')}</option>
                             </select>
                         </div>
 
@@ -1283,8 +1283,8 @@ export function DomeggookSync() {
                                     color: 'var(--text-primary)', width: '100%',
                                 }}
                             >
-                                <option value="dome">{t('Domeggook', '도매꾹')}</option>
-                                <option value="supply">{t('Domemae', '도매매')}</option>
+                                <option value="dome" style={{ color: '#222', background: '#fff' }}>{t('Domeggook', '도매꾹')}</option>
+                                <option value="supply" style={{ color: '#222', background: '#fff' }}>{t('Domemae', '도매매')}</option>
                             </select>
                         </div>
 
@@ -1302,9 +1302,9 @@ export function DomeggookSync() {
                                     color: 'var(--text-primary)', width: '100%',
                                 }}
                             >
-                                <option value="">{t('All', '전체')}</option>
+                                <option value="" style={{ color: '#222', background: '#fff' }}>{t('All', '전체')}</option>
                                 {categories.filter(c => c.depth === 1).map(c => (
-                                    <option key={c.code} value={c.code}>{c.name}</option>
+                                    <option key={c.code} value={c.code} style={{ color: '#222', background: '#fff' }}>{c.name}</option>
                                 ))}
                             </select>
                         </div>
@@ -1324,9 +1324,9 @@ export function DomeggookSync() {
                                         color: 'var(--text-primary)', width: '100%',
                                     }}
                                 >
-                                    <option value="">{t('All', '전체')}</option>
+                                    <option value="" style={{ color: '#222', background: '#fff' }}>{t('All', '전체')}</option>
                                     {categories.filter(c => c.depth === 2 && c.parent_code === filterCategory).map(c => (
-                                        <option key={c.code} value={c.code}>{c.name}</option>
+                                        <option key={c.code} value={c.code} style={{ color: '#222', background: '#fff' }}>{c.name}</option>
                                     ))}
                                 </select>
                             </div>
@@ -1346,10 +1346,10 @@ export function DomeggookSync() {
                                     color: 'var(--text-primary)', width: '100%',
                                 }}
                             >
-                                <option value="">{t('All', '전체')}</option>
-                                <option value="S">{t('Free Shipping', '무료배송')}</option>
-                                <option value="P">{t('Prepaid', '선결제')}</option>
-                                <option value="B">{t('Cash on Delivery', '착불')}</option>
+                                <option value="" style={{ color: '#222', background: '#fff' }}>{t('All', '전체')}</option>
+                                <option value="S" style={{ color: '#222', background: '#fff' }}>{t('Free Shipping', '무료배송')}</option>
+                                <option value="P" style={{ color: '#222', background: '#fff' }}>{t('Prepaid', '선결제')}</option>
+                                <option value="B" style={{ color: '#222', background: '#fff' }}>{t('Cash on Delivery', '착불')}</option>
                             </select>
                         </div>
 
@@ -1367,9 +1367,9 @@ export function DomeggookSync() {
                                     color: 'var(--text-primary)', width: '100%',
                                 }}
                             >
-                                <option value="">{t('All', '전체')}</option>
-                                <option value="kr">{t('Domestic', '국산')}</option>
-                                <option value="fr">{t('Imported', '수입')}</option>
+                                <option value="" style={{ color: '#222', background: '#fff' }}>{t('All', '전체')}</option>
+                                <option value="kr" style={{ color: '#222', background: '#fff' }}>{t('Domestic', '국산')}</option>
+                                <option value="fr" style={{ color: '#222', background: '#fff' }}>{t('Imported', '수입')}</option>
                             </select>
                         </div>
 
