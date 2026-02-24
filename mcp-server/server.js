@@ -50,6 +50,152 @@ const server = new McpServer({
     version: '2.0.0',
 });
 
+// ━━━ Resources (정적 가이드/설명) ━━━
+
+server.resource(
+    'about',
+    'jsonmart://about',
+    { description: 'JSONMart 플랫폼 소개 및 개요', mimeType: 'text/plain' },
+    async () => ({
+        contents: [{
+            uri: 'jsonmart://about',
+            mimeType: 'text/plain',
+            text: `# JSONMart — AI Agent Native B2B 마켓플레이스
+
+## 플랫폼 소개
+JSONMart는 AI 에이전트가 직접 상품을 검색·비교·주문할 수 있는 B2B 마켓플레이스입니다.
+- 모든 인터페이스가 JSON 기반으로 설계되어 AI 에이전트가 쉽게 이해하고 처리 가능
+- MCP(Model Context Protocol) 통해 Claude 등 AI 어시스턴트와 직접 연동
+- 사무용품, 소모품, 식자재, IT장비, 안전용품 등 B2B 전문 상품 취급
+
+## 주요 기능
+- **상품 검색/비교**: 카테고리, 가격, 신뢰도 기반 필터링
+- **AI 에이전트 주문**: API 키 기반 자동 구매
+- **에이전트 월렛**: 충전식 가상 월렛으로 결제
+- **판매자 신뢰 점수**: 0-100 점 기반 판매자 신뢰도 평가
+- **자동 재주문**: 재고 소진 시 자동 재주문 설정
+- **프로모션**: 할인, 번들 딜, 무료배송 등 다양한 프로모션
+
+## 카테고리
+CONSUMABLES(소모품) | MRO(유지보수) | FOOD(식자재) | OFFICE(사무용품) | IT_EQUIPMENT(IT장비) | KITCHEN(주방) | SAFETY(안전) | HYGIENE(위생) | HOUSEHOLD(생활용품)
+
+## 운영 정보
+- 웹사이트: JSONMart 대시보드에서 실시간 관리
+- API 기반: RESTful JSON API + MCP 프로토콜 지원
+- 결제: 에이전트 월렛 (충전식, KRW 기반)`,
+        }],
+    })
+);
+
+server.resource(
+    'buying-guide',
+    'jsonmart://buying-guide',
+    { description: 'JSONMart 구매 프로세스 가이드', mimeType: 'text/plain' },
+    async () => ({
+        contents: [{
+            uri: 'jsonmart://buying-guide',
+            mimeType: 'text/plain',
+            text: `# JSONMart 구매 프로세스 가이드
+
+## 🛒 구매 방법 (3가지)
+
+### 방법 1: AI 에이전트를 통한 자동 구매 (추천)
+Claude 같은 AI 어시스턴트에게 자연어로 요청하면 MCP를 통해 자동 처리됩니다.
+1. "물티슈 추천해줘" → 상품 검색 (search_products)
+2. "1번 상품 상세 보여줘" → 상세 조회 (get_product_detail)
+3. "이 상품 구매해줘" → 주문 생성 (create_order)
+4. "주문 상태 확인해줘" → 주문 추적 (check_order_status)
+
+### 방법 2: JSONMart 대시보드 (웹)
+1. JSONMart 웹사이트 접속
+2. 상품 브라우징 및 장바구니 담기
+3. 에이전트 월렛으로 결제
+4. 주문 관리 페이지에서 배송 추적
+
+### 방법 3: API 직접 호출
+1. API 키 발급 (에이전트 등록)
+2. /search, /order API 호출
+3. JSON 응답으로 주문 확인
+
+## 📋 주문 프로세스 상세
+
+### Step 1: 상품 검색
+- 키워드, 카테고리, 가격 범위, 신뢰도로 검색
+- 여러 상품 비교 가능 (compare_products)
+
+### Step 2: 상품 확인
+- SKU로 상세 정보 조회 (가격, 재고, 배송일, 반품 정책)
+- MOQ(최소주문수량) 확인 필수
+
+### Step 3: 주문 생성
+- SKU + 수량 지정
+- 에이전트 월렛 잔액 확인 → 자동 차감
+- 주문 ID 발급 (ORD-YYYYMMDD-XXXXX 형식)
+
+### Step 4: 주문 추적
+- 주문 상태: PENDING → CONFIRMED → SHIPPED → DELIVERED
+- 예상 배송일: ship_by_days + eta_days 기준
+
+### Step 5: 반품/교환
+- return_days 이내 반품 가능
+- return_fee 확인 (무료 또는 유료)
+
+## 💰 결제 방식
+- **에이전트 월렛**: 충전식 가상 지갑
+- **통화**: KRW (원화)
+- **자동 차감**: 주문 시 잔액에서 자동 결제
+- **환불**: 주문 취소/반품 시 월렛으로 환불
+
+## 📦 배송 정보
+- ship_by_days: 발송까지 소요일
+- eta_days: 배송까지 총 소요일
+- 대부분 3-12일 이내 배송
+
+## ⚠️ 주의사항
+- MOQ(최소주문수량) 미만 주문 불가
+- 재고 상태가 OUT_OF_STOCK인 상품은 주문 불가
+- 에이전트 월렛 잔액 부족 시 충전 필요`,
+        }],
+    })
+);
+
+server.resource(
+    'faq',
+    'jsonmart://faq',
+    { description: 'JSONMart 자주 묻는 질문 (FAQ)', mimeType: 'text/plain' },
+    async () => ({
+        contents: [{
+            uri: 'jsonmart://faq',
+            mimeType: 'text/plain',
+            text: `# JSONMart FAQ (자주 묻는 질문)
+
+## Q: JSONMart에서 어떤 상품을 살 수 있나요?
+A: B2B 전문 마켓플레이스로 사무용품, 소모품(물티슈, 화장지 등), 식자재, IT장비, 주방용품, 안전용품, 위생용품 등을 취급합니다. 현재 1,600개 이상의 상품이 등록되어 있습니다.
+
+## Q: 개인도 구매할 수 있나요?
+A: JSONMart는 B2B 플랫폼이지만, 에이전트 계정을 등록하면 누구나 이용 가능합니다. 다만 일부 상품에 MOQ(최소주문수량)가 있을 수 있습니다.
+
+## Q: 결제는 어떻게 하나요?
+A: 에이전트 월렛(가상 지갑)을 통해 결제합니다. 월렛에 KRW를 충전한 후 주문 시 자동 차감됩니다.
+
+## Q: 배송은 얼마나 걸리나요?
+A: 상품별로 다르지만, 일반적으로 발송까지 1-5일(ship_by_days), 배송 완료까지 3-12일(eta_days) 소요됩니다.
+
+## Q: 반품/교환이 가능한가요?
+A: 네, 상품별 return_days 이내에 반품 가능합니다. 반품 수수료(return_fee)는 상품마다 다릅니다.
+
+## Q: 판매자 신뢰 점수는 뭔가요?
+A: 0-100점 기준으로 판매자의 과거 거래 이력, 배송 정확도, 리뷰 등을 종합 평가한 점수입니다. 80점 이상이면 우수 판매자입니다.
+
+## Q: AI 에이전트 없이도 사용할 수 있나요?
+A: 네, 웹 대시보드에서 직접 상품을 검색하고 주문할 수 있습니다. AI 에이전트는 자동화를 위한 옵션입니다.
+
+## Q: 프로모션이나 할인은 어떻게 확인하나요?
+A: 'list_promotions' 도구를 사용하거나, 대시보드의 프로모션 페이지에서 현재 활성 프로모션을 확인할 수 있습니다.`,
+        }],
+    })
+);
+
 // ── count_products ──
 server.tool(
     'count_products',
