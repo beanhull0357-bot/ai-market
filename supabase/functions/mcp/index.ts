@@ -37,7 +37,8 @@ const TOOLS = [
                 max_price: { type: 'number', description: '최대 가격 (원)' },
                 min_trust: { type: 'number', description: '최소 신뢰 점수 (0-100)' },
                 in_stock_only: { type: 'boolean', description: '재고 있는 상품만 조회' },
-                limit: { type: 'number', description: '최대 결과 수 (기본 10, 최대 50)' },
+                limit: { type: 'number', description: '최대 결과 수 (기본 10, 최대 200)' },
+                offset: { type: 'number', description: '페이지네이션 오프셋 (기본 0)' },
             },
         },
     },
@@ -103,6 +104,18 @@ const TOOLS = [
             },
         },
     },
+    {
+        name: 'count_products',
+        description: 'JSONMart 전체 상품 수 또는 조건에 맞는 상품 수를 조회합니다. "상품이 몇 개야?" 같은 질문에 사용하세요. 실제 DB count를 반환하므로 정확합니다.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                category: { type: 'string', description: '카테고리 필터 (선택): CONSUMABLES | MRO | FOOD | OFFICE' },
+                in_stock_only: { type: 'boolean', description: '재고 있는 상품만 집계 (선택)' },
+                query: { type: 'string', description: '제목 검색 키워드 (선택)' },
+            },
+        },
+    },
 ];
 
 // ━━━ Resource Definitions ━━━
@@ -132,13 +145,22 @@ async function handleTool(name: string, args: any, supabase: any, apiKey?: strin
             let q = supabase
                 .from('products')
                 .select('sku, title, category, price, stock_status, seller_trust, eta_days, ship_by_days')
-                .limit(Math.min(args.limit || 10, 50));
+                .limit(Math.min(args.limit || 10, 200));
 
             if (args.category) q = q.eq('category', args.category);
             if (args.max_price) q = q.lte('price', args.max_price);
             if (args.min_trust) q = q.gte('seller_trust', args.min_trust);
             if (args.in_stock_only) q = q.eq('stock_status', 'IN_STOCK');
             if (args.query) q = q.ilike('title', `%${args.query}%`);
+
+            // Also get the total count without limit
+            let countQ = supabase.from('products').select('*', { count: 'exact', head: true });
+            if (args.category) countQ = countQ.eq('category', args.category);
+            if (args.max_price) countQ = countQ.lte('price', args.max_price);
+            if (args.min_trust) countQ = countQ.gte('seller_trust', args.min_trust);
+            if (args.in_stock_only) countQ = countQ.eq('stock_status', 'IN_STOCK');
+            if (args.query) countQ = countQ.ilike('title', `%${args.query}%`);
+            const { count: totalCount } = await countQ;
 
             const { data, error } = await q;
             if (error) return { error: error.message };
@@ -154,7 +176,8 @@ async function handleTool(name: string, args: any, supabase: any, apiKey?: strin
                     eta_days: p.eta_days,
                     ship_by_days: p.ship_by_days,
                 })),
-                total: (data || []).length,
+                returned: (data || []).length,
+                total_count: totalCount ?? (data || []).length,
             };
         }
 
@@ -215,6 +238,23 @@ async function handleTool(name: string, args: any, supabase: any, apiKey?: strin
                 reason: sorted[0]
                     ? `최고 신뢰 점수 (${sorted[0].trust_score}) + 최적 가격 ₩${(sorted[0].price || 0).toLocaleString()}`
                     : 'No products found',
+            };
+        }
+
+        case 'count_products': {
+            let q = supabase.from('products').select('*', { count: 'exact', head: true });
+            if (args.category) q = q.eq('category', args.category);
+            if (args.in_stock_only) q = q.eq('stock_status', 'IN_STOCK');
+            if (args.query) q = q.ilike('title', `%${args.query}%`);
+            const { count, error } = await q;
+            if (error) return { error: error.message };
+            return {
+                count,
+                filters_applied: {
+                    category: args.category || null,
+                    in_stock_only: args.in_stock_only || false,
+                    query: args.query || null,
+                },
             };
         }
 

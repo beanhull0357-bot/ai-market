@@ -20,7 +20,7 @@ if (!GEMINI_API_KEY) {
     process.exit(1);
 }
 
-const MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+const MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash-lite';
 
 // ━━━ Gemini Setup ━━━
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
@@ -53,8 +53,26 @@ JSONMart는 AI 에이전트를 위한 B2B 공급망 마켓플레이스로, 소�
 // ━━━ Agentic Loop ━━━
 // Handles multi-turn function calling until Gemini returns a final text response
 
-async function agenticCall(chat, userMessage) {
-    let response = await chat.sendMessage(userMessage);
+async function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function agenticCall(chat, userMessage, retryCount = 0) {
+    let response;
+    try {
+        response = await chat.sendMessage(userMessage);
+    } catch (err) {
+        // Parse retry delay from error message if rate limited
+        const retryMatch = err.message?.match(/retry in (\d+(?:\.\d+)?)s/i)
+            || err.message?.match(/"retryDelay":"(\d+)s"/);
+        if (retryMatch && retryCount < 3) {
+            const waitSec = Math.ceil(parseFloat(retryMatch[1])) + 2;
+            console.log(`\n⏳ Rate limit 감지 — ${waitSec}초 후 자동 재시도... (${retryCount + 1}/3)`);
+            await sleep(waitSec * 1000);
+            return agenticCall(chat, userMessage, retryCount + 1);
+        }
+        throw err;
+    }
 
     // Loop: if Gemini returns function calls, execute them and feed results back
     while (true) {
@@ -79,11 +97,25 @@ async function agenticCall(chat, userMessage) {
         );
 
         // Send function results back to Gemini
-        response = await chat.sendMessage(functionResults);
+        try {
+            response = await chat.sendMessage(functionResults);
+        } catch (err) {
+            const retryMatch = err.message?.match(/retry in (\d+(?:\.\d+)?)s/i)
+                || err.message?.match(/"retryDelay":"(\d+)s"/);
+            if (retryMatch && retryCount < 3) {
+                const waitSec = Math.ceil(parseFloat(retryMatch[1])) + 2;
+                console.log(`\n⏳ Rate limit — ${waitSec}초 후 재시도...`);
+                await sleep(waitSec * 1000);
+                response = await chat.sendMessage(functionResults);
+            } else {
+                throw err;
+            }
+        }
     }
 
     return response.response.text();
 }
+
 
 // ━━━ CLI Interface ━━━
 
