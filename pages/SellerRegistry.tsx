@@ -35,7 +35,7 @@ function StatusBadge({ status }: { status: SellerStatus }) {
 }
 
 /* ━━━ Seller Card ━━━ */
-function SellerCard({ seller, onStatusChange }: { seller: Seller; onStatusChange: () => void }) {
+const SellerCard: React.FC<{ seller: Seller; onStatusChange: () => void }> = ({ seller, onStatusChange }) => {
     const [expanded, setExpanded] = useState(false);
     const [updating, setUpdating] = useState(false);
     const [commissionEdit, setCommissionEdit] = useState<number | null>(null);

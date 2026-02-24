@@ -1,9 +1,6 @@
 // supabase/functions/mcp/index.ts
 // JSONMart MCP Server — Model Context Protocol over HTTP (JSON-RPC 2.0)
 // Deploy: supabase functions deploy mcp --no-verify-jwt
-//
-// Supported clients: Claude Desktop, Cursor, Windsurf, any MCP-compatible LLM
-// Transport: HTTP POST (Streamable HTTP) — supported by all MCP clients since spec 2024-11-05
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -31,7 +28,7 @@ function mcpError(id: unknown, code: number, message: string) {
 const TOOLS = [
     {
         name: 'search_products',
-        description: 'JSONMart 상품 카탈로그 검색. 카테고리, 가격 범위, 재고 여부로 필터링 가능. AI 에이전트가 구매 후보를 찾을 때 사용.',
+        description: 'JSONMart 상품 카탈로그 검색. 카테고리, 가격 범위, 재고 여부로 필터링 가능.',
         inputSchema: {
             type: 'object',
             properties: {
@@ -46,7 +43,7 @@ const TOOLS = [
     },
     {
         name: 'get_product_detail',
-        description: 'SKU로 상품 상세 정보 조회. 스펙, 가격, 재고, 신뢰 점수, 배송 조건 등 포함.',
+        description: 'SKU로 상품 상세 정보 조회.',
         inputSchema: {
             type: 'object',
             properties: {
@@ -74,7 +71,7 @@ const TOOLS = [
     },
     {
         name: 'create_order',
-        description: '상품 구매 주문 생성. 에이전트 API 키(x-api-key)가 헤더에 필요. 24시간 내 결제 필요.',
+        description: '상품 구매 주문 생성. 에이전트 API 키(x-api-key)가 헤더에 필요.',
         inputSchema: {
             type: 'object',
             properties: {
@@ -87,7 +84,7 @@ const TOOLS = [
     },
     {
         name: 'check_order_status',
-        description: '주문 ID로 주문 상태 및 결제/배송 이력 조회.',
+        description: '주문 ID로 주문 상태 조회.',
         inputSchema: {
             type: 'object',
             properties: {
@@ -98,7 +95,7 @@ const TOOLS = [
     },
     {
         name: 'list_promotions',
-        description: '현재 활성 중인 프로모션 목록 조회. 할인 코드, 조건 포함.',
+        description: '현재 활성 중인 프로모션 목록 조회.',
         inputSchema: {
             type: 'object',
             properties: {
@@ -125,19 +122,22 @@ const RESOURCES = [
 ];
 
 // ━━━ Tool Handlers ━━━
+// products 테이블 실제 컬럼: sku, title, category, price, currency,
+//   stock_status, stock_qty, ship_by_days, eta_days, return_days, return_fee,
+//   ai_readiness_score, seller_trust, moq, attributes, brand, sourcing_type
 async function handleTool(name: string, args: any, supabase: any, apiKey?: string) {
     switch (name) {
 
         case 'search_products': {
             let q = supabase
                 .from('products')
-                .select('sku, title, category, price:offer->price, stock:offer->stockStatus, trust_score:qualitySignals->sellerTrust, free_shipping:offer->freeShipping')
+                .select('sku, title, category, price, stock_status, seller_trust, eta_days, ship_by_days')
                 .limit(Math.min(args.limit || 10, 50));
 
             if (args.category) q = q.eq('category', args.category);
-            if (args.max_price) q = q.lte('offer->>price', args.max_price);
-            if (args.min_trust) q = q.gte('qualitySignals->>sellerTrust', args.min_trust);
-            if (args.in_stock_only) q = q.eq('offer->>stockStatus', 'IN_STOCK');
+            if (args.max_price) q = q.lte('price', args.max_price);
+            if (args.min_trust) q = q.gte('seller_trust', args.min_trust);
+            if (args.in_stock_only) q = q.eq('stock_status', 'IN_STOCK');
             if (args.query) q = q.ilike('title', `%${args.query}%`);
 
             const { data, error } = await q;
@@ -149,9 +149,10 @@ async function handleTool(name: string, args: any, supabase: any, apiKey?: strin
                     title: p.title,
                     category: p.category,
                     price: p.price,
-                    stock_status: p.stock,
-                    trust_score: p.trust_score,
-                    free_shipping: p.free_shipping,
+                    stock_status: p.stock_status,
+                    trust_score: p.seller_trust,
+                    eta_days: p.eta_days,
+                    ship_by_days: p.ship_by_days,
                 })),
                 total: (data || []).length,
             };
@@ -160,7 +161,7 @@ async function handleTool(name: string, args: any, supabase: any, apiKey?: strin
         case 'get_product_detail': {
             const { data, error } = await supabase
                 .from('products')
-                .select('*')
+                .select('sku, title, category, brand, price, currency, stock_status, stock_qty, eta_days, ship_by_days, return_days, return_fee, ai_readiness_score, seller_trust, moq, attributes')
                 .eq('sku', args.sku)
                 .single();
             if (error) return { error: `Product not found: ${args.sku}` };
@@ -168,15 +169,19 @@ async function handleTool(name: string, args: any, supabase: any, apiKey?: strin
                 sku: data.sku,
                 title: data.title,
                 category: data.category,
-                price: data.offer?.price,
-                stockStatus: data.offer?.stockStatus,
-                etaDays: data.offer?.etaDays,
-                freeShipping: data.offer?.freeShipping,
-                returnWindowDays: data.offer?.returnWindowDays,
-                specs: data.specs || {},
-                trustScore: data.qualitySignals?.sellerTrust,
-                aiReadinessScore: data.aiReadinessScore,
+                brand: data.brand,
+                price: data.price,
+                currency: data.currency || 'KRW',
+                stockStatus: data.stock_status,
+                stockQty: data.stock_qty,
+                etaDays: data.eta_days,
+                shipByDays: data.ship_by_days,
+                returnDays: data.return_days,
+                returnFee: data.return_fee,
+                aiReadinessScore: data.ai_readiness_score,
+                trustScore: data.seller_trust,
                 moq: data.moq,
+                attributes: data.attributes || {},
             };
         }
 
@@ -184,22 +189,21 @@ async function handleTool(name: string, args: any, supabase: any, apiKey?: strin
             const skus: string[] = args.sku_list || [];
             const { data, error } = await supabase
                 .from('products')
-                .select('sku, title, category, offer, qualitySignals, moq')
+                .select('sku, title, category, price, seller_trust, stock_status, ship_by_days, eta_days, moq')
                 .in('sku', skus);
             if (error) return { error: error.message };
 
             const comparison = (data || []).map((p: any) => ({
                 sku: p.sku,
                 title: p.title,
-                price: p.offer?.price,
-                trust_score: p.qualitySignals?.sellerTrust,
-                stock: p.offer?.stockStatus,
-                free_shipping: p.offer?.freeShipping,
-                eta_days: p.offer?.etaDays,
+                price: p.price,
+                trust_score: p.seller_trust,
+                stock: p.stock_status,
+                ship_by_days: p.ship_by_days,
+                eta_days: p.eta_days,
                 moq: p.moq,
             }));
 
-            // 신뢰도/가격 기반 추천
             const sorted = [...comparison].sort((a, b) =>
                 (b.trust_score || 0) - (a.trust_score || 0) ||
                 (a.price || 0) - (b.price || 0)
@@ -215,21 +219,19 @@ async function handleTool(name: string, args: any, supabase: any, apiKey?: strin
         }
 
         case 'create_order': {
-            // API 키로 에이전트 인증
             if (!apiKey) return { error: 'x-api-key header required for create_order' };
 
             const agentId = `AGT-${apiKey.slice(-8).toUpperCase()}`;
 
-            // 상품 확인
             const { data: product } = await supabase
                 .from('products')
-                .select('sku, title, offer')
+                .select('sku, title, price, stock_status')
                 .eq('sku', args.sku)
                 .single();
 
             if (!product) return { error: `Product not found: ${args.sku}` };
 
-            const unitPrice = product.offer?.price || 0;
+            const unitPrice = product.price || 0;
             const totalPrice = unitPrice * args.quantity;
             const orderId = `ORD-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
             const deadline = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
@@ -289,22 +291,25 @@ async function handleTool(name: string, args: any, supabase: any, apiKey?: strin
         case 'list_promotions': {
             let q = supabase
                 .from('promotions')
-                .select('id, name, code, discount_type, discount_value, min_order_amount, start_at, end_at, active')
+                .select('promo_id, name, type, value, min_qty, categories, valid_from, valid_to, active')
                 .eq('active', true)
                 .order('created_at', { ascending: false });
+
+            if (args.category) q = q.contains('categories', [args.category]);
 
             const { data, error } = await q;
             if (error) return { error: error.message };
 
             return {
                 promotions: (data || []).map((p: any) => ({
-                    id: p.id,
+                    id: p.promo_id,
                     name: p.name,
-                    code: p.code,
-                    discountType: p.discount_type,
-                    discountValue: p.discount_value,
-                    minOrderAmount: p.min_order_amount,
-                    validUntil: p.end_at,
+                    type: p.type,
+                    value: p.value,
+                    minQty: p.min_qty,
+                    categories: p.categories,
+                    validFrom: p.valid_from,
+                    validUntil: p.valid_to,
                 })),
             };
         }
@@ -320,7 +325,7 @@ async function handleResource(uri: string, supabase: any) {
         case 'jsonmart://catalog': {
             const { data } = await supabase
                 .from('products')
-                .select('sku, title, category, offer, qualitySignals, aiReadinessScore')
+                .select('sku, title, category, price, stock_status, seller_trust, ai_readiness_score')
                 .order('created_at', { ascending: false })
                 .limit(100);
             return JSON.stringify({ catalog: data || [], generatedAt: new Date().toISOString() }, null, 2);
@@ -339,16 +344,14 @@ async function handleResource(uri: string, supabase: any) {
 
 // ━━━ Main Handler ━━━
 serve(async (req: Request) => {
-    // CORS preflight
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders });
     }
 
-    // Health check (GET)
     if (req.method === 'GET') {
         return new Response(JSON.stringify({
             name: 'JSONMart MCP Server',
-            version: '1.0.0',
+            version: '1.1.0',
             protocol: 'MCP/2024-11-05',
             tools: TOOLS.map(t => t.name),
             resources: RESOURCES.map(r => r.uri),
@@ -360,7 +363,6 @@ serve(async (req: Request) => {
         return new Response('Method not allowed', { status: 405, headers: corsHeaders });
     }
 
-    // Supabase client with service role (edge function has env access)
     const supabase = createClient(
         Deno.env.get('SUPABASE_URL')!,
         Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
@@ -378,14 +380,12 @@ serve(async (req: Request) => {
     const { jsonrpc, method, id, params } = body;
 
     if (jsonrpc !== '2.0') {
-        return mcpError(id, -32600, 'Invalid JSON-RPC version — must be "2.0"');
+        return mcpError(id, -32600, 'Invalid JSON-RPC version');
     }
 
-    // ━━━ MCP Method Router ━━━
     try {
         switch (method) {
 
-            // Handshake
             case 'initialize':
                 return mcpResult(id, {
                     protocolVersion: '2024-11-05',
@@ -395,7 +395,7 @@ serve(async (req: Request) => {
                     },
                     serverInfo: {
                         name: 'JSONMart MCP Server',
-                        version: '1.0.0',
+                        version: '1.1.0',
                         description: 'AI-native marketplace tools for autonomous purchasing agents',
                     },
                 });
@@ -403,11 +403,9 @@ serve(async (req: Request) => {
             case 'notifications/initialized':
                 return new Response(null, { status: 204, headers: corsHeaders });
 
-            // Tool list
             case 'tools/list':
                 return mcpResult(id, { tools: TOOLS });
 
-            // Tool call
             case 'tools/call': {
                 const toolName = params?.name;
                 const toolArgs = params?.arguments || {};
@@ -423,11 +421,9 @@ serve(async (req: Request) => {
                 });
             }
 
-            // Resource list
             case 'resources/list':
                 return mcpResult(id, { resources: RESOURCES });
 
-            // Resource read
             case 'resources/read': {
                 const uri = params?.uri;
                 if (!uri) return mcpError(id, -32602, 'Missing resource URI');
@@ -440,7 +436,6 @@ serve(async (req: Request) => {
                 });
             }
 
-            // Prompt list (optional, return empty)
             case 'prompts/list':
                 return mcpResult(id, { prompts: [] });
 

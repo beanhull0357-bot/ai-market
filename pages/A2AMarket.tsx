@@ -128,7 +128,7 @@ function simulateTick(market: MarketState): MarketState {
 
 // ━━━ Sub-components ━━━
 
-function OrderBookRow({ entry, side, maxQty }: { entry: OrderEntry; side: 'BID' | 'ASK'; maxQty: number }) {
+const OrderBookRow: React.FC<{ entry: OrderEntry; side: 'BID' | 'ASK'; maxQty: number }> = ({ entry, side, maxQty }) => {
     const pct = maxQty > 0 ? (entry.qty / maxQty) * 100 : 0;
     const isBid = side === 'BID';
     return (
@@ -161,7 +161,7 @@ function OrderBookRow({ entry, side, maxQty }: { entry: OrderEntry; side: 'BID' 
     );
 }
 
-function TradeRow({ trade }: { trade: Trade }) {
+const TradeRow: React.FC<{ trade: Trade }> = ({ trade }) => {
     const timeAgo = () => {
         const ms = Date.now() - new Date(trade.timestamp).getTime();
         if (ms < 60000) return `${Math.floor(ms / 1000)}s ago`;

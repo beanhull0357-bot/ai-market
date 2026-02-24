@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import { supabase } from './supabaseClient';
 import { ProductPack, Order, AgentReview, Seller, SellerUpload } from './types';
 
@@ -26,7 +26,7 @@ function validateId(id: string, fieldName: string): string {
     }
     return sanitized;
 }
-// ---- Helpers: DB row → Frontend type ----
+// ---- Helpers: DB row ??Frontend type ----
 
 function rowToProduct(row: any): ProductPack {
     return {
@@ -53,7 +53,7 @@ function rowToProduct(row: any): ProductPack {
         },
         attributes: row.attributes || {},
         sourcingType: row.sourcing_type,
-        // ━━━ Enhanced Product Data ━━━
+        // ?곣봺??Enhanced Product Data ?곣봺??
         certifications: row.certifications || undefined,
         dimensions: row.dimensions || undefined,
         weightG: row.weight_g ?? undefined,
@@ -741,7 +741,7 @@ export function useAgentQuestions(filterStatus?: QuestionStatus) {
     return { questions, loading, fetchQuestions, answerQuestion, closeQuestion };
 }
 
-// ━━━ A2A Protocol Hooks ━━━
+// ?곣봺??A2A Protocol Hooks ?곣봺??
 
 export function useA2AQueries(status: string = 'OPEN', sku?: string) {
     const [queries, setQueries] = useState<any[]>([]);
@@ -812,9 +812,9 @@ export async function respondToA2AQuery(
     return data;
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺
 // SELLER MARKETPLACE HOOKS
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
 
 function rowToSeller(row: any): Seller {
     return {
@@ -909,7 +909,7 @@ export async function updateSellerStatus(sellerId: string, status: string) {
     if (error) throw error;
 }
 
-// ━━━ Seller Product CRUD ━━━
+// ?곣봺??Seller Product CRUD ?곣봺??
 export async function addSellerProduct(apiKey: string, product: any) {
     // Use the upload function with a single product
     const { data, error } = await supabase.rpc('seller_upload_products', {
@@ -948,7 +948,7 @@ export async function deleteSellerProduct(apiKey: string, sku: string) {
     return { success: true };
 }
 
-// ━━━ Seller Order Management ━━━
+// ?곣봺??Seller Order Management ?곣봺??
 export async function getSellerOrders(apiKey: string, status?: string) {
     const auth = await sellerAuth(apiKey);
     if (!auth?.success) throw new Error('Authentication failed');
@@ -999,7 +999,7 @@ export async function handleReturnRequest(apiKey: string, orderId: string, actio
     return { success: true };
 }
 
-// ━━━ Seller Settlement ━━━
+// ?곣봺??Seller Settlement ?곣봺??
 export async function getSellerSettlements(apiKey: string) {
     const auth = await sellerAuth(apiKey);
     if (!auth?.success) throw new Error('Authentication failed');
@@ -1016,7 +1016,7 @@ export async function getSellerSettlements(apiKey: string) {
     };
 }
 
-// ━━━ Seller Profile Update ━━━
+// ?곣봺??Seller Profile Update ?곣봺??
 export async function updateSellerProfile(apiKey: string, updates: any) {
     const auth = await sellerAuth(apiKey);
     if (!auth?.success) throw new Error('Authentication failed');
@@ -1029,7 +1029,7 @@ export async function updateSellerProfile(apiKey: string, updates: any) {
     return { success: true };
 }
 
-// ━━━ Admin: Update Seller Commission ━━━
+// ?곣봺??Admin: Update Seller Commission ?곣봺??
 export async function updateSellerCommission(sellerId: string, commissionRate: number) {
     const { error } = await supabase.from('sellers')
         .update({ commission_rate: commissionRate, updated_at: new Date().toISOString() })
@@ -1039,9 +1039,9 @@ export async function updateSellerCommission(sellerId: string, commissionRate: n
 }
 
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
 // WALLET & PAYMENT HOOKS
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
 
 export async function getWalletInfo(apiKey: string) {
     const { data, error } = await supabase.rpc('get_wallet_info', { p_api_key: apiKey });
@@ -1091,9 +1091,9 @@ export async function generateInvoice(apiKey: string, orderId: string, items: an
     return data;
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
 // COUPON HOOKS
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
 
 export function useCoupons() {
     const [coupons, setCoupons] = useState<any[]>([]);
@@ -1108,9 +1108,9 @@ export function useCoupons() {
     return { coupons, loading, refetch: fetchCoupons };
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
 // USAGE TIER HOOKS
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
 
 export function useTiers() {
     const [tiers, setTiers] = useState<any[]>([]);
@@ -1125,9 +1125,9 @@ export function useTiers() {
     return { tiers, loading };
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
 // PREDICTION HOOKS
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
 
 export async function generatePredictions(apiKey: string) {
     const { data, error } = await supabase.rpc('generate_predictions', { p_api_key: apiKey });
@@ -1150,9 +1150,9 @@ export function usePredictions(agentId?: string) {
     return { predictions, loading, refetch: fetchPredictions };
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
 // PUBLIC ANALYTICS HOOKS
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
 
 export async function getPublicAnalytics() {
     const { data, error } = await supabase.rpc('get_public_analytics');
@@ -1160,9 +1160,9 @@ export async function getPublicAnalytics() {
     return data;
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
 // INVOICE HOOKS
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
 
 export function useInvoices(agentId?: string) {
     const [invoices, setInvoices] = useState<any[]>([]);
@@ -1179,9 +1179,9 @@ export function useInvoices(agentId?: string) {
     return { invoices, loading, refetch: fetchInvoices };
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
 // WORKFLOW HOOKS
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
 
 export function useWorkflows(agentId?: string) {
     const [workflows, setWorkflows] = useState<any[]>([]);
@@ -1240,9 +1240,9 @@ export async function deleteWorkflowFromDB(workflowId: string) {
     return { success: true };
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
 // WEBHOOK HOOKS
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
 
 export function useWebhooks(agentId?: string) {
     const [webhooks, setWebhooks] = useState<any[]>([]);
@@ -1280,9 +1280,9 @@ export async function deleteWebhook(id: string) {
     if (error) throw error;
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
 // AUTO REORDER HOOKS
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
 
 export function useAutoReorderRules(agentId?: string) {
     const [rules, setRules] = useState<any[]>([]);
@@ -1341,9 +1341,9 @@ export async function executeReorderRule(ruleId: string) {
     return data;
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
 // PROMOTIONS HOOKS
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
 
 export function usePromotions() {
     const [promotions, setPromotions] = useState<any[]>([]);
@@ -1392,9 +1392,9 @@ export async function deletePromotion(id: string) {
     if (error) throw error;
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
 // NEGOTIATIONS HOOKS
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
 
 export function useNegotiations(agentId?: string) {
     const [negotiations, setNegotiations] = useState<any[]>([]);
@@ -1446,9 +1446,9 @@ export async function saveNegotiationToDB(neg: {
     return data;
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
 // DECISION REPLAY HOOKS
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
 
 export function useDecisionReplays(limit = 50) {
     const [replays, setReplays] = useState<any[]>([]);
@@ -1495,3 +1495,4 @@ export async function saveDecisionReplay(session: {
     if (error) throw error;
     return data;
 }
+

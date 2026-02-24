@@ -1,0 +1,160 @@
+openapi: 3.1.0
+info:
+  title: JSONMart AI Marketplace API
+  description: |
+    JSONMart AI-native B2B marketplace API.
+    All operations use POST with an "action" field in the request body.
+    Available actions: search_products, get_product, compare_products, list_promotions, create_order, check_order
+  version: 1.1.0
+
+servers:
+  - url: https://psiysvvcusfyfsfozywn.supabase.co/functions/v1
+    description: JSONMart Production API
+
+paths:
+  /jsonmart-api:
+    get:
+      operationId: healthCheck
+      summary: API health check
+      description: Returns API status and available actions.
+      responses:
+        "200":
+          description: Server info
+          content:
+            application/json:
+              schema:
+                type: object
+
+    post:
+      operationId: jsonmartAction
+      summary: Call a JSONMart action
+      description: |
+        Single endpoint for all JSONMart operations.
+        Set the "action" field to one of:
+        - search_products: Search catalog by keyword/category/price
+        - get_product: Get full details for a specific SKU
+        - compare_products: Compare 2-4 products, get AI recommendation
+        - list_promotions: List active discount promotions
+        - create_order: Place a purchase order (requires x-api-key header)
+        - check_order: Check order status by order ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              discriminator:
+                propertyName: action
+              properties:
+                action:
+                  type: string
+                  enum:
+                    - search_products
+                    - get_product
+                    - compare_products
+                    - list_promotions
+                    - create_order
+                    - check_order
+                  description: The action to perform
+                # search_products fields
+                query:
+                  type: string
+                  description: "[search_products] Keyword to search (product name, brand)"
+                  example: "물티슈"
+                category:
+                  type: string
+                  description: "[search_products / list_promotions] Category: CONSUMABLES | MRO | FOOD | OFFICE"
+                max_price:
+                  type: integer
+                  description: "[search_products] Maximum price in KRW"
+                in_stock_only:
+                  type: boolean
+                  description: "[search_products] Only return in-stock products"
+                  default: false
+                limit:
+                  type: integer
+                  description: "[search_products] Max number of results (1-50)"
+                  default: 10
+                # get_product & create_order fields
+                sku:
+                  type: string
+                  description: "[get_product / create_order] Product SKU"
+                  example: "WW-001"
+                # compare_products fields
+                sku_list:
+                  type: array
+                  items:
+                    type: string
+                  description: "[compare_products] List of 2-4 SKUs to compare"
+                  minItems: 2
+                  maxItems: 4
+                # create_order fields
+                quantity:
+                  type: integer
+                  description: "[create_order] Order quantity"
+                  minimum: 1
+                policy_id:
+                  type: string
+                  description: "[create_order] Agent policy ID (optional)"
+                # check_order fields
+                order_id:
+                  type: string
+                  description: "[check_order] Order ID (e.g. ORD-20260224-XXXXX)"
+            examples:
+              search:
+                summary: Search products
+                value:
+                  action: search_products
+                  query: "물티슈"
+                  limit: 5
+              get_product:
+                summary: Get product detail
+                value:
+                  action: get_product
+                  sku: "WW-001"
+              compare:
+                summary: Compare products
+                value:
+                  action: compare_products
+                  sku_list: ["WW-001", "WW-002"]
+              promotions:
+                summary: List promotions
+                value:
+                  action: list_promotions
+              create_order:
+                summary: Create order
+                value:
+                  action: create_order
+                  sku: "WW-001"
+                  quantity: 10
+              check_order:
+                summary: Check order status
+                value:
+                  action: check_order
+                  order_id: "ORD-20260224-AB12C"
+
+      responses:
+        "200":
+          description: Action result
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Response varies by action
+        "400":
+          description: Bad request (missing required fields)
+        "401":
+          description: Unauthorized (missing x-api-key for create_order)
+        "404":
+          description: Resource not found
+        "500":
+          description: Server error
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: x-api-key
+      description: Required only for create_order action

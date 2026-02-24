@@ -5,7 +5,7 @@ import { getWalletInfo, walletDeposit, walletRefund, useCoupons, applyCoupon, us
 type Tab = 'wallet' | 'coupons' | 'invoices';
 
 /* ━━━ Tx Row ━━━ */
-function TxRow({ tx }: { tx: any }) {
+const TxRow: React.FC<{ tx: any }> = ({ tx }) => {
     const icon: Record<string, React.ReactNode> = {
         DEPOSIT: <ArrowUpCircle size={14} style={{ color: 'var(--accent-green)' }} />,
         SPEND: <ArrowDownCircle size={14} style={{ color: 'var(--accent-red)' }} />,
@@ -34,7 +34,7 @@ function TxRow({ tx }: { tx: any }) {
 }
 
 /* ━━━ Coupon Card ━━━ */
-function CouponCard({ coupon, onApply }: { coupon: any; onApply: () => void }) {
+const CouponCard: React.FC<{ coupon: any; onApply: () => void }> = ({ coupon, onApply }) => {
     const isExpired = coupon.valid_until && new Date(coupon.valid_until) < new Date();
     return (
         <div className="glass-card" style={{ padding: 14, opacity: isExpired ? 0.5 : 1, position: 'relative', overflow: 'hidden' }}>
