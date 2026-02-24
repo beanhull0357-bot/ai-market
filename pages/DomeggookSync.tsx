@@ -48,14 +48,48 @@ interface DomeDetailResponse {
 function mapCategory(categoryName: string): string {
     const lower = categoryName.toLowerCase();
     const mapping: Record<string, string> = {
+        // 식품
         '식품': 'FOOD', '음료': 'FOOD', '건강식품': 'FOOD', '과자': 'FOOD',
+        '라면': 'FOOD', '간식': 'FOOD', '생수': 'FOOD', '커피': 'FOOD',
+        '쌀': 'FOOD', '반찬': 'FOOD', '조미료': 'FOOD', '냉동': 'FOOD',
+        '차': 'FOOD', '주스': 'FOOD', '우유': 'FOOD', '유제품': 'FOOD',
+        // 생활용품
         '생활용품': 'HOUSEHOLD', '주방': 'HOUSEHOLD', '욕실': 'HOUSEHOLD', '세제': 'HOUSEHOLD',
+        '청소': 'HOUSEHOLD', '걸레': 'HOUSEHOLD', '수납': 'HOUSEHOLD', '침구': 'HOUSEHOLD',
+        '방향': 'HOUSEHOLD', '방충': 'HOUSEHOLD', '쓰레기': 'HOUSEHOLD', '비닐': 'HOUSEHOLD',
+        '행주': 'HOUSEHOLD', '수세미': 'HOUSEHOLD',
+        // 소모품
         '화장지': 'CONSUMABLES', '티슈': 'CONSUMABLES', '물티슈': 'CONSUMABLES', '위생': 'CONSUMABLES',
-        '사무': 'OFFICE', '문구': 'OFFICE', '복사': 'OFFICE',
+        '마스크': 'CONSUMABLES', '장갑': 'CONSUMABLES', '건전지': 'CONSUMABLES', '배터리': 'CONSUMABLES',
+        '비닐봉투': 'CONSUMABLES', '포장': 'CONSUMABLES', '테이프': 'CONSUMABLES',
+        // 사무
+        '사무': 'OFFICE', '문구': 'OFFICE', '복사': 'OFFICE', 'a4': 'OFFICE',
+        '펜': 'OFFICE', '노트': 'OFFICE', '바인더': 'OFFICE', '파일': 'OFFICE',
+        '명함': 'OFFICE', '스탬프': 'OFFICE', '스테이플': 'OFFICE',
+        // 패션
         '패션': 'FASHION', '의류': 'FASHION', '신발': 'FASHION', '가방': 'FASHION',
-        '화장품': 'BEAUTY', '뷰티': 'BEAUTY', '미용': 'BEAUTY',
-        '디지털': 'DIGITAL', '전자': 'DIGITAL', '컴퓨터': 'DIGITAL',
-        '스포츠': 'SPORTS', '레저': 'SPORTS', '캠핑': 'SPORTS',
+        '티셔츠': 'FASHION', '바지': 'FASHION', '양말': 'FASHION', '속옷': 'FASHION',
+        '모자': 'FASHION', '점퍼': 'FASHION', '코트': 'FASHION', '원피스': 'FASHION',
+        // 뷰티
+        '화장품': 'BEAUTY', '뷰티': 'BEAUTY', '미용': 'BEAUTY', '샴푸': 'BEAUTY',
+        '린스': 'BEAUTY', '스킨': 'BEAUTY', '로션': 'BEAUTY', '선크림': 'BEAUTY',
+        '립': 'BEAUTY', '마스카라': 'BEAUTY', '파운데이션': 'BEAUTY', '향수': 'BEAUTY',
+        '손크림': 'BEAUTY', '바디워시': 'BEAUTY',
+        // 디지털
+        '디지털': 'DIGITAL', '전자': 'DIGITAL', '컴퓨터': 'DIGITAL', 'usb': 'DIGITAL',
+        '이어폰': 'DIGITAL', '충전기': 'DIGITAL', '케이블': 'DIGITAL', '마우스': 'DIGITAL',
+        '키보드': 'DIGITAL', '스피커': 'DIGITAL', '웹캠': 'DIGITAL', '태블릿': 'DIGITAL',
+        '핸드폰': 'DIGITAL', '스마트폰': 'DIGITAL', '노트북': 'DIGITAL',
+        // 스포츠
+        '스포츠': 'SPORTS', '레저': 'SPORTS', '캠핑': 'SPORTS', '운동': 'SPORTS',
+        '요가': 'SPORTS', '헬스': 'SPORTS', '수영': 'SPORTS', '등산': 'SPORTS',
+        '자전거': 'SPORTS', '낚시': 'SPORTS', '골프': 'SPORTS', '테니스': 'SPORTS',
+        // 반려동물
+        '반려': 'PETS', '강아지': 'PETS', '고양이': 'PETS', '애견': 'PETS',
+        '사료': 'PETS', '펫간식': 'PETS', '리드줄': 'PETS', '애완장난감': 'PETS',
+        // 유아
+        '유아': 'BABY', '아기': 'BABY', '육아': 'BABY', '기저귀': 'BABY',
+        '분유': 'BABY', '젖병': 'BABY',
     };
     for (const [key, val] of Object.entries(mapping)) {
         if (lower.includes(key)) return val;
@@ -111,16 +145,45 @@ interface BulkBatch {
 }
 
 const BULK_BATCHES_CONFIG: { keyword: string; label: string }[] = [
+    // ── 소모품 / 위생 ──
     { keyword: '물티슈', label: '물티슈 / 위생티슈' },
-    { keyword: '세제', label: '세제 / 세정제' },
-    { keyword: 'A4용지', label: 'A4용지 / 복사지' },
-    { keyword: '문구', label: '문구 / 사무용품' },
-    { keyword: 'USB', label: 'USB / 디지털' },
-    { keyword: '커피', label: '커피 / 음료' },
-    { keyword: '마스크', label: '마스크 / 위생' },
+    { keyword: '마스크', label: '마스크 / 위생용품' },
     { keyword: '건전지', label: '건전지 / 배터리' },
     { keyword: '수건', label: '수건 / 타올' },
     { keyword: '포장', label: '포장 / 택배용품' },
+    // ── 생활용품 ──
+    { keyword: '세제', label: '세제 / 세정제' },
+    { keyword: '청소용품', label: '청소용품' },
+    { keyword: '쓰레기봉투', label: '쓰레기봉투 / 비닐봉투' },
+    { keyword: '방향제', label: '방향제 / 탈취제' },
+    { keyword: '욕실용품', label: '욕실용품 / 샤워용품' },
+    // ── 식품 / 음료 ──
+    { keyword: '라면', label: '라면 / 국수' },
+    { keyword: '커피', label: '커피 / 음료' },
+    { keyword: '생수', label: '생수 / 음료수' },
+    { keyword: '간식', label: '과자 / 간식' },
+    { keyword: '건강식품', label: '건강식품 / 영양제' },
+    // ── 사무 ──
+    { keyword: 'A4용지', label: 'A4용지 / 복사지' },
+    { keyword: '문구', label: '문구 / 사무용품' },
+    { keyword: '파일', label: '파일 / 바인더' },
+    // ── 디지털 ──
+    { keyword: 'USB', label: 'USB / 저장장치' },
+    { keyword: '이어폰', label: '이어폰 / 헤드셋' },
+    { keyword: '충전기', label: '충전기 / 케이블' },
+    { keyword: '마우스', label: '마우스 / 키보드' },
+    // ── 패션 ──
+    { keyword: '양말', label: '양말 / 스타킹' },
+    { keyword: '티셔츠', label: '티셔츠 / 의류' },
+    { keyword: '속옷', label: '속옷 / 이너웨어' },
+    // ── 뷰티 ──
+    { keyword: '샴푸', label: '샴푸 / 헤어케어' },
+    { keyword: '스킨케어', label: '스킨케어 / 화장품' },
+    // ── 스포츠 ──
+    { keyword: '요가매트', label: '요가매트 / 스포츠용품' },
+    { keyword: '등산', label: '등산용품' },
+    // ── 반려동물 ──
+    { keyword: '강아지간식', label: '반려동물 간식 / 사료' },
 ];
 
 // ─── Main Component ───
@@ -147,7 +210,7 @@ export function DomeggookSync() {
     // ─── Bulk Import state ───
     const [bulkOpen, setBulkOpen] = useState(false);
     const [bulkBatches, setBulkBatches] = useState<BulkBatch[]>(
-        BULK_BATCHES_CONFIG.map(b => ({ ...b, target: 300, imported: 0, skipped: 0, failed: 0, status: 'pending' as const }))
+        BULK_BATCHES_CONFIG.map(b => ({ ...b, target: 400, imported: 0, skipped: 0, failed: 0, status: 'pending' as const }))
     );
     const [bulkRunning, setBulkRunning] = useState(false);
     const bulkPausedRef = useRef(false);
