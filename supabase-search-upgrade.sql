@@ -93,7 +93,28 @@ BEGIN
   -- Parse response
   IF v_response.status = 200 THEN
     v_body := v_response.content::JSONB;
+
+    -- Check for Domeggook standard error response (errors key)
+    IF v_body->'errors' IS NOT NULL THEN
+      RETURN jsonb_build_object(
+        'error', 'DOME_API_ERROR',
+        'code', v_body->'errors'->>'code',
+        'message', v_body->'errors'->>'message',
+        'dcode', v_body->'errors'->>'dcode',
+        'dmessage', v_body->'errors'->>'dmessage',
+        'date', v_body->'errors'->>'date'
+      );
+    END IF;
+
     RETURN v_body;
+  ELSIF v_response.status = 429 THEN
+    -- Rate limit: 분당 180회 또는 일 15,000회 초과
+    RETURN jsonb_build_object(
+      'error', 'RATE_LIMIT',
+      'code', '429',
+      'message', 'API 호출 허용량을 초과했습니다. 잠시 후 다시 시도해주세요.',
+      'dmessage', '분당 180회 이상 접속 시 3분, 일 15,000회 이상 접속 시 자정까지 차단됩니다.'
+    );
   ELSE
     RETURN jsonb_build_object(
       'error', 'API_ERROR',

@@ -205,7 +205,19 @@ async function searchDomeggook(keyword: string, page: number = 1, size: number =
         p_market: filters?.market || 'dome',
     });
     if (error) throw new Error(error.message);
-    if (data?.error) throw new Error(data.message || data.error);
+    // Handle Domeggook standard errors & rate limit
+    if (data?.error) {
+        if (data.error === 'RATE_LIMIT') {
+            throw new Error(`⚠️ API 호출 제한 초과 (${data.dmessage || '분당 180회 / 일 15,000회'}). 잠시 후 다시 시도해주세요.`);
+        }
+        if (data.error === 'DOME_API_ERROR') {
+            throw new Error(`도매꾹 API 오류 [${data.code}]: ${data.message} — ${data.dmessage || ''}`);
+        }
+        throw new Error(data.message || data.error);
+    }
+    if (data?.errors) {
+        throw new Error(`도매꾹 API 오류 [${data.errors.code}]: ${data.errors.message} — ${data.errors.dmessage || ''}`);
+    }
 
     const list = data?.domeggook?.list?.item || [];
     const items = Array.isArray(list) ? list : [list];
