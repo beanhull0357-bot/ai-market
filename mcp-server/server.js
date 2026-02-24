@@ -18,7 +18,8 @@ async function supabaseQuery(table, { select = '*', filters = {}, limit, single 
     let url = `${SUPABASE_URL}/rest/v1/${table}?select=${encodeURIComponent(select)}`;
 
     for (const [key, value] of Object.entries(filters)) {
-        url += `&${key}=${encodeURIComponent(value)}`;
+        // PostgREST operators use * as wildcard - must not encode it
+        url += `&${key}=${encodeURIComponent(value).replace(/%2A/gi, '*')}`;
     }
     if (limit) url += `&limit=${limit}`;
 
