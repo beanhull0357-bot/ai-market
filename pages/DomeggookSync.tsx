@@ -32,6 +32,14 @@ interface DomeHeader {
     itemsPerPage: number;
 }
 
+interface DomeCategory {
+    code: string;
+    name: string;
+    depth: number;
+    parent_code?: string;
+    jsonmart_category?: string;
+}
+
 interface DomeDetailResponse {
     domeggook: {
         basis: { no: number; status: string; title: string; keywords?: { kw: string[] }; tax: string; nego?: string; adult?: boolean; };
@@ -301,7 +309,12 @@ export function DomeggookSync() {
     const [filterGoodSeller, setFilterGoodSeller] = useState(false);
     const [filterFastDeli, setFilterFastDeli] = useState(false);
     const [filterMarket, setFilterMarket] = useState('dome');
+    const [filterCategory, setFilterCategory] = useState('');
+    const [filterSubCategory, setFilterSubCategory] = useState('');
     const [filtersOpen, setFiltersOpen] = useState(false);
+
+    // Category data
+    const [categories, setCategories] = useState<DomeCategory[]>([]);
 
     // Data Quality Audit state
     const [auditResults, setAuditResults] = useState<ValidationIssue[] | null>(null);
@@ -326,6 +339,13 @@ export function DomeggookSync() {
             const { data } = await supabase.from('products').select('source_id').eq('source', 'domeggook');
             if (data) setImportedSkus(new Set(data.map((r: any) => r.source_id)));
         })();
+        // Load categories from cache table
+        (async () => {
+            const { data } = await supabase.from('dome_categories').select('code, name, depth, parent_code, jsonmart_category').order('code');
+            if (data && data.length > 0) {
+                setCategories(data);
+            }
+        })();
     }, []);
 
     const handleSearch = useCallback(async (pg: number = 1) => {
@@ -333,8 +353,11 @@ export function DomeggookSync() {
         setLoading(true);
         setError('');
         try {
+            // Build category code from selections
+            let catCode = filterSubCategory || filterCategory || undefined;
             const filters: SearchFilters = {
                 sort: sortBy || undefined,
+                category: catCode,
                 shipping: filterShipping || undefined,
                 origin: filterOrigin || undefined,
                 goodSeller: filterGoodSeller || undefined,
@@ -352,7 +375,7 @@ export function DomeggookSync() {
         } finally {
             setLoading(false);
         }
-    }, [keyword, sortBy, filterShipping, filterOrigin, filterGoodSeller, filterFastDeli, filterMarket]);
+    }, [keyword, sortBy, filterShipping, filterOrigin, filterGoodSeller, filterFastDeli, filterMarket, filterCategory, filterSubCategory]);
 
     const toggleSelect = (no: string) => {
         setSelected(prev => {
@@ -1208,7 +1231,7 @@ export function DomeggookSync() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <SlidersHorizontal size={14} />
                         <span style={{ fontWeight: 600 }}>{t('Search Filters', '검색 필터')}</span>
-                        {(sortBy || filterShipping || filterOrigin || filterGoodSeller || filterFastDeli || filterMarket !== 'dome') && (
+                        {(sortBy || filterShipping || filterOrigin || filterGoodSeller || filterFastDeli || filterMarket !== 'dome' || filterCategory) && (
                             <span style={{
                                 fontSize: 10, padding: '1px 6px', borderRadius: 99,
                                 background: 'rgba(0,255,136,0.15)', color: 'var(--accent-green)',
@@ -1265,6 +1288,50 @@ export function DomeggookSync() {
                             </select>
                         </div>
 
+                        {/* Category (2-level) */}
+                        <div style={{ minWidth: 130 }}>
+                            <label style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block', marginBottom: 4, fontWeight: 600 }}>
+                                {t('Category', '카테고리')}
+                            </label>
+                            <select
+                                value={filterCategory}
+                                onChange={e => { setFilterCategory(e.target.value); setFilterSubCategory(''); }}
+                                style={{
+                                    padding: '6px 8px', fontSize: 12, borderRadius: 'var(--radius-sm)',
+                                    border: '1px solid var(--border-medium)', background: 'var(--bg-surface)',
+                                    color: 'var(--text-primary)', width: '100%',
+                                }}
+                            >
+                                <option value="">{t('All', '전체')}</option>
+                                {categories.filter(c => c.depth === 1).map(c => (
+                                    <option key={c.code} value={c.code}>{c.name}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Sub-Category */}
+                        {filterCategory && categories.filter(c => c.depth === 2 && c.parent_code === filterCategory).length > 0 && (
+                            <div style={{ minWidth: 130 }}>
+                                <label style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block', marginBottom: 4, fontWeight: 600 }}>
+                                    {t('Sub-Category', '세부분류')}
+                                </label>
+                                <select
+                                    value={filterSubCategory}
+                                    onChange={e => setFilterSubCategory(e.target.value)}
+                                    style={{
+                                        padding: '6px 8px', fontSize: 12, borderRadius: 'var(--radius-sm)',
+                                        border: '1px solid var(--border-medium)', background: 'var(--bg-surface)',
+                                        color: 'var(--text-primary)', width: '100%',
+                                    }}
+                                >
+                                    <option value="">{t('All', '전체')}</option>
+                                    {categories.filter(c => c.depth === 2 && c.parent_code === filterCategory).map(c => (
+                                        <option key={c.code} value={c.code}>{c.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+
                         {/* Shipping */}
                         <div style={{ minWidth: 110 }}>
                             <label style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block', marginBottom: 4, fontWeight: 600 }}>
@@ -1320,7 +1387,7 @@ export function DomeggookSync() {
 
                         {/* Reset */}
                         <button
-                            onClick={() => { setSortBy(''); setFilterShipping(''); setFilterOrigin(''); setFilterGoodSeller(false); setFilterFastDeli(false); setFilterMarket('dome'); }}
+                            onClick={() => { setSortBy(''); setFilterShipping(''); setFilterOrigin(''); setFilterGoodSeller(false); setFilterFastDeli(false); setFilterMarket('dome'); setFilterCategory(''); setFilterSubCategory(''); }}
                             style={{
                                 padding: '6px 12px', fontSize: 11, fontWeight: 600,
                                 border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)',
