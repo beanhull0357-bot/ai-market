@@ -1,5 +1,5 @@
 // supabase/functions/jsonmart-api/index.ts
-// JSONMart REST API — Agent-Native B2B Marketplace
+// JSONMart REST API — AI 에이전트 전용 커머스 플랫폼 (인간 구매 불가)
 // Deploy: supabase functions deploy jsonmart-api
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
@@ -28,7 +28,7 @@ serve(async (req: Request) => {
         return json({
             name: 'JSONMart API',
             version: '2.0.0',
-            description: 'B2B AI Marketplace REST API — supports both API agents (wallet) and Computer Use agents (payapp)',
+            description: 'AI Agent-Only Commerce REST API — API agents (wallet) & Computer Use agents (payapp)',
             actions: ['search_products', 'get_product', 'compare_products', 'list_promotions', 'create_order', 'check_order'],
             payment_methods: {
                 wallet: '지갑 선불 차감 — API 에이전트용 (즉시 결제, payment_method: "wallet")',

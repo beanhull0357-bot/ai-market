@@ -1,7 +1,7 @@
 {
     "name": "jsonmart-gemini-integration",
     "version": "1.0.0",
-    "description": "Gemini Function Calling integration for JSONMart B2B AI Marketplace",
+    "description": "Gemini Function Calling integration for JSONMart AI-Agent-Only Commerce",
     "type": "module",
     "main": "index.js",
     "scripts": {

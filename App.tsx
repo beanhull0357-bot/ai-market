@@ -35,7 +35,6 @@ import { A2ANetwork } from './pages/A2ANetwork';
 import { SellerCenter } from './pages/SellerCenter';
 import { SellerRegistry } from './pages/SellerRegistry';
 import { AgentWallet } from './pages/AgentWallet';
-import { UsageTiers } from './pages/UsageTiers';
 import { PredictiveProcurement } from './pages/PredictiveProcurement';
 import { ConformanceTest } from './pages/ConformanceTest';
 import { PublicAnalytics } from './pages/PublicAnalytics';
@@ -468,7 +467,6 @@ export default function App() {
                     <Route path="/export" element={<AdminRoute><DataExport /></AdminRoute>} />
                     <Route path="/webhooks" element={<AdminRoute><WebhookConfig /></AdminRoute>} />
                     <Route path="/wallet" element={<AgentWallet />} />
-                    <Route path="/tiers" element={<UsageTiers />} />
                     <Route path="/predictions" element={<PredictiveProcurement />} />
                     <Route path="/conformance" element={<ConformanceTest />} />
                     <Route path="/public-analytics" element={<PublicAnalytics />} />
