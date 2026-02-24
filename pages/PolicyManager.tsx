@@ -98,14 +98,20 @@ const PolicyCard: React.FC<{
                         <Edit3 size={14} />
                     </button>
                     {confirming ? (
-                        <div className="flex items-center gap-1">
-                            <button onClick={() => onDelete(policy.policyId)} className="px-2 py-1 text-xs bg-red-600 text-white rounded">
-                                {t('policies.yes')}
-                            </button>
-                            <button onClick={() => setConfirming(false)} className="px-2 py-1 text-xs bg-gray-700 text-gray-400 rounded">
-                                {t('policies.no')}
-                            </button>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
+                            <div style={{ fontSize: 10, color: '#f87171', textAlign: 'right', maxWidth: 160 }}>
+                                ⚠️ 이 정책을 사용 중인 에이전트의 자율 구매가 중단될 수 있습니다.
+                            </div>
+                            <div className="flex items-center gap-1">
+                                <button onClick={() => onDelete(policy.policyId)} className="px-2 py-1 text-xs bg-red-600 text-white rounded">
+                                    {t('policies.yes')}
+                                </button>
+                                <button onClick={() => setConfirming(false)} className="px-2 py-1 text-xs bg-gray-700 text-gray-400 rounded">
+                                    {t('policies.no')}
+                                </button>
+                            </div>
                         </div>
+
                     ) : (
                         <button onClick={() => setConfirming(true)} className="p-1.5 text-gray-500 hover:text-red-400 transition-colors rounded hover:bg-gray-800">
                             <Trash2 size={14} />

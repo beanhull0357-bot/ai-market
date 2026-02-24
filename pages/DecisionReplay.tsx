@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Brain, Search, Shield, ShoppingCart, CheckCircle2, XCircle, AlertTriangle, Bot, ChevronDown, ChevronUp, Radio, TrendingUp, Eye, Play, Filter, Database, Loader2 } from 'lucide-react';
 import { useProducts, useDecisionReplays, saveDecisionReplay } from '../hooks';
+import { supabase } from '../supabaseClient';
 
 // ━━━ Decision Replay Simulation Engine ━━━
 
@@ -27,7 +28,8 @@ interface DecisionSession {
     status: 'APPROVED' | 'REJECTED' | 'RUNNING' | 'PENDING';
 }
 
-function generateSession(products: any[]): DecisionSession {
+// peerAgents: 실제 DB에서 조회한 에이전트 목록 (A2A crosscheck에 사용)
+function generateSession(products: any[], peerAgents: { name: string; trust_score: number }[]): DecisionSession {
     const agentId = AGENT_NAMES[Math.floor(Math.random() * AGENT_NAMES.length)];
     const maxBudget = 30000 + Math.floor(Math.random() * 50000);
     const minTrust = 60 + Math.floor(Math.random() * 30);
@@ -48,8 +50,17 @@ function generateSession(products: any[]): DecisionSession {
 
     const passed = candidates.filter(c => c.pass);
     const chosen = passed.length > 0 ? passed.reduce((a, b) => a.price < b.price ? a : b) : null;
-    const a2aEndorseCount = chosen ? 1 + Math.floor(Math.random() * 3) : 0;
-    const a2aBlockCount = Math.random() > 0.8 ? 1 : 0;
+
+    // ── A2A Crosscheck: 실제 피어 에이전트 DB 데이터 기반 ──
+    const activePeers = peerAgents.filter(a => a.trust_score >= 60);
+    const highTrustPeers = activePeers.filter(a => a.trust_score >= 80);
+    const a2aEndorseCount = chosen ? Math.min(highTrustPeers.length, 3) : 0;
+    const a2aBlockCount = chosen && activePeers.some(a => a.trust_score < 65) ? 1 : 0;
+    const a2aPeerNames = activePeers.slice(0, 3).map(a => a.name || 'unknown');
+    const a2aDetail = chosen
+        ? `조회한 피어 에이전트 ${activePeers.length}개 — ENDORSE ${a2aEndorseCount}, BLOCKLIST ${a2aBlockCount}\n참여 피어: ${a2aPeerNames.join(', ') || '없음'}`
+        : 'Skipped — no candidates';
+
     const negotiatedPrice = chosen ? Math.round(chosen.price * (0.92 + Math.random() * 0.06)) : 0;
     const qty = 1 + Math.floor(Math.random() * 4);
     const riskScore = chosen ? (chosen.trust > 85 ? 'LOW' : chosen.trust > 70 ? 'MEDIUM' : 'HIGH') : 'N/A';
@@ -58,7 +69,7 @@ function generateSession(products: any[]): DecisionSession {
         { type: 'POLICY_LOAD', label: 'Policy Load', status: 'PASS', durationMs: 2 + Math.floor(Math.random() * 8), details: `Loaded agent policy — Budget: ₩${maxBudget.toLocaleString()}, Min Trust: ${minTrust}, Max ETA: ${maxDeliveryDays}d`, data: { maxBudget, minTrust, maxDeliveryDays, allowedCategories: allowedCats } },
         { type: 'CATALOG_SEARCH', label: 'Catalog Search', status: 'PASS', durationMs: 30 + Math.floor(Math.random() * 120), details: `Queried catalog — ${products.length} products found, ${candidates.length} evaluated`, data: { totalProducts: products.length, categoriesSearched: allowedCats } },
         { type: 'CANDIDATE_EVAL', label: 'Candidate Evaluation', status: passed.length > 0 ? 'PASS' : 'FAIL', durationMs: 15 + Math.floor(Math.random() * 40), details: `${passed.length}/${candidates.length} candidates passed policy filters`, data: { candidates, passedCount: passed.length } },
-        { type: 'A2A_CROSSCHECK', label: 'A2A Cross-check', status: a2aBlockCount > 0 ? 'WARN' : chosen ? 'PASS' : 'SKIP', durationMs: chosen ? 200 + Math.floor(Math.random() * 500) : 0, details: chosen ? `Received ${a2aEndorseCount} ENDORSE, ${a2aBlockCount} BLOCKLIST from peer agents` : 'Skipped — no candidates', data: { endorseCount: a2aEndorseCount, blockCount: a2aBlockCount } },
+        { type: 'A2A_CROSSCHECK', label: 'A2A Cross-check', status: a2aBlockCount > 0 ? 'WARN' : chosen ? 'PASS' : 'SKIP', durationMs: chosen ? 200 + Math.floor(Math.random() * 300) : 0, details: a2aDetail, data: { endorseCount: a2aEndorseCount, blockCount: a2aBlockCount, peerCount: activePeers.length, peerNames: a2aPeerNames } },
         { type: 'PRICE_NEGOTIATE', label: 'Price Negotiation', status: chosen ? 'PASS' : 'SKIP', durationMs: chosen ? 400 + Math.floor(Math.random() * 800) : 0, details: chosen ? `Negotiated ${chosen.sku}: ₩${chosen.price.toLocaleString()} → ₩${negotiatedPrice.toLocaleString()} (${((1 - negotiatedPrice / chosen.price) * 100).toFixed(1)}% savings)` : 'Skipped', data: chosen ? { originalPrice: chosen.price, negotiatedPrice, savingsPct: ((1 - negotiatedPrice / chosen.price) * 100).toFixed(1) } : null },
         { type: 'RISK_ASSESS', label: 'Risk Assessment', status: riskScore === 'HIGH' ? 'WARN' : chosen ? 'PASS' : 'SKIP', durationMs: chosen ? 5 + Math.floor(Math.random() * 15) : 0, details: chosen ? `Risk level: ${riskScore} — Trust: ${chosen.trust}, Stock: ${chosen.stock}` : 'Skipped', data: { riskScore } },
         { type: 'FINAL_DECISION', label: 'Final Decision', status: chosen ? 'PASS' : 'FAIL', durationMs: 1, details: chosen ? `APPROVED: ${chosen.sku} × ${qty} = ₩${(negotiatedPrice * qty).toLocaleString()}` : 'REJECTED: No candidates passed all filters', data: chosen ? { sku: chosen.sku, qty, unitPrice: negotiatedPrice, total: negotiatedPrice * qty } : null },
@@ -169,7 +180,20 @@ export function DecisionReplay() {
 
     const generateReplay = useCallback(async () => {
         if (products.length === 0) return;
-        const session = generateSession(products);
+
+        // ── 실제 에이전트 목록 조회 (A2A crosscheck용) ──
+        let peerAgents: { name: string; trust_score: number }[] = [];
+        try {
+            const { data } = await supabase
+                .from('agents')
+                .select('name, trust_score')
+                .eq('status', 'ACTIVE')
+                .order('trust_score', { ascending: false })
+                .limit(20);
+            if (data) peerAgents = data;
+        } catch { /* DB 조회 실패 시 빈 배열로 폴백 */ }
+
+        const session = generateSession(products, peerAgents);
         setLocalSessions(prev => [session, ...prev]);
         setSelectedIdx(0);
         setExpandedSteps(new Set());

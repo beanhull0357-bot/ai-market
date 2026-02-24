@@ -54,6 +54,40 @@ function HBar({ label, value, max, color }: { key?: string; label: string; value
     );
 }
 
+/* ━━━ SparkLine Chart ━━━ */
+function SparkLine({ data, color, height = 60 }: { data: { label: string; value: number }[]; color: string; height?: number }) {
+    if (data.length < 2) return null;
+    const max = Math.max(...data.map(d => d.value), 1);
+    const W = 400; const H = height;
+    const pts = data.map((d, i) => [
+        (i / (data.length - 1)) * W,
+        H - (d.value / max) * (H - 8) - 4,
+    ]);
+    const pathD = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+    const areaD = `${pathD} L${W},${H} L0,${H} Z`;
+    return (
+        <div style={{ position: 'relative' }}>
+            <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} style={{ overflow: 'visible' }}>
+                <defs>
+                    <linearGradient id={`sg-${color.replace(/[^a-z]/gi, '')}`} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={color} stopOpacity="0.3" />
+                        <stop offset="100%" stopColor={color} stopOpacity="0" />
+                    </linearGradient>
+                </defs>
+                <path d={areaD} fill={`url(#sg-${color.replace(/[^a-z]/gi, '')})`} />
+                <path d={pathD} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                {pts.map((p, i) => (
+                    <g key={i}>
+                        <circle cx={p[0]} cy={p[1]} r={3} fill={color} />
+                        <text x={p[0]} y={H + 14} textAnchor="middle" fontSize="9" fill="var(--text-dim)">{data[i].label}</text>
+                        {data[i].value > 0 && <text x={p[0]} y={p[1] - 6} textAnchor="middle" fontSize="9" fill={color} fontWeight="700">{data[i].value}</text>}
+                    </g>
+                ))}
+            </svg>
+        </div>
+    );
+}
+
 /* ━━━ Main Page ━━━ */
 export const AdminDashboard: React.FC = () => {
     const { orders, loading: ol } = useOrders();
@@ -98,9 +132,27 @@ export const AdminDashboard: React.FC = () => {
     const pendingOrders = orders.filter(o => o.status === 'ORDER_CREATED').length;
     const avgTrust = agents.length ? (agents.reduce((s, a) => s + (a.trustScore || 0), 0) / agents.length).toFixed(1) : '0';
 
+    // ─ 최근 7일 일별 데이터
+    const daily7 = Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(now);
+        d.setDate(d.getDate() - (6 - i));
+        const label = `${d.getMonth() + 1}/${d.getDate()}`;
+        const dayOrders = orders.filter(o => {
+            const od = new Date(o.createdAt || o.created_at || 0);
+            return od.getFullYear() === d.getFullYear() && od.getMonth() === d.getMonth() && od.getDate() === d.getDate();
+        });
+        return {
+            label,
+            orders: dayOrders.length,
+            revenue: Math.round(dayOrders.reduce((s, o) => s + (o.totalPrice || 0), 0) / 10000),
+        };
+    });
+
+
     const catCounts: Record<string, number> = {};
     orders.forEach(o => { const c = o.category || 'OTHER'; catCounts[c] = (catCounts[c] || 0) + 1; });
-    const maxCat = Math.max(...Object.values(catCounts), 1);
+    const maxCat = Math.max(...(Object.values(catCounts) as number[]), 1);
+
 
     const recentActivity = [
         { icon: <ShoppingCart size={12} />, text: `새 주문 ${pendingOrders}건 대기 중`, time: '방금', color: 'var(--accent-green)' },
@@ -147,6 +199,22 @@ export const AdminDashboard: React.FC = () => {
                 />
             </div>
 
+
+            {/* ─ 시계열 차트 ─ */}
+            <div className="glass-card" style={{ padding: 18, marginBottom: 24 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>📈 최근 7일 매출 추이</div>
+                <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 12 }}>단위: 만원 / 아래 숫자: 주문 건수</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+                    <div>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent-green)', marginBottom: 6 }}>매출 (만원)</div>
+                        <SparkLine data={daily7.map(d => ({ label: d.label, value: d.revenue }))} color="var(--accent-green)" />
+                    </div>
+                    <div>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent-cyan)', marginBottom: 6 }}>주문 건수</div>
+                        <SparkLine data={daily7.map(d => ({ label: d.label, value: d.orders }))} color="var(--accent-cyan)" />
+                    </div>
+                </div>
+            </div>
 
             {/* Two columns */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}>
