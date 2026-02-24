@@ -144,7 +144,7 @@ async function handleTool(name: string, args: any, supabase: any, apiKey?: strin
         case 'search_products': {
             let q = supabase
                 .from('products')
-                .select('sku, title, category, price, stock_status, seller_trust, eta_days, ship_by_days')
+                .select('sku, title, category, price, stock_status, seller_trust, eta_days, ship_by_days', { count: 'exact' })
                 .limit(Math.min(args.limit || 10, 200));
 
             if (args.category) q = q.eq('category', args.category);
@@ -153,16 +153,7 @@ async function handleTool(name: string, args: any, supabase: any, apiKey?: strin
             if (args.in_stock_only) q = q.eq('stock_status', 'IN_STOCK');
             if (args.query) q = q.ilike('title', `%${args.query}%`);
 
-            // Also get the total count without limit
-            let countQ = supabase.from('products').select('*', { count: 'exact', head: true });
-            if (args.category) countQ = countQ.eq('category', args.category);
-            if (args.max_price) countQ = countQ.lte('price', args.max_price);
-            if (args.min_trust) countQ = countQ.gte('seller_trust', args.min_trust);
-            if (args.in_stock_only) countQ = countQ.eq('stock_status', 'IN_STOCK');
-            if (args.query) countQ = countQ.ilike('title', `%${args.query}%`);
-            const { count: totalCount } = await countQ;
-
-            const { data, error } = await q;
+            const { data, error, count: totalCount } = await q;
             if (error) return { error: error.message };
 
             return {
