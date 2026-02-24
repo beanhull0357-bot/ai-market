@@ -120,6 +120,20 @@ export const AgentSandbox: React.FC = () => {
             </div>
 
             {/* Agent 선택 */}
+            {/* ──────── 실운영 무관 안내 배너 ──────── */}
+            <div style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '10px 14px', borderRadius: 8, marginBottom: 16,
+                background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.3)',
+            }}>
+                <FlaskConical size={14} style={{ color: 'var(--accent-amber)', flexShrink: 0 }} />
+                <span style={{ fontSize: 12, color: 'var(--accent-amber)', fontWeight: 600 }}>
+                    Sandbox 환경 — 모든 주문·리뷰는 <strong>실제 DB에 반영되지 않습니다.</strong>
+                    실제 구매 테스트는 <a href="/playground" style={{ color: 'var(--accent-cyan)', textDecoration: 'underline' }}>/playground</a>를 이용하세요.
+                </span>
+            </div>
+            {/* ──────── 에이전트 선택 ──────── */}
+
             <div className="glass-card" style={{ padding: 14, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                 <Bot size={14} style={{ color: 'var(--accent-green)', flexShrink: 0 }} />
                 <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: 1 }}>에이전트</div>

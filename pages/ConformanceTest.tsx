@@ -138,6 +138,19 @@ export const ConformanceTest: React.FC = () => {
                 </div>
             </div>
 
+            {/* 안내 배너 */}
+            <div style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '10px 14px', borderRadius: 8, marginBottom: 16,
+                background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.3)',
+            }}>
+                <ShieldCheck size={14} style={{ color: 'var(--accent-purple)', flexShrink: 0 }} />
+                <span style={{ fontSize: 12, color: 'var(--accent-purple)', fontWeight: 600 }}>
+                    JSONMart Certified Agent 뱃지 테스트. 실제 API 키 보유 에이전트만 실행 가능합니다.
+                    API 키가 없다면 <a href="/playground" style={{ color: 'var(--accent-cyan)', textDecoration: 'underline' }}>/playground</a>에서 먼저 등록하세요.
+                </span>
+            </div>
+
             {/* API Key + Run */}
             <div className="glass-card" style={{ padding: 14, marginBottom: 16, display: 'flex', gap: 8 }}>
                 <input value={apiKey} onChange={e => setApiKey(e.target.value)} placeholder="에이전트 API 키"
