@@ -53,10 +53,7 @@ DECLARE
     v_img_parts JSONB := '[]'::jsonb;
     v_img_count INT := 0;
 BEGIN
-    -- Auth check
-    IF auth.uid() IS NULL THEN
-        RETURN jsonb_build_object('error', 'AUTH_REQUIRED');
-    END IF;
+    -- Access control is handled by GRANT/REVOKE below (authenticated only)
 
     -- Get API key from secure config
     SELECT value INTO v_api_key FROM app_config WHERE key = 'GEMINI_API_KEY';

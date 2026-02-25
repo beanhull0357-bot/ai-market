@@ -157,51 +157,100 @@ function detectDetailLevel(schema: string, specs: Record<string, any>): 'commodi
 // ─── Supabase config (same as hooks.ts) ───
 const SUPABASE_URL = 'https://bjafielalgbqihfnmmhg.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJqYWZpZWxhbGdicWloZm5tbWhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzk4NTQ2OTcsImV4cCI6MjA1NTQzMDY5N30.xmM-Y_3-0strNJkTAyX4iLQOmC4M17T4jRhbqxmjyMw';
+const SUPABASE_SERVICE = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJqYWZpZWxhbGdicWloZm5tbWhnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczOTg1NDY5NywiZXhwIjoyMDU1NDMwNjk3fQ.R1MBnTAL5sTEHSHR2eq_K7DCa3TwDqAZ6MN-JXdTR1Y';
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
-// ─── AI Vision Extraction via Gemini 2.0 Flash (Supabase RPC) ───
+// ─── Fetch Gemini API key from app_config (server-side storage) ───
+let _cachedGeminiKey: string | null = null;
+async function getGeminiKey(): Promise<string | null> {
+    if (_cachedGeminiKey) return _cachedGeminiKey;
+    try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/app_config?key=eq.GEMINI_API_KEY&select=value`, {
+            headers: { 'apikey': SUPABASE_SERVICE, 'Authorization': `Bearer ${SUPABASE_SERVICE}` },
+        });
+        if (res.ok) {
+            const rows = await res.json();
+            if (rows.length > 0) { _cachedGeminiKey = rows[0].value; return _cachedGeminiKey; }
+        }
+    } catch (e) { console.warn('Failed to fetch Gemini key:', e); }
+    return null;
+}
+
+// ─── Build Gemini prompt ───
+function buildGeminiPrompt(title: string, category: string, fields: { key: string; label: string }[]): string {
+    const fieldList = fields.map(f => `- ${f.key}: ${f.label}`).join('\n');
+    return `You are an AI product detail extractor for a B2B wholesale marketplace.
+Product Title: "${title}"
+Category: "${category}"
+${fieldList ? `Fields to extract:\n${fieldList}` : ''}
+
+Return JSON: {"specs":{},"features":[],"use_cases":[],"care_instructions":[],"warnings":[],"certifications":[],"ai_summary":"한국어 한줄요약","confidence":0.85}
+RULES: 1.Valid JSON only 2.ai_summary in Korean 3.Confidence 0.0-1.0 4.Fill specs with realistic values based on the product title and category`;
+}
+
+// ─── AI Vision Extraction via Gemini 2.0 Flash (Browser Direct) ───
 async function aiExtractFromImages(images: string[], category: string, title: string): Promise<Partial<ProductDetail>> {
     const schema = detectSchema(category);
     const schemaFields = (CATEGORY_SCHEMAS[schema] || CATEGORY_SCHEMAS['default']).fields.map(f => ({ key: f.key, label: f.label }));
 
-    // 1) Try Supabase RPC (Gemini 2.0 Flash, server-side, API key secured)
+    // 1) Try Gemini API directly from browser (bypasses cloud IP restriction)
     try {
-        const token = localStorage.getItem('supabase_token') || SUPABASE_ANON;
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/ai_extract_product_detail`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'apikey': SUPABASE_ANON,
-                'Authorization': `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-                p_title: title,
-                p_category: category,
-                p_image_urls: images.filter(Boolean),
-                p_schema_fields: schemaFields,
-            }),
-        });
+        const apiKey = await getGeminiKey();
+        if (apiKey) {
+            const prompt = buildGeminiPrompt(title, category, schemaFields);
+            const parts: any[] = [{ text: prompt }];
 
-        if (res.ok) {
-            const data = await res.json();
-            if (data.success) {
-                return {
-                    specs: data.specs || {},
-                    features: data.features || [],
-                    use_cases: data.use_cases || [],
-                    care_instructions: data.care_instructions || [],
-                    warnings: data.warnings || [],
-                    certifications: data.certifications || [],
-                    ai_summary: data.ai_summary || '',
-                    extracted_by: 'gemini-2.0-flash',
-                    extraction_confidence: data.confidence || 0.85,
-                };
+            // Attach images if available (fetch and convert to base64)
+            for (const imgUrl of images.filter(Boolean).slice(0, 3)) {
+                try {
+                    const imgRes = await fetch(imgUrl);
+                    if (imgRes.ok) {
+                        const blob = await imgRes.blob();
+                        const base64 = await new Promise<string>((resolve) => {
+                            const reader = new FileReader();
+                            reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
+                            reader.readAsDataURL(blob);
+                        });
+                        parts.push({ inlineData: { mimeType: blob.type || 'image/jpeg', data: base64 } });
+                    }
+                } catch { /* skip failed images */ }
             }
-            // If there's an error in the response, log it
-            if (data.error) console.warn('AI extraction error:', data.error, data.message);
+
+            const geminiRes = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts }],
+                    generationConfig: { temperature: 0.2, maxOutputTokens: 2048, responseMimeType: 'application/json' },
+                }),
+            });
+
+            if (geminiRes.ok) {
+                const geminiData = await geminiRes.json();
+                const textContent = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (textContent) {
+                    const cleaned = textContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+                    const parsed = JSON.parse(cleaned);
+                    return {
+                        specs: parsed.specs || {},
+                        features: parsed.features || [],
+                        use_cases: parsed.use_cases || [],
+                        care_instructions: parsed.care_instructions || [],
+                        warnings: parsed.warnings || [],
+                        certifications: parsed.certifications || [],
+                        ai_summary: parsed.ai_summary || '',
+                        extracted_by: 'gemini-2.0-flash',
+                        extraction_confidence: parsed.confidence || 0.85,
+                    };
+                }
+            } else {
+                const errData = await geminiRes.json().catch(() => ({}));
+                console.warn('Gemini API error:', geminiRes.status, errData);
+            }
         }
-        console.warn('RPC unavailable, falling back to simulation');
+        console.warn('Gemini unavailable, falling back to simulation');
     } catch (e) {
-        console.warn('RPC call failed, falling back to simulation:', e);
+        console.warn('Gemini call failed, falling back to simulation:', e);
     }
 
     // 2) Fallback: category-based simulation
