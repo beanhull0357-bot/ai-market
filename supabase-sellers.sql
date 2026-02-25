@@ -128,6 +128,7 @@ BEGIN
     RETURN jsonb_build_object(
         'success', true,
         'seller_id', v_seller_id,
+        'api_key', v_api_key,
         'status', 'PENDING',
         'message', 'Registration submitted. Awaiting admin approval.'
     );

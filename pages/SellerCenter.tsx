@@ -366,8 +366,26 @@ export const SellerCenter: React.FC = () => {
                             가입 신청
                         </button>
                         {regResult && (
-                            <div style={{ marginTop: 8, padding: 10, borderRadius: 6, background: regResult.success ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)', fontSize: 11, color: regResult.success ? 'var(--accent-green)' : 'var(--accent-red)' }}>
-                                {regResult.success ? `✅ 가입 신청 완료! 셀러 ID: ${regResult.seller_id}` : `❌ ${regResult.error}`}
+                            <div style={{ marginTop: 8, padding: regResult.success ? 16 : 10, borderRadius: 6, background: regResult.success ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)', fontSize: 11, color: regResult.success ? 'var(--accent-green)' : 'var(--accent-red)' }}>
+                                {regResult.success ? (
+                                    <div>
+                                        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>✅ 가입 신청 완료!</div>
+                                        <div style={{ marginBottom: 4 }}>셀러 ID: <strong>{regResult.seller_id}</strong></div>
+                                        {regResult.api_key && (
+                                            <div style={{ marginTop: 8, padding: 12, borderRadius: 6, background: 'rgba(6,182,212,0.1)', border: '1px solid var(--accent-cyan)' }}>
+                                                <div style={{ fontSize: 10, color: 'var(--accent-cyan)', fontWeight: 700, marginBottom: 4 }}>🔑 로그인용 API 키 (반드시 저장하세요!)</div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                    <code style={{ flex: 1, fontSize: 12, fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', wordBreak: 'break-all' }}>{regResult.api_key}</code>
+                                                    <button onClick={() => { navigator.clipboard.writeText(regResult.api_key); }}
+                                                        style={{ padding: '4px 10px', borderRadius: 4, border: '1px solid var(--accent-cyan)', background: 'rgba(6,182,212,0.15)', color: 'var(--accent-cyan)', fontSize: 10, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                                                        복사
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                        <div style={{ marginTop: 8, fontSize: 10, color: 'var(--text-muted)' }}>⚠️ 관리자 승인 후 위 API 키로 로그인할 수 있습니다.</div>
+                                    </div>
+                                ) : `❌ ${regResult.error}`}
                             </div>
                         )}
                     </div>
