@@ -235,7 +235,7 @@ BEGIN
                 return_days, return_fee, return_exceptions,
                 ai_readiness_score, seller_trust,
                 attributes, sourcing_type, seller_id, seller_name,
-                min_order_qty
+                min_order_qty, delivery_fee, source
             ) VALUES (
                 v_sku,
                 v_category,
@@ -257,7 +257,9 @@ BEGIN
                 'HUMAN',
                 v_seller.seller_id,
                 v_seller.business_name,
-                COALESCE((v_product->>'min_order_qty')::INT, 1)
+                COALESCE((v_product->>'min_order_qty')::INT, 1),
+                COALESCE((v_product->>'delivery_fee')::JSONB, '{"pay":"무료배송","fee":0}'),
+                'seller'
             )
             ON CONFLICT (sku) DO UPDATE SET
                 title = EXCLUDED.title,
@@ -271,6 +273,7 @@ BEGIN
                 return_days = EXCLUDED.return_days,
                 return_fee = EXCLUDED.return_fee,
                 attributes = EXCLUDED.attributes,
+                delivery_fee = EXCLUDED.delivery_fee,
                 seller_id = v_seller.seller_id,
                 seller_name = v_seller.business_name,
                 updated_at = NOW();

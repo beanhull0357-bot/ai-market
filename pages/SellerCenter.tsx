@@ -18,6 +18,14 @@ const TEMPLATE_COLUMNS = [
     { key: 'return_fee', label: '반품배송비', required: false, example: '3000' },
     { key: 'gtin', label: '바코드', required: false, example: '8801234567890' },
     { key: 'min_order_qty', label: '최소주문수량', required: false, example: '1' },
+    { key: 'deli_pay', label: '배송비유형', required: false, example: '무료배송' },
+    { key: 'deli_fee', label: '배송비(원)', required: false, example: '0' },
+    { key: 'jeju_extra', label: '제주추가비', required: false, example: '3000' },
+    { key: 'merge_enable', label: '묶음배송', required: false, example: 'Y' },
+    { key: 'manufacturer', label: '제조사', required: false, example: '삼성' },
+    { key: 'country', label: '원산지', required: false, example: '한국' },
+    { key: 'model', label: '모델명', required: false, example: 'ABC-123' },
+    { key: 'weight', label: '중량/규격', required: false, example: '1.5kg' },
     { key: 'attributes', label: '추가속성(JSON)', required: false, example: '{"color":"white"}' },
 ];
 
@@ -64,7 +72,7 @@ function KpiCard({ label, value, sub, icon, color }: { label: string; value: str
     );
 }
 
-const emptyProduct = { sku: '', title: '', category: '', price: '', stock_qty: '', brand: '', ship_by_days: '1', eta_days: '3', return_days: '7', return_fee: '3000', gtin: '', min_order_qty: '1', attributes: '' };
+const emptyProduct: Record<string, string> = { sku: '', title: '', category: '', price: '', stock_qty: '', brand: '', ship_by_days: '1', eta_days: '3', return_days: '7', return_fee: '3000', gtin: '', min_order_qty: '1', deli_pay: '무료배송', deli_fee: '0', jeju_extra: '0', merge_enable: 'Y', manufacturer: '', country: '', model: '', weight: '', attributes: '' };
 
 /* ━━━ Main SellerCenter Component ━━━ */
 export const SellerCenter: React.FC = () => {
@@ -225,13 +233,26 @@ export const SellerCenter: React.FC = () => {
     const handleSaveProduct = async () => {
         setSavingProduct(true); setError('');
         try {
-            const prod = {
+            const prod: any = {
                 sku: productForm.sku, title: productForm.title, category: productForm.category || 'GENERAL',
                 price: parseInt(productForm.price) || 0, stock_qty: parseInt(productForm.stock_qty) || 0,
                 brand: productForm.brand || '', ship_by_days: parseInt(productForm.ship_by_days) || 1,
                 eta_days: parseInt(productForm.eta_days) || 3, return_days: parseInt(productForm.return_days) || 7,
                 return_fee: parseInt(productForm.return_fee) || 0, gtin: productForm.gtin || null,
-                min_order_qty: parseInt(productForm.min_order_qty) || 1, attributes: productForm.attributes || '{}',
+                min_order_qty: parseInt(productForm.min_order_qty) || 1,
+                delivery_fee: JSON.stringify({
+                    pay: productForm.deli_pay || '무료배송',
+                    fee: parseInt(productForm.deli_fee) || 0,
+                    jeju_extra: parseInt(productForm.jeju_extra) || 0,
+                    merge_enable: productForm.merge_enable === 'Y' ? 'y' : 'n',
+                }),
+                attributes: JSON.stringify({
+                    ...(productForm.attributes ? (() => { try { return JSON.parse(productForm.attributes); } catch { return {}; } })() : {}),
+                    ...(productForm.manufacturer ? { manufacturer: productForm.manufacturer } : {}),
+                    ...(productForm.country ? { country: productForm.country } : {}),
+                    ...(productForm.model ? { model: productForm.model } : {}),
+                    ...(productForm.weight ? { weight: productForm.weight } : {}),
+                }),
             };
             if (editingProduct) {
                 await updateSellerProduct(apiKey, editingProduct.sku, prod);
@@ -254,7 +275,7 @@ export const SellerCenter: React.FC = () => {
 
     const startEditProduct = (p: any) => {
         setEditingProduct(p);
-        setProductForm({ sku: p.sku, title: p.title, category: p.category, price: String(p.price || ''), stock_qty: String(p.stock_qty || ''), brand: p.brand || '', ship_by_days: String(p.ship_by_days || '1'), eta_days: String(p.eta_days || '3'), return_days: String(p.return_days || '7'), return_fee: String(p.return_fee || '0'), gtin: p.gtin || '', min_order_qty: String(p.min_order_qty || '1'), attributes: typeof p.attributes === 'object' ? JSON.stringify(p.attributes) : p.attributes || '' });
+        setProductForm({ sku: p.sku, title: p.title, category: p.category, price: String(p.price || ''), stock_qty: String(p.stock_qty || ''), brand: p.brand || '', ship_by_days: String(p.ship_by_days || '1'), eta_days: String(p.eta_days || '3'), return_days: String(p.return_days || '7'), return_fee: String(p.return_fee || '0'), gtin: p.gtin || '', min_order_qty: String(p.min_order_qty || '1'), deli_pay: p.delivery_fee?.pay || '무료배송', deli_fee: String(p.delivery_fee?.fee || '0'), jeju_extra: String(p.delivery_fee?.jeju_extra || '0'), merge_enable: p.delivery_fee?.merge_enable === 'y' ? 'Y' : 'Y', manufacturer: p.attributes?.manufacturer || '', country: p.attributes?.country || '', model: p.attributes?.model || '', weight: p.attributes?.weight || '', attributes: typeof p.attributes === 'object' ? JSON.stringify(Object.fromEntries(Object.entries(p.attributes || {}).filter(([k]) => !['manufacturer', 'country', 'model', 'weight'].includes(k)))) : p.attributes || '' });
         setShowAddProduct(true);
     };
 
@@ -520,6 +541,59 @@ export const SellerCenter: React.FC = () => {
                                             placeholder={f.ph} disabled={f.disabled} style={inputStyle} />
                                     </div>
                                 ))}
+                            </div>
+                            {/* ── 배송 정보 ── */}
+                            <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--border-subtle)' }}>
+                                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent-cyan)', marginBottom: 8 }}>🚚 배송 정보</div>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
+                                    <div>
+                                        <label style={{ fontSize: 10, color: 'var(--text-dim)', display: 'block', marginBottom: 2 }}>배송비 유형</label>
+                                        <select value={productForm.deli_pay} onChange={e => setProductForm(p => ({ ...p, deli_pay: e.target.value, ...(e.target.value === '무료배송' ? { deli_fee: '0' } : {}) }))}
+                                            style={{ ...inputStyle, cursor: 'pointer' }}>
+                                            <option value="무료배송">무료배송</option>
+                                            <option value="착불">착불</option>
+                                            <option value="선결제">선결제</option>
+                                        </select>
+                                    </div>
+                                    {productForm.deli_pay !== '무료배송' && (
+                                        <div>
+                                            <label style={{ fontSize: 10, color: 'var(--text-dim)', display: 'block', marginBottom: 2 }}>배송비(원)</label>
+                                            <input value={productForm.deli_fee} onChange={e => setProductForm(p => ({ ...p, deli_fee: e.target.value }))}
+                                                placeholder="3000" style={inputStyle} />
+                                        </div>
+                                    )}
+                                    <div>
+                                        <label style={{ fontSize: 10, color: 'var(--text-dim)', display: 'block', marginBottom: 2 }}>제주 추가비(원)</label>
+                                        <input value={productForm.jeju_extra} onChange={e => setProductForm(p => ({ ...p, jeju_extra: e.target.value }))}
+                                            placeholder="3000" style={inputStyle} />
+                                    </div>
+                                    <div>
+                                        <label style={{ fontSize: 10, color: 'var(--text-dim)', display: 'block', marginBottom: 2 }}>묶음배송</label>
+                                        <select value={productForm.merge_enable} onChange={e => setProductForm(p => ({ ...p, merge_enable: e.target.value }))}
+                                            style={{ ...inputStyle, cursor: 'pointer' }}>
+                                            <option value="Y">가능</option>
+                                            <option value="N">불가</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            {/* ── 상품 상세 ── */}
+                            <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--border-subtle)' }}>
+                                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent-cyan)', marginBottom: 8 }}>📋 상품 상세 (AI 에이전트 구매 판단 정보)</div>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
+                                    {[
+                                        { key: 'manufacturer', label: '제조사', ph: '삼성' },
+                                        { key: 'country', label: '원산지', ph: '한국' },
+                                        { key: 'model', label: '모델명', ph: 'ABC-123' },
+                                        { key: 'weight', label: '중량/규격', ph: '1.5kg' },
+                                    ].map(f => (
+                                        <div key={f.key}>
+                                            <label style={{ fontSize: 10, color: 'var(--text-dim)', display: 'block', marginBottom: 2 }}>{f.label}</label>
+                                            <input value={(productForm as any)[f.key]} onChange={e => setProductForm(p => ({ ...p, [f.key]: e.target.value }))}
+                                                placeholder={f.ph} style={inputStyle} />
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                             {error && <div style={{ color: 'var(--accent-red)', fontSize: 11, marginTop: 8 }}>{error}</div>}
                             <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
