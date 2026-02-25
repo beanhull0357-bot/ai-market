@@ -2,6 +2,7 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Store, Upload, Package, BarChart3, Settings, Download, FileSpreadsheet, Search, Filter, AlertCircle, CheckCircle, Loader2, RefreshCw, Trash2, Edit3, Eye, TrendingUp, DollarSign, ShoppingCart, ChevronDown, X, Plus, Truck, RotateCcw, CreditCard, Save, Key, Ban, Bot, Webhook } from 'lucide-react';
 import { SellerAIDashboard } from './SellerAIDashboard';
 import { SellerWebhookManager } from './SellerWebhookManager';
+import { ProductDetailEditor } from './ProductDetailEditor';
 import { sellerAuth, getSellerDashboard, getSellerProducts, uploadSellerProducts, registerSeller, addSellerProduct, updateSellerProduct, deleteSellerProduct, getSellerOrders, updateOrderShipment, handleReturnRequest, getSellerSettlements, updateSellerProfile } from '../hooks';
 
 type Tab = 'dashboard' | 'products' | 'upload' | 'orders' | 'settlement' | 'ai' | 'webhook' | 'settings';
@@ -96,6 +97,8 @@ export const SellerCenter: React.FC = () => {
     const [editingProduct, setEditingProduct] = useState<any>(null);
     const [productForm, setProductForm] = useState(emptyProduct);
     const [savingProduct, setSavingProduct] = useState(false);
+    const [productDetail, setProductDetail] = useState<any>({});
+    const [productSellerNotes, setProductSellerNotes] = useState('');
 
     // Upload
     const [uploadFile, setUploadFile] = useState<File | null>(null);
@@ -255,6 +258,8 @@ export const SellerCenter: React.FC = () => {
                     ...(productForm.model ? { model: productForm.model } : {}),
                     ...(productForm.weight ? { weight: productForm.weight } : {}),
                 }),
+                ...(Object.keys(productDetail).length > 0 ? { product_detail: JSON.stringify(productDetail) } : {}),
+                ...(productSellerNotes ? { seller_notes: productSellerNotes } : {}),
             };
             if (editingProduct) {
                 await updateSellerProduct(apiKey, editingProduct.sku, prod);
@@ -262,6 +267,7 @@ export const SellerCenter: React.FC = () => {
                 await addSellerProduct(apiKey, prod);
             }
             setShowAddProduct(false); setEditingProduct(null); setProductForm(emptyProduct);
+            setProductDetail({}); setProductSellerNotes('');
             loadProducts();
         } catch (e: any) { setError(e.message); }
         setSavingProduct(false);
@@ -599,6 +605,15 @@ export const SellerCenter: React.FC = () => {
                                     ))}
                                 </div>
                             </div>
+                            {/* ━━━ AI Agent Product Detail Editor ━━━ */}
+                            <ProductDetailEditor
+                                category={productForm.category || 'GENERAL'}
+                                productTitle={productForm.title || ''}
+                                imageUrl={editingProduct?.image_url}
+                                initialDetail={editingProduct?.product_detail}
+                                initialSellerNotes={editingProduct?.seller_notes}
+                                onChange={(detail, notes) => { setProductDetail(detail); setProductSellerNotes(notes); }}
+                            />
                             {error && <div style={{ color: 'var(--accent-red)', fontSize: 11, marginTop: 8 }}>{error}</div>}
                             <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
                                 <button onClick={handleSaveProduct} disabled={savingProduct || !productForm.sku || !productForm.title}
