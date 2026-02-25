@@ -151,7 +151,7 @@ serve(async (req: Request) => {
 
                 const { data: product } = await supabase
                     .from('products')
-                    .select('sku, title, price')
+                    .select('sku, title, price, seller_id, seller_name')
                     .eq('sku', args.sku)
                     .single();
                 if (!product) return json({ error: `Product not found: ${args.sku}` }, 404);
@@ -194,6 +194,7 @@ serve(async (req: Request) => {
 
                     await supabase.from('orders').insert({
                         order_id: orderId, agent_id: agentId,
+                        seller_id: product.seller_id || 'SLR-JSONMART',
                         sku: args.sku, product_title: product.title, quantity: args.quantity,
                         unit_price: unitPrice, total_price: totalPrice,
                         status: 'CONFIRMED',
@@ -215,6 +216,7 @@ serve(async (req: Request) => {
                 // ── 방식 2: PG payurl 반환 (Computer Use 에이전트) ──────────────
                 await supabase.from('orders').insert({
                     order_id: orderId, agent_id: agentId,
+                    seller_id: product.seller_id || 'SLR-JSONMART',
                     sku: args.sku, product_title: product.title, quantity: args.quantity,
                     unit_price: unitPrice, total_price: totalPrice,
                     status: 'ORDER_CREATED',

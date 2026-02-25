@@ -695,6 +695,22 @@ export const SellerCenter: React.FC = () => {
                                 {f.label}
                             </button>
                         ))}
+                        <button onClick={() => {
+                            if (orders.length === 0) return;
+                            const headers = ['주문번호', '상품명', 'SKU', '수량', '금액(₩)', '수령자', '우편번호', '주소', '상세주소', '연락처', '택배사', '운송장번호', '상태', '주문일'];
+                            const statusLabels: Record<string, string> = { pending: '신규', confirmed: '발송대기', shipped: '배송중', delivered: '완료', return_requested: '반품요청', returned: '반품완료', exported: '엑셀출력', ordered: '발주완료', cancelled: '취소' };
+                            const rows = orders.map((o: any) => {
+                                const items = Array.isArray(o.items) ? o.items : [];
+                                const titles = items.map((it: any) => it.title || it.sku || '-').join(' / ');
+                                const skus = items.map((it: any) => it.sku || '-').join(' / ');
+                                return [o.order_id || o.id, titles || o.product_title || '-', skus, o.quantity || 1, o.total_amount || o.authorized_amount || 0, o.recipient_name || '', o.postal_code || '', o.address || '', o.address_detail || '', o.phone || '', o.carrier || '', o.tracking_number || '', statusLabels[o.procurement_status] || o.procurement_status || '-', new Date(o.created_at).toLocaleDateString('ko')];
+                            });
+                            const bom = '\uFEFF';
+                            const csv = bom + [headers, ...rows].map(r => r.map((v: any) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+                            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                            const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+                            a.download = `seller-orders-${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+                        }} disabled={orders.length === 0} title="주문 내보내기(CSV)" style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--accent-green)', background: orders.length > 0 ? 'rgba(34,197,94,0.08)' : 'transparent', color: orders.length > 0 ? 'var(--accent-green)' : 'var(--text-dim)', cursor: orders.length > 0 ? 'pointer' : 'default', display: 'flex', alignItems: 'center', gap: 4, fontSize: 11 }}><Download size={12} /> CSV</button>
                         <button onClick={loadOrders} style={{ marginLeft: 'auto', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer' }}><RefreshCw size={12} /></button>
                     </div>
 
