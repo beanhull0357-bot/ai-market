@@ -13,9 +13,10 @@ CREATE TABLE IF NOT EXISTS app_config (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Insert Gemini API key (run once)
+-- Insert Gemini API key (run this manually in SQL Editor — NEVER commit real keys!)
+-- ⚠️ Replace YOUR_GEMINI_API_KEY with your actual key from https://aistudio.google.com/
 INSERT INTO app_config (key, value)
-VALUES ('GEMINI_API_KEY', 'AIzaSyBA4PRs_bkI94nQb1E7cdCaEn0gBa3m_6c')
+VALUES ('GEMINI_API_KEY', 'YOUR_GEMINI_API_KEY_HERE')
 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
 
 -- Revoke all access from public/anon — only functions can read this
