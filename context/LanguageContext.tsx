@@ -22,7 +22,8 @@ export const translations = {
       live: "Live",
       sla: "SLA",
       domeggook: "Domeggook",
-      orders: "Orders"
+      orders: "Orders",
+      customers: "Customers"
     },
     landing: {
       systemOnline: "System Online",
@@ -374,7 +375,8 @@ export const translations = {
       live: "라이브",
       sla: "SLA",
       domeggook: "공급사 연동",
-      orders: "주문 관리"
+      orders: "주문 관리",
+      customers: "고객정보"
     },
     landing: {
       systemOnline: "시스템 정상 작동",

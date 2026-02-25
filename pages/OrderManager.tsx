@@ -20,9 +20,20 @@ interface OrderRow {
     phone: string | null;
     phone_alt: string | null;
     delivery_note: string | null;
+    customs_id: string | null;
     procurement_status: string;
     authorized_amount: number;
     created_at: string;
+}
+
+// ─── Phone Formatter (하이픈 자동 삽입) ───
+function formatPhone(phone: string | null): string {
+    if (!phone) return '';
+    const digits = phone.replace(/\D/g, '');
+    if (digits.length === 11) return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+    if (digits.length === 10) return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+    if (digits.length === 9) return `${digits.slice(0, 2)}-${digits.slice(2, 5)}-${digits.slice(5)}`;
+    return phone;
 }
 
 interface ProductInfo {
@@ -127,14 +138,15 @@ export function OrderManager() {
 
         setExporting(true);
         try {
-            // Build rows in 14-column supplier bulk order format
+            // Build rows in 15-column supplier bulk order format (도매매/도매꾹 공식 양식)
             const rows: any[][] = [];
 
             // Header row (must match supplier template exactly)
             rows.push([
                 '마켓', '상품번호', '옵션코드', '옵션명', '수량',
                 '수령자명', '우편번호', '배송주소', '배송 상세주소',
-                '휴대전화', '추가연락처', '쇼핑몰명', '전달사항', '배송요청사항'
+                '휴대전화', '추가연락처', '쇼핑몰명', '전달사항', '배송요청사항',
+                '통관고유번호'
             ]);
 
             for (const order of toExport) {
@@ -148,20 +160,21 @@ export function OrderManager() {
                     sourceId = sourceId.replace(/[^0-9]/g, '');
 
                     rows.push([
-                        isDomeggook ? '공급사A' : '공급사B',     // A: 마켓
-                        sourceId,                              // B: 상품번호
-                        '00',                                   // C: 옵션코드 (기본: 00)
-                        '',                                     // D: 옵션명
+                        isDomeggook ? '도매꾹' : '도매매',       // A: 마켓
+                        sourceId,                              // B: 상품번호 (숫자만)
+                        item.option_code || '00',              // C: 옵션코드 (없으면 00)
+                        item.option_name || '',                // D: 옵션명
                         item.qty || 1,                         // E: 수량
                         order.recipient_name || '',            // F: 수령자명
                         order.postal_code || '',               // G: 우편번호
                         order.address || '',                   // H: 배송주소
                         order.address_detail || '',            // I: 배송 상세주소
-                        order.phone || '',                     // J: 휴대전화
-                        order.phone_alt || '',                 // K: 추가연락처
-                        '',                                     // L: 쇼핑몰명
-                        '',                                     // M: 전달사항
+                        formatPhone(order.phone),              // J: 휴대전화 (하이픈 포함)
+                        formatPhone(order.phone_alt),          // K: 추가연락처
+                        isDomeggook ? '' : '제이슨마트',        // L: 쇼핑몰명 (도매매 전용)
+                        item.supplier_note || '',              // M: 전달사항
                         order.delivery_note || '',             // N: 배송요청사항
+                        order.customs_id || '',                // O: 통관고유번호
                     ]);
                 }
             }
@@ -174,6 +187,7 @@ export function OrderManager() {
                 { wch: 8 }, { wch: 12 }, { wch: 10 }, { wch: 15 }, { wch: 6 },
                 { wch: 10 }, { wch: 10 }, { wch: 25 }, { wch: 20 },
                 { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 20 },
+                { wch: 18 },
             ];
 
             const wb = XLSX.utils.book_new();
