@@ -57,19 +57,37 @@ serve(async (req: Request) => {
             case 'search_products': {
                 let q = supabase
                     .from('products')
-                    .select('sku, title, category, price, stock_status, seller_trust, eta_days, ship_by_days')
+                    .select('sku, title, category, brand, price, currency, stock_status, stock_qty, seller_trust, eta_days, ship_by_days, return_days, return_fee, ai_readiness_score, moq, min_order_qty, seller_id, seller_name, source, delivery_fee, attributes')
                     .limit(Math.min(args.limit || 10, 50));
                 if (args.category) q = q.eq('category', args.category);
                 if (args.max_price) q = q.lte('price', args.max_price);
-                if (args.in_stock_only) q = q.eq('stock_status', 'IN_STOCK');
+                if (args.in_stock_only) q = q.eq('stock_status', 'in_stock');
                 if (args.query) q = q.ilike('title', `%${args.query}%`);
+                if (args.min_trust) q = q.gte('seller_trust', args.min_trust);
+                if (args.seller_id) q = q.eq('seller_id', args.seller_id);
                 const { data, error } = await q;
                 if (error) return json({ error: error.message }, 500);
                 return json({
                     results: (data || []).map((p: any) => ({
-                        sku: p.sku, title: p.title, category: p.category,
-                        price: p.price, stock_status: p.stock_status,
-                        trust_score: p.seller_trust, eta_days: p.eta_days,
+                        sku: p.sku,
+                        title: p.title,
+                        category: p.category,
+                        brand: p.brand || null,
+                        price: p.price,
+                        currency: p.currency || 'KRW',
+                        stock_status: p.stock_status,
+                        stock_qty: p.stock_qty,
+                        trust_score: p.seller_trust,
+                        eta_days: p.eta_days,
+                        ship_by_days: p.ship_by_days,
+                        return_days: p.return_days,
+                        return_fee: p.return_fee,
+                        moq: p.moq || p.min_order_qty || 1,
+                        seller_id: p.seller_id || null,
+                        seller_name: p.seller_name || null,
+                        source: p.source || 'direct',
+                        delivery_fee: p.delivery_fee || null,
+                        attributes: p.attributes || {},
                     })),
                     total: (data || []).length,
                 });
@@ -79,18 +97,42 @@ serve(async (req: Request) => {
                 if (!args.sku) return json({ error: 'sku required' }, 400);
                 const { data, error } = await supabase
                     .from('products')
-                    .select('sku, title, category, brand, price, currency, stock_status, stock_qty, eta_days, ship_by_days, return_days, return_fee, ai_readiness_score, seller_trust, moq, attributes')
+                    .select('*')
                     .eq('sku', args.sku)
                     .single();
                 if (error) return json({ error: `Product not found: ${args.sku}` }, 404);
                 return json({
-                    sku: data.sku, title: data.title, category: data.category,
-                    brand: data.brand, price: data.price, currency: data.currency || 'KRW',
-                    stockStatus: data.stock_status, stockQty: data.stock_qty,
-                    etaDays: data.eta_days, shipByDays: data.ship_by_days,
-                    returnDays: data.return_days, returnFee: data.return_fee,
-                    aiReadinessScore: data.ai_readiness_score, trustScore: data.seller_trust,
-                    moq: data.moq, attributes: data.attributes || {},
+                    sku: data.sku,
+                    title: data.title,
+                    category: data.category,
+                    brand: data.brand || null,
+                    gtin: data.gtin || null,
+                    price: data.price,
+                    currency: data.currency || 'KRW',
+                    stockStatus: data.stock_status,
+                    stockQty: data.stock_qty,
+                    etaDays: data.eta_days,
+                    shipByDays: data.ship_by_days,
+                    returnDays: data.return_days,
+                    returnFee: data.return_fee,
+                    aiReadinessScore: data.ai_readiness_score,
+                    trustScore: data.seller_trust,
+                    moq: data.moq || data.min_order_qty || 1,
+                    // Seller info
+                    sellerId: data.seller_id || null,
+                    sellerName: data.seller_name || null,
+                    // Delivery
+                    deliveryFee: data.delivery_fee || null,
+                    // Source
+                    source: data.source || 'direct',
+                    sourceUrl: data.source_url || null,
+                    // Extra
+                    purchaseUnit: data.purchase_unit || 1,
+                    maxOrderQty: data.max_order_qty || null,
+                    isPopular: data.is_popular || false,
+                    hasOptions: data.has_options || false,
+                    attributes: data.attributes || {},
+                    updatedAt: data.updated_at,
                 });
             }
 
@@ -99,13 +141,27 @@ serve(async (req: Request) => {
                 if (skus.length < 2) return json({ error: 'sku_list requires 2-4 items' }, 400);
                 const { data, error } = await supabase
                     .from('products')
-                    .select('sku, title, price, seller_trust, stock_status, ship_by_days, eta_days, moq')
+                    .select('sku, title, category, brand, price, seller_trust, stock_status, stock_qty, ship_by_days, eta_days, moq, min_order_qty, return_days, return_fee, seller_id, seller_name, delivery_fee, attributes')
                     .in('sku', skus);
                 if (error) return json({ error: error.message }, 500);
                 const comparison = (data || []).map((p: any) => ({
-                    sku: p.sku, title: p.title, price: p.price,
-                    trust_score: p.seller_trust, stock: p.stock_status,
-                    ship_by_days: p.ship_by_days, eta_days: p.eta_days, moq: p.moq,
+                    sku: p.sku,
+                    title: p.title,
+                    category: p.category,
+                    brand: p.brand || null,
+                    price: p.price,
+                    trust_score: p.seller_trust,
+                    stock: p.stock_status,
+                    stock_qty: p.stock_qty,
+                    ship_by_days: p.ship_by_days,
+                    eta_days: p.eta_days,
+                    moq: p.moq || p.min_order_qty || 1,
+                    return_days: p.return_days,
+                    return_fee: p.return_fee,
+                    seller_id: p.seller_id || null,
+                    seller_name: p.seller_name || null,
+                    delivery_fee: p.delivery_fee || null,
+                    attributes: p.attributes || {},
                 }));
                 const sorted = [...comparison].sort((a, b) =>
                     (b.trust_score || 0) - (a.trust_score || 0) || (a.price || 0) - (b.price || 0)

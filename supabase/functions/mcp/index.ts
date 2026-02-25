@@ -33,10 +33,11 @@ const TOOLS = [
             type: 'object',
             properties: {
                 query: { type: 'string', description: '검색 키워드 (상품명, 브랜드 등)' },
-                category: { type: 'string', description: '카테고리 필터: CONSUMABLES | MRO | FOOD | OFFICE' },
+                category: { type: 'string', description: '카테고리 필터: CONSUMABLES | MRO | FOOD | OFFICE | HOUSEHOLD | FASHION | BEAUTY | DIGITAL | SPORTS | PETS | BABY | OTHER' },
                 max_price: { type: 'number', description: '최대 가격 (원)' },
                 min_trust: { type: 'number', description: '최소 신뢰 점수 (0-100)' },
                 in_stock_only: { type: 'boolean', description: '재고 있는 상품만 조회' },
+                seller_id: { type: 'string', description: '특정 셀러 상품만 조회 (셀러 ID)' },
                 limit: { type: 'number', description: '최대 결과 수 (기본 10, 최대 200)' },
                 offset: { type: 'number', description: '페이지네이션 오프셋 (기본 0)' },
             },
@@ -144,14 +145,16 @@ async function handleTool(name: string, args: any, supabase: any, apiKey?: strin
         case 'search_products': {
             let q = supabase
                 .from('products')
-                .select('sku, title, category, price, stock_status, seller_trust, eta_days, ship_by_days', { count: 'exact' })
+                .select('sku, title, category, brand, price, currency, stock_status, stock_qty, seller_trust, eta_days, ship_by_days, return_days, return_fee, ai_readiness_score, moq, min_order_qty, seller_id, seller_name, source, delivery_fee, attributes', { count: 'exact' })
                 .limit(Math.min(args.limit || 10, 200));
 
             if (args.category) q = q.eq('category', args.category);
             if (args.max_price) q = q.lte('price', args.max_price);
             if (args.min_trust) q = q.gte('seller_trust', args.min_trust);
-            if (args.in_stock_only) q = q.eq('stock_status', 'IN_STOCK');
+            if (args.in_stock_only) q = q.eq('stock_status', 'in_stock');
             if (args.query) q = q.ilike('title', `%${args.query}%`);
+            if (args.seller_id) q = q.eq('seller_id', args.seller_id);
+            if (args.offset) q = q.range(args.offset, args.offset + Math.min(args.limit || 10, 200) - 1);
 
             const { data, error, count: totalCount } = await q;
             if (error) return { error: error.message };
@@ -161,11 +164,22 @@ async function handleTool(name: string, args: any, supabase: any, apiKey?: strin
                     sku: p.sku,
                     title: p.title,
                     category: p.category,
+                    brand: p.brand || null,
                     price: p.price,
+                    currency: p.currency || 'KRW',
                     stock_status: p.stock_status,
+                    stock_qty: p.stock_qty,
                     trust_score: p.seller_trust,
                     eta_days: p.eta_days,
                     ship_by_days: p.ship_by_days,
+                    return_days: p.return_days,
+                    return_fee: p.return_fee,
+                    moq: p.moq || p.min_order_qty || 1,
+                    seller_id: p.seller_id || null,
+                    seller_name: p.seller_name || null,
+                    source: p.source || 'direct',
+                    delivery_fee: p.delivery_fee || null,
+                    attributes: p.attributes || {},
                 })),
                 returned: (data || []).length,
                 total_count: totalCount ?? (data || []).length,
@@ -175,7 +189,7 @@ async function handleTool(name: string, args: any, supabase: any, apiKey?: strin
         case 'get_product_detail': {
             const { data, error } = await supabase
                 .from('products')
-                .select('sku, title, category, brand, price, currency, stock_status, stock_qty, eta_days, ship_by_days, return_days, return_fee, ai_readiness_score, seller_trust, moq, attributes')
+                .select('*')
                 .eq('sku', args.sku)
                 .single();
             if (error) return { error: `Product not found: ${args.sku}` };
@@ -183,7 +197,8 @@ async function handleTool(name: string, args: any, supabase: any, apiKey?: strin
                 sku: data.sku,
                 title: data.title,
                 category: data.category,
-                brand: data.brand,
+                brand: data.brand || null,
+                gtin: data.gtin || null,
                 price: data.price,
                 currency: data.currency || 'KRW',
                 stockStatus: data.stock_status,
@@ -194,8 +209,18 @@ async function handleTool(name: string, args: any, supabase: any, apiKey?: strin
                 returnFee: data.return_fee,
                 aiReadinessScore: data.ai_readiness_score,
                 trustScore: data.seller_trust,
-                moq: data.moq,
+                moq: data.moq || data.min_order_qty || 1,
+                sellerId: data.seller_id || null,
+                sellerName: data.seller_name || null,
+                deliveryFee: data.delivery_fee || null,
+                source: data.source || 'direct',
+                sourceUrl: data.source_url || null,
+                purchaseUnit: data.purchase_unit || 1,
+                maxOrderQty: data.max_order_qty || null,
+                isPopular: data.is_popular || false,
+                hasOptions: data.has_options || false,
                 attributes: data.attributes || {},
+                updatedAt: data.updated_at,
             };
         }
 
@@ -203,19 +228,28 @@ async function handleTool(name: string, args: any, supabase: any, apiKey?: strin
             const skus: string[] = args.sku_list || [];
             const { data, error } = await supabase
                 .from('products')
-                .select('sku, title, category, price, seller_trust, stock_status, ship_by_days, eta_days, moq')
+                .select('sku, title, category, brand, price, seller_trust, stock_status, stock_qty, ship_by_days, eta_days, moq, min_order_qty, return_days, return_fee, seller_id, seller_name, delivery_fee, attributes')
                 .in('sku', skus);
             if (error) return { error: error.message };
 
             const comparison = (data || []).map((p: any) => ({
                 sku: p.sku,
                 title: p.title,
+                category: p.category,
+                brand: p.brand || null,
                 price: p.price,
                 trust_score: p.seller_trust,
                 stock: p.stock_status,
+                stock_qty: p.stock_qty,
                 ship_by_days: p.ship_by_days,
                 eta_days: p.eta_days,
-                moq: p.moq,
+                moq: p.moq || p.min_order_qty || 1,
+                return_days: p.return_days,
+                return_fee: p.return_fee,
+                seller_id: p.seller_id || null,
+                seller_name: p.seller_name || null,
+                delivery_fee: p.delivery_fee || null,
+                attributes: p.attributes || {},
             }));
 
             const sorted = [...comparison].sort((a, b) =>
@@ -256,7 +290,7 @@ async function handleTool(name: string, args: any, supabase: any, apiKey?: strin
 
             const { data: product } = await supabase
                 .from('products')
-                .select('sku, title, price, stock_status')
+                .select('sku, title, price, stock_status, seller_id')
                 .eq('sku', args.sku)
                 .single();
 
@@ -270,6 +304,7 @@ async function handleTool(name: string, args: any, supabase: any, apiKey?: strin
             const { error: insertErr } = await supabase.from('orders').insert({
                 order_id: orderId,
                 agent_id: agentId,
+                seller_id: product.seller_id || 'SLR-JSONMART',
                 sku: args.sku,
                 product_title: product.title,
                 quantity: args.quantity,
