@@ -156,22 +156,28 @@ function detectDetailLevel(schema: string, specs: Record<string, any>): 'commodi
 
 // ─── Supabase config (same as hooks.ts) ───
 const SUPABASE_URL = 'https://bjafielalgbqihfnmmhg.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJqYWZpZWxhbGdicWloZm5tbWhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzk4NTQ2OTcsImV4cCI6MjA1NTQzMDY5N30.xmM-Y_3-0strNJkTAyX4iLQOmC4M17T4jRhbqxmjyMw';
 
-// ─── AI Vision Extraction via Gemini 2.0 Flash ───
+// ─── AI Vision Extraction via Gemini 2.0 Flash (Supabase RPC) ───
 async function aiExtractFromImages(images: string[], category: string, title: string): Promise<Partial<ProductDetail>> {
     const schema = detectSchema(category);
     const schemaFields = (CATEGORY_SCHEMAS[schema] || CATEGORY_SCHEMAS['default']).fields.map(f => ({ key: f.key, label: f.label }));
 
-    // 1) Try real Gemini Edge Function first
+    // 1) Try Supabase RPC (Gemini 2.0 Flash, server-side, API key secured)
     try {
-        const res = await fetch(`${SUPABASE_URL}/functions/v1/ai-extract-product`, {
+        const token = localStorage.getItem('supabase_token') || SUPABASE_ANON;
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/ai_extract_product_detail`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'apikey': SUPABASE_ANON,
+                'Authorization': `Bearer ${token}`,
+            },
             body: JSON.stringify({
-                image_urls: images.filter(Boolean),
-                category,
-                title,
-                schema_fields: schemaFields,
+                p_title: title,
+                p_category: category,
+                p_image_urls: images.filter(Boolean),
+                p_schema_fields: schemaFields,
             }),
         });
 
@@ -190,10 +196,12 @@ async function aiExtractFromImages(images: string[], category: string, title: st
                     extraction_confidence: data.confidence || 0.85,
                 };
             }
+            // If there's an error in the response, log it
+            if (data.error) console.warn('AI extraction error:', data.error, data.message);
         }
-        console.warn('Edge function unavailable, falling back to simulation');
+        console.warn('RPC unavailable, falling back to simulation');
     } catch (e) {
-        console.warn('Edge function call failed, falling back to simulation:', e);
+        console.warn('RPC call failed, falling back to simulation:', e);
     }
 
     // 2) Fallback: category-based simulation
