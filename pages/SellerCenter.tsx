@@ -1,8 +1,9 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Store, Upload, Package, BarChart3, Settings, Download, FileSpreadsheet, Search, Filter, AlertCircle, CheckCircle, Loader2, RefreshCw, Trash2, Edit3, Eye, TrendingUp, DollarSign, ShoppingCart, ChevronDown, X, Plus, Truck, RotateCcw, CreditCard, Save, Key, Ban } from 'lucide-react';
+import { Store, Upload, Package, BarChart3, Settings, Download, FileSpreadsheet, Search, Filter, AlertCircle, CheckCircle, Loader2, RefreshCw, Trash2, Edit3, Eye, TrendingUp, DollarSign, ShoppingCart, ChevronDown, X, Plus, Truck, RotateCcw, CreditCard, Save, Key, Ban, Bot } from 'lucide-react';
+import { SellerAIDashboard } from './SellerAIDashboard';
 import { sellerAuth, getSellerDashboard, getSellerProducts, uploadSellerProducts, registerSeller, addSellerProduct, updateSellerProduct, deleteSellerProduct, getSellerOrders, updateOrderShipment, handleReturnRequest, getSellerSettlements, updateSellerProfile } from '../hooks';
 
-type Tab = 'dashboard' | 'products' | 'upload' | 'orders' | 'settlement' | 'settings';
+type Tab = 'dashboard' | 'products' | 'upload' | 'orders' | 'settlement' | 'ai' | 'settings';
 
 /* ━━━ Excel Template Columns ━━━ */
 const TEMPLATE_COLUMNS = [
@@ -446,6 +447,7 @@ export const SellerCenter: React.FC = () => {
                 <div style={tabStyle('upload')} onClick={() => setTab('upload')}><Upload size={12} style={{ marginRight: 4 }} />엑셀 업로드</div>
                 <div style={tabStyle('orders')} onClick={() => setTab('orders')}><ShoppingCart size={12} style={{ marginRight: 4 }} />주문관리</div>
                 <div style={tabStyle('settlement')} onClick={() => setTab('settlement')}><CreditCard size={12} style={{ marginRight: 4 }} />정산</div>
+                <div style={tabStyle('ai')} onClick={() => setTab('ai')}><Bot size={12} style={{ marginRight: 4 }} />AI 분석</div>
                 <div style={tabStyle('settings')} onClick={() => setTab('settings')}><Settings size={12} style={{ marginRight: 4 }} />설정</div>
             </div>
 
@@ -954,6 +956,9 @@ export const SellerCenter: React.FC = () => {
                     </div>
                 </div>
             )}
+
+            {/* ━━━ AI Analytics Tab ━━━ */}
+            {tab === 'ai' && <SellerAIDashboard apiKey={apiKey} sellerInfo={sellerInfo} />}
 
             {/* ━━━ Settings Tab ━━━ */}
             {tab === 'settings' && (
