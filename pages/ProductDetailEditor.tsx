@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Sparkles, Plus, Trash2, ChevronDown, ChevronUp, Eye, EyeOff, Image, Loader2, CheckCircle2, AlertTriangle, Lightbulb, Wand2, X, Copy, Tag, Star, MessageSquare, Zap, Layers, FileText } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Sparkles, Plus, Trash2, ChevronDown, ChevronUp, Eye, EyeOff, Image, Loader2, CheckCircle2, AlertTriangle, Lightbulb, Wand2, X, Copy, Tag, Star, MessageSquare, Zap, Layers, FileText, Upload, Link2 } from 'lucide-react';
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     ProductDetailEditor
@@ -339,6 +339,44 @@ export const ProductDetailEditor: React.FC<ProductDetailEditorProps> = ({
     const [extracted, setExtracted] = useState(!!initialDetail?.extracted_by);
     const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({ specs: true, appeal: true });
 
+    // ─── AI Image State ───
+    const [detailImages, setDetailImages] = useState<{ url: string; name: string; fromProduct?: boolean }[]>([]);
+    const [imageUrlInput, setImageUrlInput] = useState('');
+    const [isDragging, setIsDragging] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Auto-attach existing product image
+    useEffect(() => {
+        if (imageUrl && !detailImages.some(img => img.url === imageUrl)) {
+            setDetailImages(prev => [{ url: imageUrl, name: '상품 대표 이미지', fromProduct: true }, ...prev.filter(img => !img.fromProduct)]);
+        }
+    }, [imageUrl]);
+
+    // File upload handler
+    const handleFileUpload = (files: FileList | null) => {
+        if (!files) return;
+        Array.from(files).slice(0, 5).forEach(file => {
+            if (!file.type.startsWith('image/')) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const dataUrl = e.target?.result as string;
+                setDetailImages(prev => [...prev, { url: dataUrl, name: file.name }].slice(0, 5));
+            };
+            reader.readAsDataURL(file);
+        });
+    };
+
+    // URL add handler
+    const handleAddImageUrl = () => {
+        const url = imageUrlInput.trim();
+        if (!url || detailImages.some(img => img.url === url)) return;
+        setDetailImages(prev => [...prev, { url, name: url.split('/').pop() || 'URL 이미지' }].slice(0, 5));
+        setImageUrlInput('');
+    };
+
+    // Remove image
+    const removeDetailImage = (idx: number) => setDetailImages(prev => prev.filter((_, i) => i !== idx));
+
     // ─── Build detail object & notify parent ───
     const buildDetail = useCallback((): ProductDetail => ({
         schema_version: '1.0',
@@ -363,9 +401,14 @@ export const ProductDetailEditor: React.FC<ProductDetailEditorProps> = ({
     const handleAIExtract = async () => {
         setExtracting(true);
         try {
-            const result = await aiExtractFromImages(imageUrl ? [imageUrl] : [], category, productTitle);
+            const allImages = detailImages.map(img => img.url).filter(Boolean);
+            const result = await aiExtractFromImages(allImages, category, productTitle);
             if (result.specs) setSpecs(prev => ({ ...prev, ...result.specs }));
             if (result.features) setFeatures(prev => [...new Set([...prev, ...result.features])]);
+            if (result.use_cases) setUseCases(prev => [...new Set([...prev, ...result.use_cases])]);
+            if (result.care_instructions) setCareInstructions(prev => [...new Set([...prev, ...result.care_instructions])]);
+            if (result.warnings) setWarnings(prev => [...new Set([...prev, ...result.warnings])]);
+            if (result.certifications) setCertifications(prev => [...new Set([...prev, ...result.certifications])]);
             if (result.ai_summary) setAiSummary(result.ai_summary);
             setExtracted(true);
         } catch (err) {
@@ -452,11 +495,73 @@ export const ProductDetailEditor: React.FC<ProductDetailEditorProps> = ({
                 </div>
             </div>
 
+            {/* ━━━ AI Image Upload Zone ━━━ */}
+            <div style={{ marginBottom: 12, borderRadius: 8, border: `1px dashed ${isDragging ? 'var(--accent-purple)' : 'var(--border-subtle)'}`, background: isDragging ? 'rgba(168,85,247,0.04)' : 'transparent', transition: 'all 0.2s' }}>
+                <div style={{ padding: '10px 12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <Image size={13} style={{ color: 'var(--accent-purple)' }} />
+                            <span style={{ fontSize: 11, fontWeight: 700 }}>AI 분석용 이미지</span>
+                            <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>({detailImages.length}/5)</span>
+                        </div>
+                    </div>
+
+                    {/* Image thumbnails */}
+                    {detailImages.length > 0 && (
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+                            {detailImages.map((img, idx) => (
+                                <div key={idx} style={{ position: 'relative', width: 64, height: 64, borderRadius: 6, overflow: 'hidden', border: '1px solid var(--border-subtle)', background: 'var(--bg-secondary)' }}>
+                                    <img src={img.url} alt={img.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    {img.fromProduct && (
+                                        <div style={{ position: 'absolute', top: 2, left: 2, background: 'rgba(168,85,247,0.8)', borderRadius: 3, padding: '1px 4px', fontSize: 7, color: '#fff', fontWeight: 700 }}>상품</div>
+                                    )}
+                                    <button onClick={() => removeDetailImage(idx)}
+                                        style={{ position: 'absolute', top: 2, right: 2, width: 16, height: 16, borderRadius: '50%', background: 'rgba(0,0,0,0.6)', border: 'none', color: '#fff', fontSize: 9, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <X size={9} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Upload area */}
+                    {detailImages.length < 5 && (
+                        <div
+                            onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                            onDragLeave={() => setIsDragging(false)}
+                            onDrop={(e) => { e.preventDefault(); setIsDragging(false); handleFileUpload(e.dataTransfer.files); }}
+                            onClick={() => fileInputRef.current?.click()}
+                            style={{ padding: '12px', borderRadius: 6, background: 'var(--bg-secondary)', cursor: 'pointer', textAlign: 'center', marginBottom: 6 }}>
+                            <Upload size={16} style={{ color: 'var(--text-muted)', marginBottom: 4 }} />
+                            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>이미지를 드래그하거나 클릭하여 업로드</div>
+                            <div style={{ fontSize: 8, color: 'var(--text-muted)', marginTop: 2 }}>JPG, PNG, WebP (최대 5장)</div>
+                            <input ref={fileInputRef} type="file" accept="image/*" multiple style={{ display: 'none' }}
+                                onChange={(e) => handleFileUpload(e.target.files)} />
+                        </div>
+                    )}
+
+                    {/* URL input */}
+                    <div style={{ display: 'flex', gap: 4 }}>
+                        <div style={{ position: 'relative', flex: 1 }}>
+                            <Link2 size={11} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                            <input value={imageUrlInput} onChange={e => setImageUrlInput(e.target.value)}
+                                onKeyDown={e => e.key === 'Enter' && handleAddImageUrl()}
+                                placeholder="이미지 URL 붙여넣기"
+                                style={{ ...inputStyle, paddingLeft: 24, fontSize: 10 }} />
+                        </div>
+                        <button onClick={handleAddImageUrl}
+                            style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-muted)', fontSize: 10, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                            <Plus size={11} /> 추가
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             {/* ━━━ AI Extraction Badge ━━━ */}
             {extracted && (
                 <div style={{ padding: '8px 12px', borderRadius: 6, background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: 'var(--accent-green)' }}>
                     <CheckCircle2 size={12} />
-                    <span>AI Vision이 이미지에서 상세 정보를 추출했습니다. 아래 내용을 확인하고 수정해주세요.</span>
+                    <span>AI Vision이 {detailImages.length > 0 ? `${detailImages.length}장의 이미지와 ` : ''}상품 정보에서 상세 내용을 추출했습니다. 아래를 확인하고 수정해주세요.</span>
                 </div>
             )}
 
