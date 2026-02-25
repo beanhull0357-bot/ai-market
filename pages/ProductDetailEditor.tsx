@@ -157,20 +157,26 @@ function detectDetailLevel(schema: string, specs: Record<string, any>): 'commodi
 // ─── Supabase config (same as hooks.ts) ───
 const SUPABASE_URL = 'https://bjafielalgbqihfnmmhg.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJqYWZpZWxhbGdicWloZm5tbWhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzk4NTQ2OTcsImV4cCI6MjA1NTQzMDY5N30.xmM-Y_3-0strNJkTAyX4iLQOmC4M17T4jRhbqxmjyMw';
-const SUPABASE_SERVICE = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJqYWZpZWxhbGdicWloZm5tbWhnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczOTg1NDY5NywiZXhwIjoyMDU1NDMwNjk3fQ.R1MBnTAL5sTEHSHR2eq_K7DCa3TwDqAZ6MN-JXdTR1Y';
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
-// ─── Fetch Gemini API key from app_config (server-side storage) ───
+// ─── Fetch Gemini API key via secure RPC (no service_role exposure) ───
 let _cachedGeminiKey: string | null = null;
 async function getGeminiKey(): Promise<string | null> {
     if (_cachedGeminiKey) return _cachedGeminiKey;
     try {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/app_config?key=eq.GEMINI_API_KEY&select=value`, {
-            headers: { 'apikey': SUPABASE_SERVICE, 'Authorization': `Bearer ${SUPABASE_SERVICE}` },
+        const token = localStorage.getItem('supabase_token') || SUPABASE_ANON;
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_ai_config`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'apikey': SUPABASE_ANON,
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({ p_key: 'GEMINI_API_KEY' }),
         });
         if (res.ok) {
-            const rows = await res.json();
-            if (rows.length > 0) { _cachedGeminiKey = rows[0].value; return _cachedGeminiKey; }
+            const value = await res.json();
+            if (value) { _cachedGeminiKey = value; return _cachedGeminiKey; }
         }
     } catch (e) { console.warn('Failed to fetch Gemini key:', e); }
     return null;
