@@ -948,7 +948,7 @@ export async function deleteSellerProduct(apiKey: string, sku: string) {
     return { success: true };
 }
 
-// ?곣봺??Seller Order Management ?곣봺??
+// ━━━ Seller Order Management ━━━
 export async function getSellerOrders(apiKey: string, status?: string) {
     const auth = await sellerAuth(apiKey);
     if (!auth?.success) throw new Error('Authentication failed');
@@ -965,10 +965,24 @@ export async function getSellerOrders(apiKey: string, status?: string) {
 
     const { data, error } = await query;
     if (error) {
-        // If seller_id column doesn't exist, return demo data
+        console.warn('getSellerOrders error:', error.message);
         return { success: true, orders: [], total: 0 };
     }
-    return { success: true, orders: data || [], total: data?.length || 0 };
+
+    // Enrich order data from items JSONB
+    const enriched = (data || []).map((o: any) => {
+        const items = Array.isArray(o.items) ? o.items : [];
+        const totalQty = items.reduce((sum: number, it: any) => sum + (it.qty || it.quantity || 1), 0);
+        const totalAmount = items.reduce((sum: number, it: any) => sum + ((it.price || 0) * (it.qty || it.quantity || 1)), 0);
+        return {
+            ...o,
+            quantity: totalQty,
+            total_amount: o.authorized_amount || totalAmount,
+            product_title: items.map((it: any) => it.title || it.sku).join(', '),
+        };
+    });
+
+    return { success: true, orders: enriched, total: enriched.length };
 }
 
 export async function updateOrderShipment(apiKey: string, orderId: string, carrier: string, trackingNumber: string) {

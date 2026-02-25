@@ -100,6 +100,7 @@ export const SellerCenter: React.FC = () => {
     const [shipModal, setShipModal] = useState<any>(null);
     const [shipCarrier, setShipCarrier] = useState(CARRIERS[0]);
     const [shipTracking, setShipTracking] = useState('');
+    const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
 
     // Settlement
     const [settlements, setSettlements] = useState<any>(null);
@@ -686,7 +687,8 @@ export const SellerCenter: React.FC = () => {
                             { key: 'confirmed', label: '발송대기' },
                             { key: 'shipped', label: '배송중' },
                             { key: 'delivered', label: '완료' },
-                            { key: 'returned', label: '반품' },
+                            { key: 'return_requested', label: '반품요청' },
+                            { key: 'returned', label: '반품완료' },
                         ].map(f => (
                             <button key={f.key} onClick={() => setOrderFilter(f.key)}
                                 style={{ padding: '6px 14px', borderRadius: 6, fontSize: 11, fontWeight: orderFilter === f.key ? 700 : 500, cursor: 'pointer', border: orderFilter === f.key ? '1px solid var(--accent-cyan)' : '1px solid var(--border-subtle)', background: orderFilter === f.key ? 'rgba(6,182,212,0.1)' : 'transparent', color: orderFilter === f.key ? 'var(--accent-cyan)' : 'var(--text-muted)' }}>
@@ -735,28 +737,67 @@ export const SellerCenter: React.FC = () => {
                                     const statusMap: Record<string, { label: string; color: string }> = {
                                         pending: { label: '신규', color: 'var(--accent-amber)' }, confirmed: { label: '발송대기', color: 'var(--accent-cyan)' },
                                         shipped: { label: '배송중', color: 'var(--accent-purple)' }, delivered: { label: '완료', color: 'var(--accent-green)' },
-                                        returned: { label: '반품', color: 'var(--accent-red)' },
+                                        return_requested: { label: '반품요청', color: 'var(--accent-red)' }, returned: { label: '반품완료', color: 'var(--accent-red)' },
+                                        exported: { label: '엑셀출력', color: 'var(--text-dim)' }, ordered: { label: '발주완료', color: 'var(--accent-cyan)' },
+                                        cancelled: { label: '취소', color: 'var(--text-dim)' },
                                     };
-                                    const st = statusMap[o.procurement_status] || { label: o.procurement_status, color: 'var(--text-dim)' };
+                                    const st = statusMap[o.procurement_status] || { label: o.procurement_status || '-', color: 'var(--text-dim)' };
+                                    const isExpanded = expandedOrder === o.id;
+                                    const items = Array.isArray(o.items) ? o.items : [];
                                     return (
-                                        <tr key={o.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                                            <td style={{ padding: '8px 12px', fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)', fontSize: 10 }}>{o.id?.slice?.(0, 8)}…</td>
-                                            <td style={{ padding: '8px 12px', color: 'var(--text-primary)', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.product_title || o.items?.[0]?.title || '-'}</td>
-                                            <td style={{ padding: '8px 12px', fontFamily: 'var(--font-mono)' }}>{o.quantity || 1}</td>
-                                            <td style={{ padding: '8px 12px', fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>₩{(o.total_amount || 0).toLocaleString()}</td>
-                                            <td style={{ padding: '8px 12px', fontSize: 10, color: 'var(--text-muted)' }}>{new Date(o.created_at).toLocaleDateString('ko')}</td>
-                                            <td style={{ padding: '8px 12px' }}><span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 4, fontWeight: 600, background: `color-mix(in srgb, ${st.color} 12%, transparent)`, color: st.color }}>{st.label}</span></td>
-                                            <td style={{ padding: '8px 12px' }}>
-                                                <div style={{ display: 'flex', gap: 4 }}>
-                                                    {(o.procurement_status === 'pending' || o.procurement_status === 'confirmed') && (
-                                                        <button onClick={() => setShipModal(o)} title="발송" style={{ padding: 4, borderRadius: 4, border: '1px solid var(--accent-green)', background: 'rgba(34,197,94,0.08)', color: 'var(--accent-green)', cursor: 'pointer' }}><Truck size={12} /></button>
-                                                    )}
-                                                    {o.procurement_status === 'return_requested' && (
-                                                        <button onClick={() => handleReturnRequest(apiKey, o.id, 'approve').then(loadOrders)} title="반품승인" style={{ padding: 4, borderRadius: 4, border: '1px solid var(--accent-red)', background: 'rgba(239,68,68,0.08)', color: 'var(--accent-red)', cursor: 'pointer' }}><RotateCcw size={12} /></button>
-                                                    )}
-                                                </div>
-                                            </td>
-                                        </tr>
+                                        <React.Fragment key={o.id}>
+                                            <tr style={{ borderBottom: isExpanded ? 'none' : '1px solid var(--border-subtle)', cursor: 'pointer' }} onClick={() => setExpandedOrder(isExpanded ? null : o.id)}>
+                                                <td style={{ padding: '8px 12px', fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)', fontSize: 10 }}>{isExpanded ? '▼' : '▶'} {o.order_id?.slice?.(0, 8) || o.id?.slice?.(0, 8)}…</td>
+                                                <td style={{ padding: '8px 12px', color: 'var(--text-primary)', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.product_title || '-'}</td>
+                                                <td style={{ padding: '8px 12px', fontFamily: 'var(--font-mono)' }}>{o.quantity || 1}</td>
+                                                <td style={{ padding: '8px 12px', fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>₩{(o.total_amount || 0).toLocaleString()}</td>
+                                                <td style={{ padding: '8px 12px', fontSize: 10, color: 'var(--text-muted)' }}>{new Date(o.created_at).toLocaleDateString('ko')}</td>
+                                                <td style={{ padding: '8px 12px' }}><span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 4, fontWeight: 600, background: `color-mix(in srgb, ${st.color} 12%, transparent)`, color: st.color }}>{st.label}</span></td>
+                                                <td style={{ padding: '8px 12px' }} onClick={e => e.stopPropagation()}>
+                                                    <div style={{ display: 'flex', gap: 4 }}>
+                                                        {(o.procurement_status === 'pending' || o.procurement_status === 'confirmed') && (
+                                                            <button onClick={() => setShipModal(o)} title="발송" style={{ padding: 4, borderRadius: 4, border: '1px solid var(--accent-green)', background: 'rgba(34,197,94,0.08)', color: 'var(--accent-green)', cursor: 'pointer' }}><Truck size={12} /></button>
+                                                        )}
+                                                        {o.procurement_status === 'return_requested' && (
+                                                            <button onClick={() => handleReturnRequest(apiKey, o.id, 'approve').then(loadOrders)} title="반품승인" style={{ padding: 4, borderRadius: 4, border: '1px solid var(--accent-red)', background: 'rgba(239,68,68,0.08)', color: 'var(--accent-red)', cursor: 'pointer' }}><RotateCcw size={12} /></button>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            {isExpanded && (
+                                                <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                                                    <td colSpan={7} style={{ padding: '0 12px 12px 12px' }}>
+                                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, padding: 12, borderRadius: 6, background: 'rgba(6,182,212,0.04)', border: '1px solid var(--border-subtle)' }}>
+                                                            {/* Items JSON */}
+                                                            <div>
+                                                                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent-cyan)', marginBottom: 6 }}>📦 주문 상품 ({items.length})</div>
+                                                                {items.length > 0 ? items.map((it: any, idx: number) => (
+                                                                    <div key={idx} style={{ fontSize: 11, padding: '4px 0', borderBottom: idx < items.length - 1 ? '1px solid var(--border-subtle)' : 'none', color: 'var(--text-primary)' }}>
+                                                                        <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', fontSize: 10 }}>{it.sku || '-'}</span>{' '}
+                                                                        <strong>{it.title || '-'}</strong>{' '}
+                                                                        <span style={{ fontFamily: 'var(--font-mono)' }}>×{it.qty || it.quantity || 1}</span>{' '}
+                                                                        <span style={{ color: 'var(--accent-green)', fontFamily: 'var(--font-mono)' }}>₩{((it.price || 0) * (it.qty || it.quantity || 1)).toLocaleString()}</span>
+                                                                    </div>
+                                                                )) : <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>상품 정보 없음</div>}
+                                                            </div>
+                                                            {/* Shipping Info */}
+                                                            <div>
+                                                                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent-cyan)', marginBottom: 6 }}>🚚 배송 정보</div>
+                                                                <div style={{ fontSize: 11, color: 'var(--text-primary)', lineHeight: 1.8 }}>
+                                                                    {o.recipient_name && <div>수령자: <strong>{o.recipient_name}</strong></div>}
+                                                                    {o.address && <div>주소: {o.postal_code && `(${o.postal_code}) `}{o.address} {o.address_detail || ''}</div>}
+                                                                    {o.phone && <div>연락처: {o.phone}</div>}
+                                                                    {o.carrier && <div>택배: {o.carrier} / {o.tracking_number || '-'}</div>}
+                                                                    {o.shipped_at && <div>발송일: {new Date(o.shipped_at).toLocaleDateString('ko')}</div>}
+                                                                    {o.delivery_note && <div style={{ color: 'var(--accent-amber)' }}>요청사항: {o.delivery_note}</div>}
+                                                                    {!o.recipient_name && !o.carrier && <div style={{ color: 'var(--text-dim)' }}>배송 정보 없음</div>}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </React.Fragment>
                                     );
                                 })}
                             </tbody>
