@@ -5,11 +5,11 @@
       "name": "JSONMart ??Agent-Native Marketplace",
       "description": "B2B consumables and MRO marketplace designed for AI purchasing agents. 50+ products with structured JSON data, trust scores, policy-driven ordering, and explainable receipts.",
       "url": "https://jsonmart.xyz/",
-      "support_email": "support@jsonmart.io",
-      "categories": ["CONSUMABLES", "MRO"],
+      "support_email": "support@jsonmart.xyz",
+      "categories": ["CONSUMABLES", "MRO", "FOOD", "OFFICE", "IT_EQUIPMENT", "KITCHEN", "SAFETY", "HYGIENE", "HOUSEHOLD"],
       "currency": "KRW",
       "country": "KR",
-      "total_products": 50,
+      "total_products": "dynamic",
       "policies_url": "https://jsonmart.xyz/#/policies/merchant"
     },
     "services": {

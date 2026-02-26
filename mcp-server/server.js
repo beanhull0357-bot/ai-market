@@ -1,24 +1,34 @@
 #!/usr/bin/env node
 /**
- * JSONMart MCP Server v2 — @modelcontextprotocol/sdk based
+ * JSONMart MCP Server v3 — @modelcontextprotocol/sdk based
  * 
  * Runs as a local stdio MCP server for Claude Desktop.
  * Connects to Supabase to query the products DB directly.
+ * 
+ * Environment variables:
+ *   SUPABASE_URL       - Supabase project URL
+ *   SUPABASE_ANON_KEY  - Supabase anon/public key
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 
-// ━━━ Supabase Config ━━━
-const SUPABASE_URL = 'https://psiysvvcusfyfsfozywn.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBzaXlzdnZjdXNmeWZzZm96eXduIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA5NzY5MjgsImV4cCI6MjA4NjU1MjkyOH0.p67kF5TLGv1o5ZcuxFabFD3OCvVCXov93hYMmj09BFE';
+// ━━━ Supabase Config (from environment variables) ━━━
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
 
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    process.stderr.write('⚠️  Missing SUPABASE_URL or SUPABASE_ANON_KEY environment variables.\n');
+    process.stderr.write('   Set them before starting the MCP server.\n');
+    process.exit(1);
+}
+
+// ━━━ Supabase REST query helper ━━━
 async function supabaseQuery(table, { select = '*', filters = {}, limit, single = false, count = false } = {}) {
     let url = `${SUPABASE_URL}/rest/v1/${table}?select=${encodeURIComponent(select)}`;
 
     for (const [key, value] of Object.entries(filters)) {
-        // PostgREST operators use * as wildcard - must not encode it
         url += `&${key}=${encodeURIComponent(value).replace(/%2A/gi, '*')}`;
     }
     if (limit) url += `&limit=${limit}`;
@@ -44,10 +54,32 @@ async function supabaseQuery(table, { select = '*', filters = {}, limit, single 
     return { data, count: totalCount };
 }
 
+// ━━━ Supabase RPC call helper ━━━
+async function supabaseRpc(functionName, params = {}) {
+    const url = `${SUPABASE_URL}/rest/v1/rpc/${functionName}`;
+
+    const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(params),
+    });
+
+    if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`Supabase RPC error ${res.status}: ${errText}`);
+    }
+
+    return await res.json();
+}
+
 // ━━━ MCP Server ━━━
 const server = new McpServer({
     name: 'jsonmart',
-    version: '2.0.0',
+    version: '3.0.0',
 });
 
 // ━━━ Resources (정적 가이드/설명) ━━━
@@ -60,13 +92,13 @@ server.resource(
         contents: [{
             uri: 'jsonmart://about',
             mimeType: 'text/plain',
-            text: `# JSONMart — AI Agent Native B2B 마켓플레이스
+            text: `# JSONMart — AI Agent Native 마켓플레이스
 
 ## 플랫폼 소개
-JSONMart는 AI 에이전트가 직접 상품을 검색·비교·주문할 수 있는 B2B 마켓플레이스입니다.
+JSONMart는 AI 에이전트 전용 커머스 플랫폼입니다. 인간 사용자가 아닌 AI 에이전트가 직접 상품을 검색·비교·주문합니다.
 - 모든 인터페이스가 JSON 기반으로 설계되어 AI 에이전트가 쉽게 이해하고 처리 가능
 - MCP(Model Context Protocol) 통해 Claude 등 AI 어시스턴트와 직접 연동
-- 사무용품, 소모품, 식자재, IT장비, 안전용품 등 B2B 전문 상품 취급
+- 다양한 카테고리의 상품 취급 (소모품, MRO, 식자재, 사무용품, IT장비
 
 ## 주요 기능
 - **상품 검색/비교**: 카테고리, 가격, 신뢰도 기반 필터링
@@ -74,14 +106,14 @@ JSONMart는 AI 에이전트가 직접 상품을 검색·비교·주문할 수 �
 - **에이전트 월렛**: 충전식 가상 월렛으로 결제
 - **판매자 신뢰 점수**: 0-100 점 기반 판매자 신뢰도 평가
 - **자동 재주문**: 재고 소진 시 자동 재주문 설정
-- **프로모션**: 할인, 번들 딜, 무료배송 등 다양한 프로모션
+- **에이전트 리뷰**: 구조화된 fulfillment attestation
 
 ## 카테고리
 CONSUMABLES(소모품) | MRO(유지보수) | FOOD(식자재) | OFFICE(사무용품) | IT_EQUIPMENT(IT장비) | KITCHEN(주방) | SAFETY(안전) | HYGIENE(위생) | HOUSEHOLD(생활용품)
 
 ## 운영 정보
-- 웹사이트: JSONMart 대시보드에서 실시간 관리
-- API 기반: RESTful JSON API + MCP 프로토콜 지원
+- 웹사이트: https://jsonmart.xyz/
+- API 기반: Supabase RPC + MCP 프로토콜 지원
 - 결제: 에이전트 월렛 (충전식, KRW 기반)`,
         }],
     })
@@ -97,64 +129,49 @@ server.resource(
             mimeType: 'text/plain',
             text: `# JSONMart 구매 프로세스 가이드
 
-## 🛒 구매 방법 (3가지)
+## 🛒 구매 방법
 
-### 방법 1: AI 에이전트를 통한 자동 구매 (추천)
+### 방법 1: MCP를 통한 자동 구매 (추천)
 Claude 같은 AI 어시스턴트에게 자연어로 요청하면 MCP를 통해 자동 처리됩니다.
-1. "물티슈 추천해줘" → 상품 검색 (search_products)
-2. "1번 상품 상세 보여줘" → 상세 조회 (get_product_detail)
-3. "이 상품 구매해줘" → 주문 생성 (create_order)
-4. "주문 상태 확인해줘" → 주문 추적 (check_order_status)
+1. "에이전트 등록해줘" → 에이전트 등록 (register_agent)
+2. "물티슈 검색해줘" → 상품 검색 (search_products)
+3. "1번 상품 상세 보여줘" → 상세 조회 (get_product_detail)
+4. "이 상품 주문해줘" → 주문 생성 (create_order)
+5. "주문 상태 확인해줘" → 주문 추적 (check_order_status)
+6. "이 상품 리뷰 남겨줘" → 리뷰 작성 (submit_review)
 
-### 방법 2: JSONMart 대시보드 (웹)
-1. JSONMart 웹사이트 접속
-2. 상품 브라우징 및 장바구니 담기
-3. 에이전트 월렛으로 결제
-4. 주문 관리 페이지에서 배송 추적
-
-### 방법 3: API 직접 호출
-1. API 키 발급 (에이전트 등록)
-2. /search, /order API 호출
-3. JSON 응답으로 주문 확인
+### 방법 2: API 직접 호출
+1. agent_self_register RPC 호출로 에이전트 등록
+2. 관리자 승인 후 API 키 발급
+3. authenticate_agent로 인증
+4. get_product_feed / agent_create_order 등 RPC 호출
 
 ## 📋 주문 프로세스 상세
 
-### Step 1: 상품 검색
+### Step 1: 에이전트 등록
+- 이름, 기능(capabilities), 연락처(contact_uri) 제공
+- 관리자 승인 후 API 키(agk_...) 발급
+
+### Step 2: 상품 검색
 - 키워드, 카테고리, 가격 범위, 신뢰도로 검색
 - 여러 상품 비교 가능 (compare_products)
 
-### Step 2: 상품 확인
-- SKU로 상세 정보 조회 (가격, 재고, 배송일, 반품 정책)
-- MOQ(최소주문수량) 확인 필수
-
 ### Step 3: 주문 생성
-- SKU + 수량 지정
-- 에이전트 월렛 잔액 확인 → 자동 차감
-- 주문 ID 발급 (ORD-YYYYMMDD-XXXXX 형식)
+- API 키 + SKU + 수량 지정
+- 정책 자동 검증 (예산, 카테고리, 배송기한, 셀러 신뢰도)
+- 주문 ID 발급
 
 ### Step 4: 주문 추적
-- 주문 상태: PENDING → CONFIRMED → SHIPPED → DELIVERED
-- 예상 배송일: ship_by_days + eta_days 기준
+- 주문 상태: ORDER_CREATED → PAYMENT_AUTHORIZED → SHIPPED → DELIVERED
 
-### Step 5: 반품/교환
-- return_days 이내 반품 가능
-- return_fee 확인 (무료 또는 유료)
-
-## 💰 결제 방식
-- **에이전트 월렛**: 충전식 가상 지갑
-- **통화**: KRW (원화)
-- **자동 차감**: 주문 시 잔액에서 자동 결제
-- **환불**: 주문 취소/반품 시 월렛으로 환불
-
-## 📦 배송 정보
-- ship_by_days: 발송까지 소요일
-- eta_days: 배송까지 총 소요일
-- 대부분 3-12일 이내 배송
+### Step 5: 리뷰 작성
+- fulfillment_delta, spec_compliance, api_latency 등 구조화된 메트릭
+- verdict: ENDORSE / WARN / BLOCKLIST
 
 ## ⚠️ 주의사항
+- 에이전트 전용 마켓플레이스입니다 (인간 사용자 직접 구매 불가)
 - MOQ(최소주문수량) 미만 주문 불가
-- 재고 상태가 OUT_OF_STOCK인 상품은 주문 불가
-- 에이전트 월렛 잔액 부족 시 충전 필요`,
+- 재고 상태가 OUT_OF_STOCK인 상품은 주문 불가`,
         }],
     })
 );
@@ -170,10 +187,13 @@ server.resource(
             text: `# JSONMart FAQ (자주 묻는 질문)
 
 ## Q: JSONMart에서 어떤 상품을 살 수 있나요?
-A: B2B 전문 마켓플레이스로 사무용품, 소모품(물티슈, 화장지 등), 식자재, IT장비, 주방용품, 안전용품, 위생용품 등을 취급합니다. 현재 1,600개 이상의 상품이 등록되어 있습니다.
+A: AI 에이전트 전용 마켓플레이스로 사무용품, 소모품(물티슈, 화장지 등), 식자재, IT장비, 주방용품, 안전용품, 위생용품 등을 취급합니다.
 
-## Q: 개인도 구매할 수 있나요?
-A: JSONMart는 B2B 플랫폼이지만, 에이전트 계정을 등록하면 누구나 이용 가능합니다. 다만 일부 상품에 MOQ(최소주문수량)가 있을 수 있습니다.
+## Q: 인간도 직접 구매할 수 있나요?
+A: 아닙니다. JSONMart는 AI 에이전트 전용 쇼핑몰입니다. 인간 사용자는 관리 대시보드를 통해 운영만 합니다. 상품 구매는 AI 에이전트가 API를 통해 직접 수행합니다.
+
+## Q: 에이전트 등록은 어떻게 하나요?
+A: MCP의 register_agent 도구를 사용하거나, agent_self_register RPC를 직접 호출하세요. 관리자 승인 후 API 키가 발급됩니다.
 
 ## Q: 결제는 어떻게 하나요?
 A: 에이전트 월렛(가상 지갑)을 통해 결제합니다. 월렛에 KRW를 충전한 후 주문 시 자동 차감됩니다.
@@ -185,15 +205,48 @@ A: 상품별로 다르지만, 일반적으로 발송까지 1-5일(ship_by_days),
 A: 네, 상품별 return_days 이내에 반품 가능합니다. 반품 수수료(return_fee)는 상품마다 다릅니다.
 
 ## Q: 판매자 신뢰 점수는 뭔가요?
-A: 0-100점 기준으로 판매자의 과거 거래 이력, 배송 정확도, 리뷰 등을 종합 평가한 점수입니다. 80점 이상이면 우수 판매자입니다.
-
-## Q: AI 에이전트 없이도 사용할 수 있나요?
-A: 네, 웹 대시보드에서 직접 상품을 검색하고 주문할 수 있습니다. AI 에이전트는 자동화를 위한 옵션입니다.
+A: 0-100점 기준으로 판매자의 과거 거래 이력, 배송 정확도, 에이전트 리뷰 등을 종합 평가한 점수입니다.
 
 ## Q: 프로모션이나 할인은 어떻게 확인하나요?
-A: 'list_promotions' 도구를 사용하거나, 대시보드의 프로모션 페이지에서 현재 활성 프로모션을 확인할 수 있습니다.`,
+A: MCP의 list_promotions 도구를 사용하거나, get_agent_offers RPC를 호출하세요.`,
         }],
     })
+);
+
+// ━━━ Tools ━━━
+
+// ── register_agent ── (NEW: C-1 fix)
+server.tool(
+    'register_agent',
+    'JSONMart에 새 AI 에이전트를 등록합니다. 등록 후 관리자 승인을 기다려야 합니다. 승인되면 API 키가 발급됩니다.',
+    {
+        agent_name: z.string().describe('에이전트 이름 (예: "GPT-Procurement-Bot-v1")'),
+        capabilities: z.array(z.string()).optional().describe('에이전트 기능 목록 (예: ["purchasing", "price_comparison", "inventory_monitoring"])'),
+        contact_uri: z.string().optional().describe('에이전트 연락처 URI (예: "mailto:agent@example.com" 또는 webhook URL)'),
+    },
+    async ({ agent_name, capabilities, contact_uri }) => {
+        try {
+            const result = await supabaseRpc('agent_self_register', {
+                p_agent_name: agent_name,
+                p_capabilities: capabilities || ['purchasing'],
+                p_contact_uri: contact_uri || '',
+            });
+
+            return {
+                content: [{
+                    type: 'text',
+                    text: JSON.stringify(result, null, 2),
+                }],
+            };
+        } catch (err) {
+            return {
+                content: [{
+                    type: 'text',
+                    text: JSON.stringify({ error: `Registration failed: ${err.message}` }),
+                }],
+            };
+        }
+    }
 );
 
 // ── count_products ──
@@ -367,6 +420,81 @@ server.tool(
     }
 );
 
+// ── create_order ── (NEW: C-1 fix)
+server.tool(
+    'create_order',
+    'AI 에이전트가 상품을 주문합니다. API 키(agk_...)가 필요합니다. 자동으로 정책 검증, 재고 확인, 주문 생성을 수행합니다.',
+    {
+        api_key: z.string().describe('에이전트 API 키 (agk_... 형식)'),
+        sku: z.string().describe('주문할 상품 SKU'),
+        quantity: z.number().int().positive().optional().describe('주문 수량 (기본 1)'),
+    },
+    async ({ api_key, sku, quantity }) => {
+        try {
+            const result = await supabaseRpc('agent_create_order', {
+                p_api_key: api_key,
+                p_sku: sku,
+                p_qty: quantity || 1,
+            });
+
+            return {
+                content: [{
+                    type: 'text',
+                    text: JSON.stringify(result, null, 2),
+                }],
+            };
+        } catch (err) {
+            return {
+                content: [{
+                    type: 'text',
+                    text: JSON.stringify({ error: `Order creation failed: ${err.message}` }),
+                }],
+            };
+        }
+    }
+);
+
+// ── submit_review ── (NEW: C-1 fix)
+server.tool(
+    'submit_review',
+    '주문 완료 후 상품에 대한 구조화된 리뷰를 작성합니다. fulfillment 정확도, 스펙 준수율, API 응답 지연시간 등의 메트릭을 기록합니다.',
+    {
+        api_key: z.string().describe('에이전트 API 키 (agk_... 형식)'),
+        sku: z.string().describe('리뷰 대상 상품 SKU'),
+        verdict: z.enum(['ENDORSE', 'WARN', 'BLOCKLIST']).optional().describe('평가 결과 (ENDORSE=추천, WARN=주의, BLOCKLIST=차단). 기본값: ENDORSE'),
+        fulfillment_delta: z.number().optional().describe('예상 배송일 대비 실제 차이(시간). 양수=지연, 음수=조기배송. 기본값: 0'),
+        spec_compliance: z.number().optional().describe('스펙 준수율 (0.0~1.0, 1.0=완벽 일치). 기본값: 1.0'),
+        api_latency_ms: z.number().int().optional().describe('API 응답 지연시간(ms). 기본값: 0'),
+    },
+    async ({ api_key, sku, verdict, fulfillment_delta, spec_compliance, api_latency_ms }) => {
+        try {
+            const result = await supabaseRpc('agent_create_review', {
+                p_api_key: api_key,
+                p_sku: sku,
+                p_verdict: verdict || 'ENDORSE',
+                p_fulfillment_delta: fulfillment_delta || 0,
+                p_spec_compliance: spec_compliance !== undefined ? spec_compliance : 1.0,
+                p_api_latency_ms: api_latency_ms || 0,
+                p_log: [],
+            });
+
+            return {
+                content: [{
+                    type: 'text',
+                    text: JSON.stringify(result, null, 2),
+                }],
+            };
+        } catch (err) {
+            return {
+                content: [{
+                    type: 'text',
+                    text: JSON.stringify({ error: `Review submission failed: ${err.message}` }),
+                }],
+            };
+        }
+    }
+);
+
 // ── check_order_status ──
 server.tool(
     'check_order_status',
@@ -392,7 +520,9 @@ server.tool(
 async function main() {
     const transport = new StdioServerTransport();
     await server.connect(transport);
-    process.stderr.write('JSONMart MCP Server v2.0.0 running on stdio\n');
+    process.stderr.write(`JSONMart MCP Server v3.0.0 running on stdio\n`);
+    process.stderr.write(`  Supabase URL: ${SUPABASE_URL.substring(0, 30)}...\n`);
+    process.stderr.write(`  Tools: register_agent, count_products, search_products, get_product_detail, compare_products, list_promotions, create_order, submit_review, check_order_status\n`);
 }
 
 main().catch(err => {

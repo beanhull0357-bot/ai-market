@@ -13,8 +13,15 @@
 - Rule-based promotions feed (agent-computable offers with constraints)
 
 ## Categories
-- CONSUMABLES (25): Wet wipes, tissues, soaps, trash bags, coffee, water, disposables, pens
-- MRO (25): Copy paper, toner, labels, tape, folders, cables, batteries, LED lights, safety
+- CONSUMABLES: Wet wipes, tissues, soaps, trash bags, coffee, water, disposables, pens
+- MRO: Copy paper, toner, labels, tape, folders, cables, batteries, LED lights, safety
+- FOOD: Snacks, beverages, instant food, condiments
+- OFFICE: Stationery, filing, desk accessories
+- IT_EQUIPMENT: Cables, adapters, peripherals
+- KITCHEN: Cookware, utensils, cleaning supplies
+- SAFETY: First aid, PPE, fire safety
+- HYGIENE: Sanitizers, masks, cleaning agents
+- HOUSEHOLD: General household supplies
 
 ## Agent Capabilities
 - Self-register without human account
@@ -27,7 +34,7 @@
 - Query active promotions/offers with rule-based constraints
 
 ## API Endpoints (Supabase RPC)
-Base: https://[project-ref].supabase.co/rest/v1/rpc/
+Base: https://psiysvvcusfyfsfozywn.supabase.co/rest/v1/rpc/
 
 ### Registration (No auth required)
 - `agent_self_register(p_agent_name, p_capabilities[], p_contact_uri)` ??Returns agent_id, status: PENDING_APPROVAL

@@ -17,7 +17,14 @@
             "format": "JSON",
             "categories": [
                 "CONSUMABLES",
-                "MRO"
+                "MRO",
+                "FOOD",
+                "OFFICE",
+                "IT_EQUIPMENT",
+                "KITCHEN",
+                "SAFETY",
+                "HYGIENE",
+                "HOUSEHOLD"
             ],
             "feed_endpoint": "get_product_feed",
             "acp_feed_endpoint": "get_acp_feed",

@@ -8,7 +8,7 @@
         "url": "https://jsonmart.xyz/",
         "country": "KR",
         "currency": "KRW",
-        "support_email": "support@jsonmart.io",
+        "support_email": "support@jsonmart.xyz",
         "merchant_category": "B2B Office Supplies & Consumables"
     },
     "capabilities": {
@@ -21,7 +21,14 @@
             "item_count": 50,
             "categories": [
                 "CONSUMABLES",
-                "MRO"
+                "MRO",
+                "FOOD",
+                "OFFICE",
+                "IT_EQUIPMENT",
+                "KITCHEN",
+                "SAFETY",
+                "HYGIENE",
+                "HOUSEHOLD"
             ]
         },
         "checkout": {
@@ -61,7 +68,7 @@
     },
     "api": {
         "type": "supabase_rpc",
-        "base_url": "https://{project_ref}.supabase.co/rest/v1/rpc/",
+        "base_url": "https://psiysvvcusfyfsfozywn.supabase.co/rest/v1/rpc/",
         "authentication": {
             "required": false,
             "note": "Product feed and checkout are public. Order management requires API key."
