@@ -262,6 +262,145 @@ ${fieldList}
 7. **Machine-parseable specs**: fill every spec field with a concrete value`;
 }
 
+// ─── Build prompt for URL page analysis ───
+function buildUrlAnalysisPrompt(pageContent: string, title: string, category: string, fields: { key: string; label: string }[]): string {
+    const fieldList = fields.map(f => `    "${f.key}": ""`).join(',\n');
+
+    return `You are a product data extraction engine for "JSONMart", an AI-agent-only B2B wholesale marketplace.
+You are analyzing a product page HTML/text from an external e-commerce website.
+Extract ALL product information and convert to structured JSON for AI purchasing agents.
+
+## INPUT
+- Product title hint: "${title}"
+- Category hint: "${category}"
+- Page content below:
+
+---PAGE START---
+${pageContent.substring(0, 30000)}
+---PAGE END---
+
+## EXTRACTION PROCEDURE
+1. **Product identification**: Find the main product on this page
+2. **Price extraction**: Find all price points (retail, wholesale, bulk discounts)
+3. **Specifications**: Extract ALL technical specs, dimensions, materials, weights
+4. **Product description**: Read the full description and summarize key points
+5. **Images**: Note image URLs if found (but don't include base64 data)
+6. **Variants**: Identify color/size/style options
+7. **Shipping/MOQ**: Find minimum order quantities, shipping info
+8. **Certifications**: Quality marks, safety certifications
+9. **Brand/Manufacturer**: Identify brand and origin country
+
+## OUTPUT FORMAT
+Return ONLY valid JSON:
+
+{
+  "specs": {
+${fieldList}
+  },
+  "features": [
+    "3-5 key features extracted from the page, specific and quantitative"
+  ],
+  "use_cases": [
+    "2-3 practical use scenarios"
+  ],
+  "care_instructions": [],
+  "warnings": [],
+  "certifications": [],
+  "ai_summary": "One-line summary: key specs + target use + standout feature",
+  "confidence": 0.85,
+  "source_metadata": {
+    "brand": "extracted brand name or empty string",
+    "price_range": "extracted price info or empty string",
+    "variants": "color/size options found or empty string",
+    "shipping_info": "shipping details or empty string",
+    "moq": "minimum order quantity or empty string"
+  }
+}
+
+## RULES
+1. ALL values in English — translate Korean/other languages to English
+2. Standardized units: g, kg, mm, cm, ml, L
+3. Extract REAL data from the page — do not fabricate
+4. If info is not found on the page, use empty string "" or empty array []
+5. Confidence: 0.85-0.95 if page has rich info, 0.5-0.7 if sparse
+6. source_metadata captures extra info not fitting in standard fields`;
+}
+
+// ─── Fetch external URL via Supabase RPC ───
+async function fetchPageContent(url: string): Promise<string | null> {
+    try {
+        const token = localStorage.getItem('supabase_token') || SUPABASE_ANON;
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/fetch_page_content`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'apikey': SUPABASE_ANON,
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({ p_url: url }),
+        });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.success) return data.content;
+            console.warn('Page fetch error:', data.error);
+        }
+    } catch (e) { console.warn('Page fetch failed:', e); }
+    return null;
+}
+
+// ─── Analyze URL with Gemini ───
+async function aiExtractFromUrl(url: string, category: string, title: string): Promise<Partial<ProductDetail> | null> {
+    try {
+        const apiKey = await getGeminiKey();
+        if (!apiKey) return null;
+
+        const pageContent = await fetchPageContent(url);
+        if (!pageContent) return null;
+
+        // Strip HTML tags for cleaner text (keep content)
+        const textContent = pageContent
+            .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+            .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+        const schema = detectSchema(category);
+        const schemaFields = (CATEGORY_SCHEMAS[schema] || CATEGORY_SCHEMAS['default']).fields.map(f => ({ key: f.key, label: f.label }));
+        const prompt = buildUrlAnalysisPrompt(textContent, title, category, schemaFields);
+
+        const geminiRes = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: { temperature: 0.2, maxOutputTokens: 4096, responseMimeType: 'application/json' },
+            }),
+        });
+
+        if (geminiRes.ok) {
+            const geminiData = await geminiRes.json();
+            const text = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (text) {
+                const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+                const parsed = JSON.parse(cleaned);
+                return {
+                    specs: parsed.specs || {},
+                    features: parsed.features || [],
+                    use_cases: parsed.use_cases || [],
+                    care_instructions: parsed.care_instructions || [],
+                    warnings: parsed.warnings || [],
+                    certifications: parsed.certifications || [],
+                    ai_summary: parsed.ai_summary || '',
+                    extracted_by: 'gemini-2.0-flash-url',
+                    extraction_confidence: parsed.confidence || 0.8,
+                };
+            }
+        }
+    } catch (e) { console.warn('URL analysis failed:', e); }
+    return null;
+}
+
 // ─── AI Vision Extraction via Gemini 2.0 Flash (Browser Direct) ───
 async function aiExtractFromImages(images: string[], category: string, title: string): Promise<Partial<ProductDetail>> {
     const schema = detectSchema(category);
@@ -276,7 +415,7 @@ async function aiExtractFromImages(images: string[], category: string, title: st
             const parts: any[] = [{ text: prompt }];
 
             // Attach images if available (fetch and convert to base64)
-            for (const imgUrl of images.filter(Boolean).slice(0, 3)) {
+            for (const imgUrl of images.filter(Boolean).slice(0, 10)) {
                 try {
                     const imgRes = await fetch(imgUrl);
                     if (imgRes.ok) {
@@ -296,7 +435,7 @@ async function aiExtractFromImages(images: string[], category: string, title: st
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     contents: [{ parts }],
-                    generationConfig: { temperature: 0.2, maxOutputTokens: 2048, responseMimeType: 'application/json' },
+                    generationConfig: { temperature: 0.2, maxOutputTokens: 4096, responseMimeType: 'application/json' },
                 }),
             });
 
@@ -414,6 +553,10 @@ export const ProductDetailEditor: React.FC<ProductDetailEditorProps> = ({
     const [extracted, setExtracted] = useState(!!initialDetail?.extracted_by);
     const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({ specs: true, appeal: true });
 
+    // ─── URL Analysis State ───
+    const [productUrl, setProductUrl] = useState('');
+    const [extractingUrl, setExtractingUrl] = useState(false);
+
     // ─── AI Image State ───
     const [detailImages, setDetailImages] = useState<{ url: string; name: string; fromProduct?: boolean }[]>([]);
     const [imageUrlInput, setImageUrlInput] = useState('');
@@ -430,12 +573,12 @@ export const ProductDetailEditor: React.FC<ProductDetailEditorProps> = ({
     // File upload handler
     const handleFileUpload = (files: FileList | null) => {
         if (!files) return;
-        Array.from(files).slice(0, 5).forEach(file => {
+        Array.from(files).slice(0, 10).forEach(file => {
             if (!file.type.startsWith('image/')) return;
             const reader = new FileReader();
             reader.onload = (e) => {
                 const dataUrl = e.target?.result as string;
-                setDetailImages(prev => [...prev, { url: dataUrl, name: file.name }].slice(0, 5));
+                setDetailImages(prev => [...prev, { url: dataUrl, name: file.name }].slice(0, 10));
             };
             reader.readAsDataURL(file);
         });
@@ -445,7 +588,7 @@ export const ProductDetailEditor: React.FC<ProductDetailEditorProps> = ({
     const handleAddImageUrl = () => {
         const url = imageUrlInput.trim();
         if (!url || detailImages.some(img => img.url === url)) return;
-        setDetailImages(prev => [...prev, { url, name: url.split('/').pop() || 'URL 이미지' }].slice(0, 5));
+        setDetailImages(prev => [...prev, { url, name: url.split('/').pop() || 'URL image' }].slice(0, 10));
         setImageUrlInput('');
     };
 
@@ -490,6 +633,29 @@ export const ProductDetailEditor: React.FC<ProductDetailEditorProps> = ({
             console.error('AI extraction failed:', err);
         } finally {
             setExtracting(false);
+        }
+    };
+
+    // ─── URL Page Analysis ───
+    const handleUrlAnalysis = async () => {
+        if (!productUrl.trim()) return;
+        setExtractingUrl(true);
+        try {
+            const result = await aiExtractFromUrl(productUrl.trim(), category, productTitle);
+            if (result) {
+                if (result.specs) setSpecs(prev => ({ ...prev, ...result.specs }));
+                if (result.features) setFeatures(prev => [...new Set([...prev, ...result.features])]);
+                if (result.use_cases) setUseCases(prev => [...new Set([...prev, ...result.use_cases])]);
+                if (result.care_instructions) setCareInstructions(prev => [...new Set([...prev, ...result.care_instructions])]);
+                if (result.warnings) setWarnings(prev => [...new Set([...prev, ...result.warnings])]);
+                if (result.certifications) setCertifications(prev => [...new Set([...prev, ...result.certifications])]);
+                if (result.ai_summary) setAiSummary(result.ai_summary);
+                setExtracted(true);
+            }
+        } catch (err) {
+            console.error('URL analysis failed:', err);
+        } finally {
+            setExtractingUrl(false);
         }
     };
 
@@ -570,6 +736,37 @@ export const ProductDetailEditor: React.FC<ProductDetailEditorProps> = ({
                 </div>
             </div>
 
+            {/* ━━━ URL Page Analysis ━━━ */}
+            <div style={{ marginBottom: 12, borderRadius: 8, border: '1px solid rgba(6,182,212,0.2)', background: 'rgba(6,182,212,0.02)', padding: '10px 12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                    <Zap size={13} style={{ color: 'var(--accent-cyan)' }} />
+                    <span style={{ fontSize: 11, fontWeight: 700 }}>상품 URL 분석</span>
+                    <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>다른 사이트의 상품 페이지를 자동 분석</span>
+                </div>
+                <div style={{ display: 'flex', gap: 4 }}>
+                    <div style={{ position: 'relative', flex: 1 }}>
+                        <Link2 size={11} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                        <input value={productUrl} onChange={e => setProductUrl(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && handleUrlAnalysis()}
+                            placeholder="https://smartstore.naver.com/... 또는 쿠팡 상품 URL"
+                            style={{ ...inputStyle, paddingLeft: 24, fontSize: 10 }} />
+                    </div>
+                    <button onClick={handleUrlAnalysis} disabled={extractingUrl || !productUrl.trim()}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', borderRadius: 6, border: 'none',
+                            background: extractingUrl ? 'var(--border-subtle)' : 'linear-gradient(135deg, #06b6d4, #3b82f6)',
+                            color: '#fff', fontWeight: 700, fontSize: 10, cursor: extractingUrl ? 'wait' : 'pointer', whiteSpace: 'nowrap' as const,
+                            opacity: !productUrl.trim() ? 0.5 : 1,
+                        }}>
+                        {extractingUrl ? <><Loader2 size={11} className="spin" /> 분석 중...</> :
+                            <><Wand2 size={11} /> 페이지 분석</>}
+                    </button>
+                </div>
+                <div style={{ fontSize: 8, color: 'var(--text-muted)', marginTop: 4 }}>
+                    네이버 스마트스토어, 쿠팡, 11번가, G마켓, 도매꾹 등 대부분의 쇼핑몰 지원
+                </div>
+            </div>
+
             {/* ━━━ AI Image Upload Zone ━━━ */}
             <div style={{ marginBottom: 12, borderRadius: 8, border: `1px dashed ${isDragging ? 'var(--accent-purple)' : 'var(--border-subtle)'}`, background: isDragging ? 'rgba(168,85,247,0.04)' : 'transparent', transition: 'all 0.2s' }}>
                 <div style={{ padding: '10px 12px' }}>
@@ -577,7 +774,7 @@ export const ProductDetailEditor: React.FC<ProductDetailEditorProps> = ({
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <Image size={13} style={{ color: 'var(--accent-purple)' }} />
                             <span style={{ fontSize: 11, fontWeight: 700 }}>AI 분석용 이미지</span>
-                            <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>({detailImages.length}/5)</span>
+                            <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>({detailImages.length}/10)</span>
                         </div>
                     </div>
 
