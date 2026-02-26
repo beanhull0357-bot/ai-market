@@ -182,86 +182,84 @@ async function getGeminiKey(): Promise<string | null> {
     return null;
 }
 
-// ─── Build Gemini prompt (expert-level for image + text analysis) ───
+// ─── Build Gemini prompt (English output for AI agent consumption) ───
 function buildGeminiPrompt(title: string, category: string, fields: { key: string; label: string }[], hasImages: boolean): string {
-    const fieldList = fields.map(f => `  "${f.key}": "${f.label} — 이미지나 제목에서 추론한 구체적 값"`).join(',\n');
+    const fieldList = fields.map(f => `    "${f.key}": ""`).join(',\n');
 
-    const imageInstructions = hasImages ? `
-## 🔍 이미지 분석 필수 절차
-이미지가 제공되었습니다. 다음 단계를 반드시 수행하세요:
+    const imageBlock = hasImages ? `
+## IMAGE ANALYSIS PROCEDURE
+Images are provided. Execute these steps:
 
-### 1단계: 텍스트 추출 (OCR)
-- 이미지에 보이는 모든 텍스트를 읽으세요: 라벨, 태그, 포장 문구, 인쇄 글씨
-- 브랜드명, 제조사명, 제품명, 모델번호를 식별하세요
-- 성분표, 영양성분표, 세탁라벨, 인증마크의 텍스트를 해독하세요
-- 크기/용량/중량 표기를 정확히 읽으세요
+1. **OCR**: Read ALL visible text — labels, tags, packaging text, printed info,
+   brand names, model numbers, ingredient lists, care labels, certification marks,
+   weight/volume/dimension markings.
 
-### 2단계: 시각적 속성 분석
-- **소재/재질**: 표면 질감으로 판단 (면, 폴리에스터, 플라스틱, 금속, 가죽, 세라믹 등)
-- **색상**: 정확한 색상명 (예: "라이트 카키" 아닌 "연한 카키베이지") 최대한 자세히
-- **패턴/무늬**: 무지, 스트라이프, 체크, 도트, 카무플라주, 프린트 등
-- **크기/비율**: 이미지의 비례로 추정 가능한 실제 크기나 비율
-- **수량/구성**: 세트 구성, 개별 포장, 묶음 수 등
+2. **Visual attributes**:
+   - Material/texture: identify from surface (cotton, polyester, plastic, metal, leather, etc.)
+   - Color: precise name (e.g. "light khaki beige" not just "brown")
+   - Pattern: solid, striped, checked, printed, camo, etc.
+   - Estimated real-world dimensions from proportions
+   - Quantity/packaging: set composition, individual/bulk packaging
 
-### 3단계: 제품 품질 추정
-- 마감 품질 (깔끔한지, 실밥이 보이는지, 광택 상태 등)
-- 포장 수준 (벌크/간이포장/고급포장/개별포장)
-- 대략적인 가격대 추정 (저가/중가/고가)
+3. **Quality estimation**:
+   - Finish quality (clean stitching, surface condition, gloss)
+   - Packaging level (bulk / basic / premium / individual)
+   - Approximate price tier (budget / mid / premium)
 
-### 4단계: B2B 도매 관점 분석
-- AI 구매 에이전트가 이 상품을 선택할 만한 핵심 포인트
-- 대량 구매 시 고려사항 (보관 방법, 유통기한, 최소 주문량)
-- 재판매 시 어필할 수 있는 특징` : `
-## 텍스트 기반 분석
-이미지가 없으므로 상품 제목과 카테고리만으로 최대한 상세하게 제품 정보를 추론하세요.
-- 한국 도매 시장의 일반적인 상품 특성을 기반으로
-- 일반적으로 이 카테고리 상품에 기대되는 스펙을 채우세요`;
+4. **B2B wholesale perspective**:
+   - Key selling points for an AI purchasing agent
+   - Bulk purchase considerations (storage, shelf life, MOQ)
+   - Resale appeal factors` : `
+## TEXT-ONLY ANALYSIS
+No images provided. Infer product details from title and category.
+Use typical specifications for this category in Korean wholesale markets.
+Mark inferred values with "(estimated)".`;
 
-    return `당신은 한국 B2B 도매 마켓플레이스 "JSONMart"의 AI 상품 분석 전문가입니다.
-AI 구매 에이전트가 구매 결정을 할 때 참고하는 구조화된 상품 정보를 생성합니다.
+    return `You are a product data extraction engine for "JSONMart", an AI-agent-only B2B wholesale marketplace.
+Your output is consumed EXCLUSIVELY by AI purchasing agents — NOT humans.
+Output must be in ENGLISH, machine-optimized, and standardized for programmatic comparison.
 
-## 분석 대상
-- 상품명: "${title}"
-- 카테고리: "${category}"
-${imageInstructions}
+## INPUT
+- Product title (Korean): "${title}"
+- Category: "${category}"
+${imageBlock}
 
-## 반환할 JSON 구조
-다음 형식의 JSON만 반환하세요 (코드블록이나 설명 없이):
+## OUTPUT FORMAT
+Return ONLY valid JSON (no markdown, no code fences, no explanation):
 
 {
   "specs": {
 ${fieldList}
   },
   "features": [
-    "구매 결정에 영향을 주는 주요 특징 3-5개 (한국어, 구체적으로)",
-    "예: '면 60% + 폴리 40% 혼방으로 통기성과 형태 유지 우수'",
-    "예: '56-59cm 프리사이즈로 대부분의 성인 착용 가능'"
+    "3-5 key product features that affect purchasing decisions",
+    "Be specific and quantitative: 'Cotton 60% + Polyester 40% blend, breathable with shape retention'",
+    "NOT vague: 'Good quality material'"
   ],
   "use_cases": [
-    "이 상품의 실제 활용 상황 2-3개",
-    "예: '아웃도어 활동 시 자외선 차단 및 스타일링'"
+    "2-3 practical use scenarios for this product"
   ],
   "care_instructions": [
-    "관리/보관/세탁 방법 (해당 시)"
+    "Storage, maintenance, or washing instructions if applicable"
   ],
   "warnings": [
-    "구매 전 주의사항이나 제한사항 (해당 시)"
+    "Purchase considerations or limitations if any"
   ],
   "certifications": [
-    "이미지에서 확인된 인증마크나 품질 표시 (KC, CE, FDA 등)"
+    "Quality marks identified from image or inferred (KC, CE, FDA, etc.)"
   ],
-  "ai_summary": "AI 에이전트가 1초 만에 이 상품을 파악할 수 있는 한국어 한줄 요약. 핵심 스펙 + 타겟 용도를 포함하세요. 예: '면혼방 프리사이즈 캐주얼 볼캡, 남녀공용 4계절 활용'",
+  "ai_summary": "Single-line summary for AI agent quick scan. Include: key material + key spec + target use. Example: 'Cotton-poly blend unisex ballcap, free-size 56-59cm, adjustable snapback, 4-season casual wear'",
   "confidence": 0.85
 }
 
-## 품질 규칙
-1. **구체적인 값만**: "좋은 품질" 같은 모호한 표현 금지. "면 60% 폴리 40% 혼방" 같이 구체적으로
-2. **한국어로 작성**: specs의 값, features, ai_summary 모두 한국어
-3. **이미지 우선**: 이미지 정보가 제목과 다르면 이미지를 우선
-4. **추론 근거 명시**: 확실하지 않은 정보는 "추정" 표기
-5. **빈 배열 허용**: 해당 없는 항목은 빈 배열 [] 반환
-6. **confidence**: 이미지가 선명하고 정보가 풍부하면 0.9+, 이미지 없이 추론만이면 0.6-0.7
-7. **specs 핵심**: specs의 각 필드는 이미지에서 확인되거나 제목에서 추론된 실제 값으로 채우세요`;
+## RULES
+1. **ALL values in English** — translate Korean product info to English
+2. **Standardized units**: g, kg, mm, cm, ml, L (no Korean units)
+3. **Specific values only**: "Cotton 60% Polyester 40%" NOT "mixed fabric"
+4. **Image over title**: if image contradicts title, trust the image
+5. **Empty arrays OK**: return [] for non-applicable fields
+6. **Confidence scoring**: 0.85-0.95 with good images, 0.5-0.7 text-only inference
+7. **Machine-parseable specs**: fill every spec field with a concrete value`;
 }
 
 // ─── AI Vision Extraction via Gemini 2.0 Flash (Browser Direct) ───
