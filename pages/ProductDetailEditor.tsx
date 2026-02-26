@@ -326,8 +326,28 @@ ${fieldList}
 6. source_metadata captures extra info not fitting in standard fields`;
 }
 
-// ─── Fetch external URL via Supabase RPC ───
+// ─── Fetch external URL via multiple methods (with fallbacks) ───
 async function fetchPageContent(url: string): Promise<string | null> {
+    // Method 1: Try CORS proxy (works immediately, no setup needed)
+    const corsProxies = [
+        (u: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+        (u: string) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+    ];
+
+    for (const proxyFn of corsProxies) {
+        try {
+            const proxyUrl = proxyFn(url);
+            const res = await fetch(proxyUrl, {
+                headers: { 'Accept': 'text/html,application/xhtml+xml,*/*' },
+            });
+            if (res.ok) {
+                const text = await res.text();
+                if (text && text.length > 200) return text;
+            }
+        } catch { /* try next proxy */ }
+    }
+
+    // Method 2: Try Supabase RPC (if SQL was executed)
     try {
         const token = localStorage.getItem('supabase_token') || SUPABASE_ANON;
         const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/fetch_page_content`, {
@@ -341,10 +361,16 @@ async function fetchPageContent(url: string): Promise<string | null> {
         });
         if (res.ok) {
             const data = await res.json();
-            if (data.success) return data.content;
-            console.warn('Page fetch error:', data.error);
+            if (data?.success && data?.content) return data.content;
         }
-    } catch (e) { console.warn('Page fetch failed:', e); }
+    } catch { /* RPC not available */ }
+
+    // Method 3: Direct fetch (may fail due to CORS, but some sites allow it)
+    try {
+        const res = await fetch(url, { mode: 'cors' });
+        if (res.ok) return await res.text();
+    } catch { /* CORS blocked */ }
+
     return null;
 }
 
@@ -352,18 +378,30 @@ async function fetchPageContent(url: string): Promise<string | null> {
 async function aiExtractFromUrl(url: string, category: string, title: string): Promise<Partial<ProductDetail> | null> {
     try {
         const apiKey = await getGeminiKey();
-        if (!apiKey) return null;
+        if (!apiKey) {
+            console.warn('URL analysis: Gemini API key not found');
+            return null;
+        }
 
         const pageContent = await fetchPageContent(url);
-        if (!pageContent) return null;
+        if (!pageContent) {
+            console.warn('URL analysis: Could not fetch page content');
+            return null;
+        }
 
         // Strip HTML tags for cleaner text (keep content)
         const textContent = pageContent
             .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
             .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
             .replace(/<[^>]+>/g, ' ')
+            .replace(/&[a-z]+;/gi, ' ')
             .replace(/\s+/g, ' ')
             .trim();
+
+        if (textContent.length < 100) {
+            console.warn('URL analysis: Page content too short after cleanup:', textContent.length);
+            return null;
+        }
 
         const schema = detectSchema(category);
         const schemaFields = (CATEGORY_SCHEMAS[schema] || CATEGORY_SCHEMAS['default']).fields.map(f => ({ key: f.key, label: f.label }));
@@ -396,6 +434,9 @@ async function aiExtractFromUrl(url: string, category: string, title: string): P
                     extraction_confidence: parsed.confidence || 0.8,
                 };
             }
+        } else {
+            const errData = await geminiRes.json().catch(() => ({}));
+            console.warn('URL analysis Gemini error:', geminiRes.status, errData);
         }
     } catch (e) { console.warn('URL analysis failed:', e); }
     return null;
@@ -651,9 +692,13 @@ export const ProductDetailEditor: React.FC<ProductDetailEditorProps> = ({
                 if (result.certifications) setCertifications(prev => [...new Set([...prev, ...result.certifications])]);
                 if (result.ai_summary) setAiSummary(result.ai_summary);
                 setExtracted(true);
+                alert('✅ URL 분석 완료! 상품 정보가 자동으로 채워졌습니다.');
+            } else {
+                alert('❌ URL 분석 실패\n\n가능한 원인:\n• 해당 사이트가 외부 접근을 차단하고 있습니다\n• URL이 유효한 상품 페이지가 아닙니다\n• Gemini API 키를 확인해주세요\n\n💡 이미지 업로드 방식을 대신 사용해보세요');
             }
         } catch (err) {
             console.error('URL analysis failed:', err);
+            alert('❌ URL 분석 중 오류가 발생했습니다. 콘솔을 확인해주세요.');
         } finally {
             setExtractingUrl(false);
         }
