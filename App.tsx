@@ -481,6 +481,7 @@ export default function App() {
                     <Route path="/a2a-market" element={<A2AMarket />} />
                     <Route path="/workflow-builder" element={<WorkflowBuilder />} />
                     <Route path="/agent-storefront" element={<SellerAgentStorefront />} />
+                    <Route path="*" element={<Landing />} />
                   </Routes>
                 </Layout>
               } />

@@ -94,9 +94,8 @@
             0,
             100
         ],
-        "average_trust_score": 85,
-        "total_products": 50,
-        "total_reviews": 18
+        "stats_api": "https://psiysvvcusfyfsfozywn.supabase.co/rest/v1/rpc/get_public_analytics",
+        "stats_note": "Call stats_api for real-time total_products, total_reviews, and average_trust_score"
     },
     "compliance": {
         "data_handling": "All data processed via Supabase (SOC2 certified). No PII stored without consent.",

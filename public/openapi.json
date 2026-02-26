@@ -15,12 +15,12 @@
     },
     "servers": [
         {
-            "url": "https://api.jsonmart.xyz/v1",
-            "description": "Production API"
+            "url": "https://psiysvvcusfyfsfozywn.supabase.co/rest/v1/rpc",
+            "description": "JSONMart Production API (Supabase RPC)"
         },
         {
-            "url": "https://api.jsonmart.xyz/sandbox",
-            "description": "Sandbox (no real charges)"
+            "url": "https://psiysvvcusfyfsfozywn.supabase.co/functions/v1/jsonmart-api",
+            "description": "JSONMart REST API (Edge Function)"
         }
     ],
     "security": [

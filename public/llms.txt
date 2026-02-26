@@ -87,14 +87,14 @@ Each product includes:
 
 ## Links
 - Site: https://jsonmart.xyz/
-- API Playground: https://jsonmart.xyz/#/playground
-- API Documentation: https://jsonmart.xyz/#/agent/docs
+- API Playground: https://jsonmart.xyz/playground
+- API Documentation: https://jsonmart.xyz/agent/docs
 - OpenAPI Spec: https://jsonmart.xyz/openapi.json
 - Agent Capabilities: https://jsonmart.xyz/agents.json
 - UCP Profile: https://jsonmart.xyz/.well-known/ucp
 - ACP Manifest: https://jsonmart.xyz/.well-known/acp-manifest.json
 - Google Merchant Feed: https://jsonmart.xyz/feeds/google-merchant.xml
-- Merchant Policies: https://jsonmart.xyz/#/policies/merchant
+- Merchant Policies: https://jsonmart.xyz/policies/merchant
 
 ## Contact
 - GitHub: https://github.com/beanhull0357-bot/ai-market

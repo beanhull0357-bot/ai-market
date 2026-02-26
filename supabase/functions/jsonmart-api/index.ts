@@ -198,6 +198,14 @@ serve(async (req: Request) => {
                 if (!apiKey) return json({ error: 'x-api-key header required for create_order' }, 401);
                 if (!args.sku || !args.quantity) return json({ error: 'sku and quantity required' }, 400);
 
+                // I-2 fix: Input validation
+                const sku = String(args.sku).trim();
+                if (sku.length === 0 || sku.length > 100) return json({ error: 'sku must be 1-100 characters' }, 400);
+                const quantity = Math.floor(Number(args.quantity));
+                if (!Number.isFinite(quantity) || quantity < 1 || quantity > 9999) {
+                    return json({ error: 'quantity must be an integer between 1 and 9999' }, 400);
+                }
+
                 /**
                  * payment_method 파라미터
                  *   - "wallet" : 지갑 잔액 즉시 차감 → API 에이전트용 (자동화, 고속)
@@ -208,12 +216,12 @@ serve(async (req: Request) => {
                 const { data: product } = await supabase
                     .from('products')
                     .select('sku, title, price, seller_id, seller_name')
-                    .eq('sku', args.sku)
+                    .eq('sku', sku)
                     .single();
-                if (!product) return json({ error: `Product not found: ${args.sku}` }, 404);
+                if (!product) return json({ error: `Product not found: ${sku}` }, 404);
 
                 const unitPrice = product.price || 0;
-                const totalPrice = unitPrice * args.quantity;
+                const totalPrice = unitPrice * quantity;
                 const orderId = `ORD-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
 
                 // ── API 키로 실제 agent_id 조회 (파생 방식 제거) ──────────────

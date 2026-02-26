@@ -9,7 +9,7 @@ info:
 
 servers:
   - url: https://psiysvvcusfyfsfozywn.supabase.co/functions/v1
-    description: JSONMart Production API
+    description: JSONMart Production API (Supabase Edge Function)
 
 paths:
   /jsonmart-api:

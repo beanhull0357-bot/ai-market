@@ -495,23 +495,53 @@ server.tool(
     }
 );
 
-// ── check_order_status ──
+// ── check_order_status ── (I-1 fix: use RPC to bypass RLS)
 server.tool(
     'check_order_status',
-    '주문 번호로 주문 상태 조회',
+    '주문 번호로 주문 상태 조회. API 키가 있으면 상세 정보를, 없으면 기본 상태만 반환합니다.',
     {
-        order_id: z.string().describe('주문 번호'),
+        order_id: z.string().describe('주문 번호 (예: "ORD-20260224-XXXXX")'),
+        api_key: z.string().optional().describe('에이전트 API 키 (선택, 상세 정보 조회 시 필요)'),
     },
-    async ({ order_id }) => {
+    async ({ order_id, api_key }) => {
         try {
-            const { data } = await supabaseQuery('orders', {
-                select: '*',
-                filters: { order_id: `eq.${order_id}` },
-                single: true,
+            // Use RPC for authenticated order lookup (bypasses RLS)
+            const result = await supabaseRpc('get_order_status', {
+                p_order_id: order_id,
+                p_api_key: api_key || null,
             });
-            return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+            return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+        } catch (err) {
+            // Fallback: try direct query (works if RLS allows public read)
+            try {
+                const { data } = await supabaseQuery('orders', {
+                    select: 'order_id,status,payment_status,payment_method,sku,product_title,quantity,total_price,created_at',
+                    filters: { order_id: `eq.${order_id}` },
+                    single: true,
+                });
+                return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+            } catch {
+                return { content: [{ type: 'text', text: JSON.stringify({ error: `Order not found: ${order_id}` }) }] };
+            }
+        }
+    }
+);
+
+// ── check_registration_status ── (I-4: agents can check status without API key)
+server.tool(
+    'check_registration_status',
+    '에이전트 등록 상태 확인. 등록 후 API 키가 발급되기 전에 사용합니다.',
+    {
+        agent_id: z.string().describe('등록 시 받은 에이전트 ID (예: "AGT-1A2B3C")'),
+    },
+    async ({ agent_id }) => {
+        try {
+            const result = await supabaseRpc('check_registration_status', {
+                p_agent_id: agent_id,
+            });
+            return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
         } catch {
-            return { content: [{ type: 'text', text: JSON.stringify({ error: `Order not found: ${order_id}` }) }] };
+            return { content: [{ type: 'text', text: JSON.stringify({ error: `Agent not found: ${agent_id}` }) }] };
         }
     }
 );
@@ -520,9 +550,9 @@ server.tool(
 async function main() {
     const transport = new StdioServerTransport();
     await server.connect(transport);
-    process.stderr.write(`JSONMart MCP Server v3.0.0 running on stdio\n`);
+    process.stderr.write(`JSONMart MCP Server v3.1.0 running on stdio\n`);
     process.stderr.write(`  Supabase URL: ${SUPABASE_URL.substring(0, 30)}...\n`);
-    process.stderr.write(`  Tools: register_agent, count_products, search_products, get_product_detail, compare_products, list_promotions, create_order, submit_review, check_order_status\n`);
+    process.stderr.write(`  Tools: register_agent, count_products, search_products, get_product_detail, compare_products, list_promotions, create_order, submit_review, check_order_status, check_registration_status\n`);
 }
 
 main().catch(err => {
