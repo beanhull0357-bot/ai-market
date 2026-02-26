@@ -597,6 +597,8 @@ export const ProductDetailEditor: React.FC<ProductDetailEditorProps> = ({
     // ─── URL Analysis State ───
     const [productUrl, setProductUrl] = useState('');
     const [extractingUrl, setExtractingUrl] = useState(false);
+    const [pastedContent, setPastedContent] = useState('');
+    const [showPasteArea, setShowPasteArea] = useState(false);
 
     // ─── AI Image State ───
     const [detailImages, setDetailImages] = useState<{ url: string; name: string; fromProduct?: boolean }[]>([]);
@@ -684,24 +686,95 @@ export const ProductDetailEditor: React.FC<ProductDetailEditorProps> = ({
         try {
             const result = await aiExtractFromUrl(productUrl.trim(), category, productTitle);
             if (result) {
-                if (result.specs) setSpecs(prev => ({ ...prev, ...result.specs }));
-                if (result.features) setFeatures(prev => [...new Set([...prev, ...result.features])]);
-                if (result.use_cases) setUseCases(prev => [...new Set([...prev, ...result.use_cases])]);
-                if (result.care_instructions) setCareInstructions(prev => [...new Set([...prev, ...result.care_instructions])]);
-                if (result.warnings) setWarnings(prev => [...new Set([...prev, ...result.warnings])]);
-                if (result.certifications) setCertifications(prev => [...new Set([...prev, ...result.certifications])]);
-                if (result.ai_summary) setAiSummary(result.ai_summary);
-                setExtracted(true);
+                applyAiResult(result);
                 alert('✅ URL 분석 완료! 상품 정보가 자동으로 채워졌습니다.');
             } else {
-                alert('❌ URL 분석 실패\n\n가능한 원인:\n• 해당 사이트가 외부 접근을 차단하고 있습니다\n• URL이 유효한 상품 페이지가 아닙니다\n• Gemini API 키를 확인해주세요\n\n💡 이미지 업로드 방식을 대신 사용해보세요');
+                setShowPasteArea(true);
+                alert('❌ URL 자동 분석 실패 (사이트가 외부 접근을 차단합니다)\n\n💡 아래 "페이지 내용 붙여넣기" 영역에 상품 페이지의 텍스트를 \n복사해서 붙여넣으세요 (Ctrl+A → Ctrl+C)');
             }
         } catch (err) {
             console.error('URL analysis failed:', err);
-            alert('❌ URL 분석 중 오류가 발생했습니다. 콘솔을 확인해주세요.');
+            setShowPasteArea(true);
         } finally {
             setExtractingUrl(false);
         }
+    };
+
+    // ─── Paste Content Analysis ───
+    const handlePasteAnalysis = async () => {
+        if (!pastedContent.trim() || pastedContent.trim().length < 50) {
+            alert('상품 페이지의 내용을 붙여넣으세요 (최소 50자 이상)');
+            return;
+        }
+        setExtractingUrl(true);
+        try {
+            const apiKey = await getGeminiKey();
+            if (!apiKey) { alert('Gemini API 키를 확인해주세요'); return; }
+
+            // Clean the pasted content
+            const textContent = pastedContent
+                .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+                .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+                .replace(/<[^>]+>/g, ' ')
+                .replace(/&[a-z]+;/gi, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+
+            const schema = detectSchema(category);
+            const schemaFields = (CATEGORY_SCHEMAS[schema] || CATEGORY_SCHEMAS['default']).fields.map(f => ({ key: f.key, label: f.label }));
+            const prompt = buildUrlAnalysisPrompt(textContent, productTitle, category, schemaFields);
+
+            const geminiRes = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: { temperature: 0.2, maxOutputTokens: 4096, responseMimeType: 'application/json' },
+                }),
+            });
+
+            if (geminiRes.ok) {
+                const geminiData = await geminiRes.json();
+                const text = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (text) {
+                    const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+                    const parsed = JSON.parse(cleaned);
+                    applyAiResult({
+                        specs: parsed.specs || {},
+                        features: parsed.features || [],
+                        use_cases: parsed.use_cases || [],
+                        care_instructions: parsed.care_instructions || [],
+                        warnings: parsed.warnings || [],
+                        certifications: parsed.certifications || [],
+                        ai_summary: parsed.ai_summary || '',
+                        extracted_by: 'gemini-2.0-flash-paste',
+                        extraction_confidence: parsed.confidence || 0.8,
+                    });
+                    alert('✅ 붙여넣기 분석 완료! 상품 정보가 채워졌습니다.');
+                    setPastedContent('');
+                    setShowPasteArea(false);
+                    return;
+                }
+            }
+            alert('❌ 분석 실패. 더 많은 상품 정보를 붙여넣어 보세요.');
+        } catch (err) {
+            console.error('Paste analysis failed:', err);
+            alert('❌ 분석 중 오류가 발생했습니다.');
+        } finally {
+            setExtractingUrl(false);
+        }
+    };
+
+    // ─── Apply AI result helper ───
+    const applyAiResult = (result: Partial<ProductDetail>) => {
+        if (result.specs) setSpecs(prev => ({ ...prev, ...result.specs }));
+        if (result.features) setFeatures(prev => [...new Set([...prev, ...result.features])]);
+        if (result.use_cases) setUseCases(prev => [...new Set([...prev, ...result.use_cases])]);
+        if (result.care_instructions) setCareInstructions(prev => [...new Set([...prev, ...result.care_instructions])]);
+        if (result.warnings) setWarnings(prev => [...new Set([...prev, ...result.warnings])]);
+        if (result.certifications) setCertifications(prev => [...new Set([...prev, ...result.certifications])]);
+        if (result.ai_summary) setAiSummary(result.ai_summary);
+        setExtracted(true);
     };
 
     // ─── Spec field change ───
@@ -785,15 +858,17 @@ export const ProductDetailEditor: React.FC<ProductDetailEditorProps> = ({
             <div style={{ marginBottom: 12, borderRadius: 8, border: '1px solid rgba(6,182,212,0.2)', background: 'rgba(6,182,212,0.02)', padding: '10px 12px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
                     <Zap size={13} style={{ color: 'var(--accent-cyan)' }} />
-                    <span style={{ fontSize: 11, fontWeight: 700 }}>상품 URL 분석</span>
-                    <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>다른 사이트의 상품 페이지를 자동 분석</span>
+                    <span style={{ fontSize: 11, fontWeight: 700 }}>상품 페이지 분석</span>
+                    <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>다른 사이트의 상품 정보를 자동 변환</span>
                 </div>
-                <div style={{ display: 'flex', gap: 4 }}>
+
+                {/* URL Input Row */}
+                <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
                     <div style={{ position: 'relative', flex: 1 }}>
                         <Link2 size={11} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                         <input value={productUrl} onChange={e => setProductUrl(e.target.value)}
                             onKeyDown={e => e.key === 'Enter' && handleUrlAnalysis()}
-                            placeholder="https://smartstore.naver.com/... 또는 쿠팡 상품 URL"
+                            placeholder="https://smartstore.naver.com/... (URL 자동 분석)"
                             style={{ ...inputStyle, paddingLeft: 24, fontSize: 10 }} />
                     </div>
                     <button onClick={handleUrlAnalysis} disabled={extractingUrl || !productUrl.trim()}
@@ -803,13 +878,43 @@ export const ProductDetailEditor: React.FC<ProductDetailEditorProps> = ({
                             color: '#fff', fontWeight: 700, fontSize: 10, cursor: extractingUrl ? 'wait' : 'pointer', whiteSpace: 'nowrap' as const,
                             opacity: !productUrl.trim() ? 0.5 : 1,
                         }}>
-                        {extractingUrl ? <><Loader2 size={11} className="spin" /> 분석 중...</> :
-                            <><Wand2 size={11} /> 페이지 분석</>}
+                        {extractingUrl && !showPasteArea ? <><Loader2 size={11} className="spin" /> 분석 중...</> :
+                            <><Wand2 size={11} /> 자동 분석</>}
                     </button>
                 </div>
-                <div style={{ fontSize: 8, color: 'var(--text-muted)', marginTop: 4 }}>
-                    네이버 스마트스토어, 쿠팡, 11번가, G마켓, 도매꾹 등 대부분의 쇼핑몰 지원
+
+                {/* Toggle paste area */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: showPasteArea ? 6 : 0 }}>
+                    <button onClick={() => setShowPasteArea(!showPasteArea)}
+                        style={{ background: 'none', border: 'none', color: 'var(--accent-cyan)', fontSize: 9, cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 3 }}>
+                        <FileText size={10} />
+                        {showPasteArea ? '접기 ▲' : '📋 직접 붙여넣기 (쿠팡 등 차단된 사이트용) ▼'}
+                    </button>
                 </div>
+
+                {/* Paste Area */}
+                {showPasteArea && (
+                    <div style={{ marginTop: 4 }}>
+                        <textarea value={pastedContent} onChange={e => setPastedContent(e.target.value)}
+                            placeholder={'상품 페이지에서 텍스트를 복사해서 붙여넣으세요\n\n방법: 상품 페이지 방문 → Ctrl+A (전체선택) → Ctrl+C (복사) → 여기에 Ctrl+V (붙여넣기)\n\n또는 상품명, 가격, 설명, 스펙 등을 직접 입력해도 됩니다'}
+                            style={{ ...inputStyle, height: 100, resize: 'vertical' as const, fontSize: 10, fontFamily: 'inherit' }} />
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                            <span style={{ fontSize: 8, color: 'var(--text-muted)' }}>
+                                {pastedContent.length > 0 ? `${pastedContent.length.toLocaleString()}자 입력됨` : '최소 50자 이상 필요'}
+                            </span>
+                            <button onClick={handlePasteAnalysis} disabled={extractingUrl || pastedContent.trim().length < 50}
+                                style={{
+                                    display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 6, border: 'none',
+                                    background: extractingUrl ? 'var(--border-subtle)' : 'linear-gradient(135deg, #8b5cf6, #06b6d4)',
+                                    color: '#fff', fontWeight: 700, fontSize: 10, cursor: extractingUrl ? 'wait' : 'pointer',
+                                    opacity: pastedContent.trim().length < 50 ? 0.5 : 1,
+                                }}>
+                                {extractingUrl ? <><Loader2 size={11} className="spin" /> 분석 중...</> :
+                                    <><Sparkles size={11} /> 붙여넣기 분석</>}
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* ━━━ AI Image Upload Zone ━━━ */}
