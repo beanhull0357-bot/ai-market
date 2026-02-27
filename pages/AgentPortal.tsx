@@ -115,15 +115,7 @@ const OrdersTab: React.FC<{ agentId: string }> = ({ agentId }) => {
                                 marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.06)',
                                 display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12,
                             }}>
-                                {/* ── 공통 주문 정보 (모든 상품) ── */}
-                                <div>
-                                    <span style={{ color: 'var(--text-tertiary)' }}>상품출처: </span>
-                                    <span style={{
-                                        padding: '1px 6px', borderRadius: 4, fontSize: 10, fontWeight: 600,
-                                        background: o.source === 'domeggook' ? 'rgba(234,179,8,0.15)' : 'rgba(34,197,94,0.15)',
-                                        color: o.source === 'domeggook' ? '#eab308' : '#22c55e',
-                                    }}>{o.source === 'domeggook' ? '도매꾹 위탁' : o.seller_id ? '셀러 직접' : '직접 등록'}</span>
-                                </div>
+                                {/* ── 공통 주문 정보 ── */}
                                 <div>
                                     <span style={{ color: 'var(--text-tertiary)' }}>결제방식: </span>
                                     <span style={{ color: 'var(--text-primary)' }}>{o.payment_method || 'payapp'}</span>
