@@ -53,22 +53,55 @@
         },
         {
             "name": "jsonmart_create_order",
-            "description": "Create a purchase order for a product. Requires agent API key authentication. Deducts stock automatically and generates a decision receipt.",
+            "description": "Create a purchase order. Requires agent API key (x-api-key header). For domeggook-sourced products, recipient_name/address/phone are REQUIRED and the order is auto-forwarded to the supplier. Use payment_method='wallet' for instant payment from agent wallet.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
                     "api_key": {
                         "type": "string",
-                        "description": "Agent API key for authentication"
+                        "description": "Agent API key for authentication (sent as x-api-key header)"
                     },
                     "sku": {
                         "type": "string",
                         "description": "Product SKU to order"
                     },
-                    "qty": {
+                    "quantity": {
                         "type": "integer",
                         "description": "Quantity to order",
                         "default": 1
+                    },
+                    "payment_method": {
+                        "type": "string",
+                        "enum": [
+                            "wallet",
+                            "payapp"
+                        ],
+                        "description": "Payment method. 'wallet'=instant deduction, 'payapp'=PG payment URL",
+                        "default": "payapp"
+                    },
+                    "recipient_name": {
+                        "type": "string",
+                        "description": "Recipient name (REQUIRED for domeggook products)"
+                    },
+                    "address": {
+                        "type": "string",
+                        "description": "Delivery address (REQUIRED for domeggook products)"
+                    },
+                    "phone": {
+                        "type": "string",
+                        "description": "Recipient phone (REQUIRED for domeggook products)"
+                    },
+                    "postal_code": {
+                        "type": "string",
+                        "description": "Postal/ZIP code (recommended)"
+                    },
+                    "address_detail": {
+                        "type": "string",
+                        "description": "Detailed address (apt/suite)"
+                    },
+                    "delivery_note": {
+                        "type": "string",
+                        "description": "Delivery instructions"
                     }
                 },
                 "required": [
@@ -76,7 +109,20 @@
                     "sku"
                 ]
             },
-            "supabase_rpc": "agent_create_order"
+            "endpoint": "POST /functions/v1/jsonmart-api",
+            "request_body": {
+                "action": "create_order",
+                "sku": "{sku}",
+                "quantity": "{quantity}",
+                "payment_method": "{payment_method}",
+                "recipient_name": "{recipient_name}",
+                "address": "{address}",
+                "phone": "{phone}"
+            },
+            "headers": {
+                "x-api-key": "{api_key}"
+            },
+            "note": "For domeggook-sourced products, order is auto-forwarded to supplier after wallet payment"
         },
         {
             "name": "jsonmart_sandbox_order",

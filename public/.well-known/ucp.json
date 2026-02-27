@@ -1,0 +1,25 @@
+{
+    "schema_version": "1.0",
+    "protocol": "universal-commerce-protocol",
+    "merchant": {
+        "name": "JSONMart",
+        "url": "https://jsonmart.xyz",
+        "description": "AI Agent-Native Commerce Platform"
+    },
+    "endpoints": {
+        "create_session": "https://psiysvvcusfyfsfozywn.supabase.co/rest/v1/rpc/ucp_create_session",
+        "complete_session": "https://psiysvvcusfyfsfozywn.supabase.co/rest/v1/rpc/ucp_complete_session",
+        "product_feed": "https://psiysvvcusfyfsfozywn.supabase.co/rest/v1/rpc/get_acp_feed"
+    },
+    "capabilities": {
+        "multi_item_cart": true,
+        "stock_validation": true,
+        "payment_model": "authorize_capture",
+        "auth_hold_hours": 24,
+        "currency": "KRW"
+    },
+    "authentication": {
+        "method": "api_key",
+        "header": "x-api-key"
+    }
+}

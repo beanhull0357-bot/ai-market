@@ -34,11 +34,28 @@
         },
         "order_creation": {
             "enabled": true,
-            "endpoint": "agent_create_order",
-            "payment_model": "authorize_capture",
-            "auth_hold_hours": 24,
-            "admin_approval_required": true,
-            "description": "Create purchase orders with automatic policy validation. 24h auth hold with admin approval."
+            "endpoint": "POST /functions/v1/jsonmart-api",
+            "payment_methods": [
+                "wallet",
+                "payapp"
+            ],
+            "wallet_description": "Instant deduction from agent wallet balance (payment_method: 'wallet')",
+            "payapp_description": "PG payment URL returned for browser-based payment (default)",
+            "shipping_info": {
+                "required_for": "domeggook-sourced products",
+                "fields": [
+                    "recipient_name",
+                    "address",
+                    "phone"
+                ],
+                "optional_fields": [
+                    "postal_code",
+                    "address_detail",
+                    "delivery_note"
+                ]
+            },
+            "auto_procurement": "Orders for domeggook products are automatically forwarded to supplier after payment",
+            "description": "Create purchase orders via Edge Function. Supports wallet instant payment and PG payment."
         },
         "ucp_checkout": {
             "enabled": true,

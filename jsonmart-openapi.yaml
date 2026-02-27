@@ -94,6 +94,29 @@ paths:
                   type: integer
                   description: "[create_order] Order quantity"
                   minimum: 1
+                payment_method:
+                  type: string
+                  enum: [wallet, payapp]
+                  description: "[create_order] Payment method. 'wallet' = instant deduction from agent wallet. 'payapp' = returns PG payment URL (default)"
+                  default: payapp
+                recipient_name:
+                  type: string
+                  description: "[create_order] Recipient name (REQUIRED for domeggook-sourced products)"
+                address:
+                  type: string
+                  description: "[create_order] Delivery address (REQUIRED for domeggook-sourced products)"
+                address_detail:
+                  type: string
+                  description: "[create_order] Detailed address (apartment/suite number)"
+                postal_code:
+                  type: string
+                  description: "[create_order] Postal/ZIP code (recommended)"
+                phone:
+                  type: string
+                  description: "[create_order] Recipient phone number (REQUIRED for domeggook-sourced products)"
+                delivery_note:
+                  type: string
+                  description: "[create_order] Delivery instructions"
                 policy_id:
                   type: string
                   description: "[create_order] Agent policy ID (optional)"
@@ -128,6 +151,10 @@ paths:
                   action: create_order
                   sku: "WW-001"
                   quantity: 10
+                  payment_method: "wallet"
+                  recipient_name: "홍길동"
+                  address: "서울시 강남구 테헤란로 123"
+                  phone: "010-1234-5678"
               check_order:
                 summary: Check order status
                 value:

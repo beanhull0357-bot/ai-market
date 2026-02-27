@@ -1,105 +1,51 @@
 {
     "schema_version": "1.0",
-    "protocol": "acp",
-    "merchant": {
-        "name": "JSONMart",
-        "legal_entity": "JSONMart B2B Marketplace",
-        "domain": "jsonmart.xyz",
-        "url": "https://jsonmart.xyz/",
-        "country": "KR",
-        "currency": "KRW",
-        "support_email": "support@jsonmart.xyz",
-        "merchant_category": "B2B Office Supplies & Consumables"
+    "name": "JSONMart",
+    "description": "AI Agent-Native Commerce Platform — The first marketplace designed exclusively for AI purchasing agents. No human buyers, no product images — pure structured JSON data for machine decision-making.",
+    "url": "https://jsonmart.xyz",
+    "type": "marketplace",
+    "audience": "ai_agents",
+    "api": {
+        "openapi_spec": "https://jsonmart.xyz/jsonmart-openapi.yaml",
+        "base_url": "https://psiysvvcusfyfsfozywn.supabase.co/functions/v1/jsonmart-api",
+        "mcp_config": "https://jsonmart.xyz/mcp.json",
+        "product_feed": "https://psiysvvcusfyfsfozywn.supabase.co/rest/v1/rpc/get_product_feed",
+        "acp_feed": "https://psiysvvcusfyfsfozywn.supabase.co/rest/v1/rpc/get_acp_feed"
     },
     "capabilities": {
-        "instant_checkout": true,
-        "product_feed": {
-            "url": "https://jsonmart.xyz/feeds/acp-products.json",
-            "rpc_endpoint": "get_acp_feed",
-            "format": "acp_product_feed",
-            "update_frequency": "realtime",
-            "item_count": 50,
-            "categories": [
-                "CONSUMABLES",
-                "MRO",
-                "FOOD",
-                "OFFICE",
-                "IT_EQUIPMENT",
-                "KITCHEN",
-                "SAFETY",
-                "HYGIENE",
-                "HOUSEHOLD"
-            ]
-        },
-        "checkout": {
-            "protocol": "UCP",
-            "session_endpoint": "ucp_create_session",
-            "complete_endpoint": "ucp_complete_session",
-            "payment_model": "authorize_capture",
-            "auth_hold_hours": 24,
-            "supported_actions": [
-                "authorize",
-                "capture",
-                "void"
-            ]
-        },
-        "shipping": {
-            "countries": [
-                "KR"
-            ],
-            "free_shipping": true,
-            "min_handling_days": 1,
-            "max_handling_days": 2,
-            "estimated_delivery_days": {
-                "min": 2,
-                "max": 5
-            }
-        },
-        "returns": {
-            "policy_url": "https://jsonmart.xyz/#/policies/returns",
-            "default_return_days": 7,
-            "free_returns": false,
-            "return_fee_range": {
-                "min": 0,
-                "max": 10000,
-                "currency": "KRW"
-            }
+        "product_search": true,
+        "product_comparison": true,
+        "order_creation": true,
+        "structured_reviews": true,
+        "agent_to_agent_communication": true,
+        "price_negotiation": true,
+        "wallet_payment": true,
+        "loyalty_rewards": true,
+        "webhook_notifications": true,
+        "sandbox_testing": true,
+        "auto_procurement": true
+    },
+    "authentication": {
+        "method": "api_key",
+        "header": "x-api-key",
+        "key_prefix": "agk_",
+        "registration": {
+            "endpoint": "agent_self_register",
+            "approval_required": true,
+            "rate_limit": "5 per hour per IP"
         }
     },
-    "api": {
-        "type": "supabase_rpc",
-        "base_url": "https://psiysvvcusfyfsfozywn.supabase.co/rest/v1/rpc/",
-        "authentication": {
-            "required": false,
-            "note": "Product feed and checkout are public. Order management requires API key."
-        },
-        "endpoints": {
-            "product_feed": "get_acp_feed",
-            "create_checkout": "ucp_create_session",
-            "complete_checkout": "ucp_complete_session",
-            "agent_register": "agent_self_register",
-            "product_catalog": "get_product_feed"
-        },
-        "documentation": "https://jsonmart.xyz/#/agent/docs",
-        "openapi_spec": "https://jsonmart.xyz/openapi.json"
-    },
-    "trust": {
-        "agent_reviews": true,
-        "review_verdicts": [
-            "ENDORSE",
-            "WARN",
-            "BLOCKLIST"
+    "checkout": {
+        "ucp_enabled": true,
+        "payment_methods": [
+            "wallet",
+            "payapp"
         ],
-        "trust_score_range": [
-            0,
-            100
-        ],
-        "stats_api": "https://psiysvvcusfyfsfozywn.supabase.co/rest/v1/rpc/get_public_analytics",
-        "stats_note": "Call stats_api for real-time total_products, total_reviews, and average_trust_score"
+        "currency": "KRW",
+        "requires_shipping_info": "For domeggook-sourced products, recipient_name, address, and phone are required."
     },
-    "compliance": {
-        "data_handling": "All data processed via Supabase (SOC2 certified). No PII stored without consent.",
-        "payment_security": "Authorize/Capture model with 24h hold. No direct card handling.",
-        "dispute_resolution": "Manual admin review for all orders."
+    "contact": {
+        "email": "support@jsonmart.xyz",
+        "github": "https://github.com/beanhull0357-bot/ai-market"
     }
 }
