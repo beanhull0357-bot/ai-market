@@ -109,20 +109,43 @@ const OrdersTab: React.FC<{ agentId: string }> = ({ agentId }) => {
                             </div>
                         </div>
 
-                        {/* Expanded: Delivery Tracking */}
+                        {/* Expanded: Order Details & Delivery Tracking */}
                         {isExpanded && (
                             <div style={{
                                 marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.06)',
                                 display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12,
                             }}>
+                                {/* ── 공통 주문 정보 (모든 상품) ── */}
+                                <div>
+                                    <span style={{ color: 'var(--text-tertiary)' }}>상품출처: </span>
+                                    <span style={{
+                                        padding: '1px 6px', borderRadius: 4, fontSize: 10, fontWeight: 600,
+                                        background: o.source === 'domeggook' ? 'rgba(234,179,8,0.15)' : 'rgba(34,197,94,0.15)',
+                                        color: o.source === 'domeggook' ? '#eab308' : '#22c55e',
+                                    }}>{o.source === 'domeggook' ? '도매꾹 위탁' : o.seller_id ? '셀러 직접' : '직접 등록'}</span>
+                                </div>
                                 <div>
                                     <span style={{ color: 'var(--text-tertiary)' }}>결제방식: </span>
                                     <span style={{ color: 'var(--text-primary)' }}>{o.payment_method || 'payapp'}</span>
                                 </div>
                                 <div>
                                     <span style={{ color: 'var(--text-tertiary)' }}>발주상태: </span>
-                                    <span style={{ color: o.procurement_status === 'ordered' ? '#22c55e' : '#eab308' }}>
-                                        {o.procurement_status || '-'}
+                                    <span style={{
+                                        color: o.procurement_status === 'delivered' ? '#22c55e'
+                                            : o.procurement_status === 'shipped' ? '#60a5fa'
+                                                : o.procurement_status === 'ordered' ? '#a855f7'
+                                                    : o.procurement_status === 'cancelled' || o.procurement_status === 'error' ? '#ef4444'
+                                                        : '#eab308',
+                                        fontWeight: 600,
+                                    }}>
+                                        {o.procurement_status === 'pending' ? '처리대기'
+                                            : o.procurement_status === 'exported' ? '발주준비'
+                                                : o.procurement_status === 'ordered' ? '발주완료'
+                                                    : o.procurement_status === 'shipped' ? '배송중'
+                                                        : o.procurement_status === 'delivered' ? '배송완료'
+                                                            : o.procurement_status === 'cancelled' ? '취소됨'
+                                                                : o.procurement_status === 'error' ? '오류'
+                                                                    : o.procurement_status || '대기중'}
                                     </span>
                                 </div>
                                 {o.recipient_name && (
@@ -131,25 +154,46 @@ const OrdersTab: React.FC<{ agentId: string }> = ({ agentId }) => {
                                         <span style={{ color: 'var(--text-primary)' }}>{o.recipient_name}</span>
                                     </div>
                                 )}
+
+                                {/* ── 공통 운송장 (셀러 직접 등록 or 도매꾹 동기화) ── */}
+                                {o.tracking_number && (
+                                    <div style={{ gridColumn: '1 / -1' }}>
+                                        <Truck size={12} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle', color: '#60a5fa' }} />
+                                        <span style={{ color: 'var(--text-tertiary)' }}>운송장: </span>
+                                        <span style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>
+                                            {o.carrier ? `${o.carrier} ` : ''}{o.tracking_number}
+                                        </span>
+                                    </div>
+                                )}
+
+                                {/* ── 도매꾹 전용 정보 (도매꾹 위탁 상품인 경우에만) ── */}
                                 {dm && (
-                                    <>
-                                        <div>
-                                            <span style={{ color: 'var(--text-tertiary)' }}>도매꾹 주문: </span>
-                                            <span style={{ color: '#22c55e', fontFamily: 'monospace' }}>{dm.dome_order_no}</span>
+                                    <div style={{
+                                        gridColumn: '1 / -1', marginTop: 4, padding: '8px 12px', borderRadius: 8,
+                                        background: 'rgba(234,179,8,0.05)', border: '1px solid rgba(234,179,8,0.1)',
+                                    }}>
+                                        <div style={{ fontSize: 10, color: '#eab308', fontWeight: 600, marginBottom: 6 }}>
+                                            도매꾹 발주 정보
                                         </div>
-                                        <div>
-                                            <span style={{ color: 'var(--text-tertiary)' }}>배송상태: </span>
-                                            <span style={statusBadge(dm.dome_status || 'PENDING')}>{dm.dome_status || '처리중'}</span>
-                                        </div>
-                                        {dm.dome_tracking_code && (
-                                            <div style={{ gridColumn: '1 / -1' }}>
-                                                <Truck size={12} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle', color: '#60a5fa' }} />
-                                                <span style={{ color: 'var(--text-primary)' }}>
-                                                    {dm.dome_tracking_company_name} {dm.dome_tracking_code}
-                                                </span>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                                            <div>
+                                                <span style={{ color: 'var(--text-tertiary)' }}>주문번호: </span>
+                                                <span style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>{dm.dome_order_no}</span>
                                             </div>
-                                        )}
-                                    </>
+                                            <div>
+                                                <span style={{ color: 'var(--text-tertiary)' }}>상태: </span>
+                                                <span style={statusBadge(dm.dome_status || 'PENDING')}>{dm.dome_status || '처리중'}</span>
+                                            </div>
+                                            {dm.dome_tracking_code && (
+                                                <div style={{ gridColumn: '1 / -1' }}>
+                                                    <Truck size={11} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle', color: '#eab308' }} />
+                                                    <span style={{ color: 'var(--text-primary)' }}>
+                                                        {dm.dome_tracking_company_name} {dm.dome_tracking_code}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
                                 )}
                             </div>
                         )}
