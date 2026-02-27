@@ -215,10 +215,33 @@ serve(async (req: Request) => {
 
                 const { data: product } = await supabase
                     .from('products')
-                    .select('sku, title, price, seller_id, seller_name')
+                    .select('sku, title, price, seller_id, seller_name, source, source_id')
                     .eq('sku', sku)
                     .single();
                 if (!product) return json({ error: `Product not found: ${sku}` }, 404);
+
+                // ── 수령인 정보 (도매꾹 발주 및 배송에 필요) ──────────────
+                const recipientName = args.recipient_name || args.recipientName || null;
+                const postalCode = args.postal_code || args.postalCode || null;
+                const address = args.address || null;
+                const addressDetail = args.address_detail || args.addressDetail || null;
+                const phone = args.phone || null;
+                const deliveryNote = args.delivery_note || args.deliveryNote || null;
+
+                // 도매꾹 상품은 반드시 수령인 정보 필요
+                if (product.source === 'domeggook' && (!recipientName || !address || !phone)) {
+                    return json({
+                        error: '도매꾹 상품 주문에는 수령인 정보가 필요합니다.',
+                        required_fields: {
+                            recipient_name: '수령인 이름 (필수)',
+                            address: '배송 주소 (필수)',
+                            phone: '연락처 (필수)',
+                            postal_code: '우편번호 (권장)',
+                            address_detail: '상세주소 (선택)',
+                            delivery_note: '배송 메모 (선택)',
+                        },
+                    }, 400);
+                }
 
                 const unitPrice = product.price || 0;
                 const totalPrice = unitPrice * quantity;
@@ -265,7 +288,29 @@ serve(async (req: Request) => {
                         payment_status: 'CAPTURED',
                         payment_method: 'WALLET',
                         source: args.source || 'API',
+                        // 수령인 정보
+                        recipient_name: recipientName,
+                        postal_code: postalCode,
+                        address: address,
+                        address_detail: addressDetail,
+                        phone: phone,
+                        delivery_note: deliveryNote,
+                        // 도매꾹 발주 대기
+                        procurement_status: product.source === 'domeggook' ? 'pending' : null,
                     });
+
+                    // ── 도매꾹 상품이면 자동 발주 ──────────────────────────
+                    let procurementResult = null;
+                    if (product.source === 'domeggook') {
+                        try {
+                            const { data: domeResult } = await supabase.rpc('dome_create_order', {
+                                p_order_id: orderId,
+                            });
+                            procurementResult = domeResult;
+                        } catch (e: any) {
+                            procurementResult = { error: 'AUTO_ORDER_FAILED', message: e.message };
+                        }
+                    }
 
                     return json({
                         orderId, status: 'CONFIRMED',
@@ -273,7 +318,10 @@ serve(async (req: Request) => {
                         sku: args.sku, productTitle: product.title,
                         quantity: args.quantity, unitPrice, totalPrice,
                         walletBalance: spendData?.balance_after ?? null,
-                        message: '✅ 지갑 결제 완료. 주문이 즉시 확정되었습니다.',
+                        procurement: procurementResult,
+                        message: product.source === 'domeggook'
+                            ? '✅ 지갑 결제 완료. 도매꾹 자동 발주가 진행됩니다.'
+                            : '✅ 지갑 결제 완료. 주문이 즉시 확정되었습니다.',
                     });
                 }
 
@@ -288,6 +336,14 @@ serve(async (req: Request) => {
                     payment_method: 'PAYAPP',
                     payment_deadline: new Date(Date.now() + 86400000).toISOString(),
                     source: args.source || 'API',
+                    // 수령인 정보
+                    recipient_name: recipientName,
+                    postal_code: postalCode,
+                    address: address,
+                    address_detail: addressDetail,
+                    phone: phone,
+                    delivery_note: deliveryNote,
+                    procurement_status: product.source === 'domeggook' ? 'pending' : null,
                 });
 
                 try {

@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import { useLanguage } from '../context/LanguageContext';
+import { DomeggookManager } from './DomeggookManager';
 import { Search, Download, Package, ExternalLink, Check, Loader2, AlertCircle, ChevronLeft, ChevronRight, Store, ShieldCheck, TriangleAlert, Info, ChevronDown, ChevronUp, Zap, Pause, Play, RotateCcw, TrendingUp, Filter, SlidersHorizontal } from 'lucide-react';
 
 // ─── Types ───
@@ -867,6 +868,9 @@ export function DomeggookSync() {
                     {t('Search and import products from Domeggook into JSONMart catalog', '공급사에서 상품을 검색하고 JSONMart 카탈로그로 가져올 수 있습니다')}
                 </p>
             </div>
+
+            {/* ── Private API Management Panel ── */}
+            <DomeggookManager />
 
             {/* ── Bulk Import Panel ── */}
             <div style={{
