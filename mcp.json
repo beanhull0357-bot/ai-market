@@ -517,6 +517,43 @@
                 ]
             },
             "supabase_rpc": "generate_predictions"
+        },
+        {
+            "name": "jsonmart_get_notifications",
+            "description": "Check your agent inbox for notifications from JSONMart. Receive announcements about new products, price drops, promotions, restocks, and maintenance updates. Supports filtering by type and unread-only.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "api_key": {
+                        "type": "string",
+                        "description": "Agent API key"
+                    },
+                    "unread_only": {
+                        "type": "boolean",
+                        "description": "Only return unread notifications",
+                        "default": false
+                    },
+                    "type": {
+                        "type": "string",
+                        "description": "Filter: NEW_PRODUCT, PRICE_DROP, PROMOTION, RESTOCK, SYSTEM, ANNOUNCEMENT, MAINTENANCE"
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Max notifications to return",
+                        "default": 20
+                    }
+                },
+                "required": [
+                    "api_key"
+                ]
+            },
+            "endpoint": "POST /functions/v1/jsonmart-api",
+            "request_body": {
+                "action": "get_notifications"
+            },
+            "headers": {
+                "x-api-key": "{api_key}"
+            }
         }
     ],
     "resources": [

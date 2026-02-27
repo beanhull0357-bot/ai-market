@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { User, ShoppingCart, Star, Gift, Webhook, Key, Shield, Loader, LogIn, TrendingUp, Clock, CheckCircle, XCircle, Award, Hash, ExternalLink, Wallet, Truck, Radio, Activity, BarChart3, ArrowUpCircle, ArrowDownCircle, MessageSquare, Package } from 'lucide-react';
+import { User, ShoppingCart, Star, Gift, Webhook, Key, Shield, Loader, LogIn, TrendingUp, Clock, CheckCircle, XCircle, Award, Hash, ExternalLink, Wallet, Truck, Radio, Activity, BarChart3, ArrowUpCircle, ArrowDownCircle, MessageSquare, Package, Bell, Mail, MailOpen } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { supabase } from '../supabaseClient';
 
-type Tab = 'profile' | 'orders' | 'reviews' | 'rewards' | 'webhooks' | 'wallet' | 'a2a' | 'activity';
+type Tab = 'profile' | 'orders' | 'reviews' | 'rewards' | 'webhooks' | 'wallet' | 'a2a' | 'activity' | 'notifications';
 
 interface AgentInfo {
     agent_id: string;
@@ -566,6 +566,137 @@ const ActivityTab: React.FC<{ agentId: string }> = ({ agentId }) => {
     );
 };
 
+/* ━━━ NEW: Notifications Inbox Tab ━━━ */
+const NotificationsTab: React.FC<{ apiKey: string; agentId: string }> = ({ apiKey, agentId }) => {
+    const [notifications, setNotifications] = useState<any[]>([]);
+    const [unreadCount, setUnreadCount] = useState(0);
+    const [loading, setLoading] = useState(true);
+    const [showUnreadOnly, setShowUnreadOnly] = useState(false);
+
+    const load = async (unreadOnly = false) => {
+        setLoading(true);
+        try {
+            const { data } = await supabase.rpc('get_agent_notifications', {
+                p_api_key: apiKey,
+                p_unread: unreadOnly,
+                p_ntype: null,
+                p_limit: 30,
+            });
+            if (data?.success) {
+                setNotifications(data.notifications || []);
+                setUnreadCount(data.unread_count || 0);
+            }
+        } finally { setLoading(false); }
+    };
+
+    React.useEffect(() => { load(showUnreadOnly); }, [apiKey, showUnreadOnly]);
+
+    const markRead = async (id: number) => {
+        await supabase.rpc('mark_notification_read', { p_api_key: apiKey, p_notification_id: id });
+        setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_unread: false } : n));
+        setUnreadCount(prev => Math.max(0, prev - 1));
+    };
+
+    const markAllRead = async () => {
+        await supabase.rpc('mark_all_notifications_read', { p_api_key: apiKey });
+        setNotifications(prev => prev.map(n => ({ ...n, is_unread: false })));
+        setUnreadCount(0);
+    };
+
+    const ntypeColors: Record<string, { bg: string; fg: string; icon: React.ReactNode }> = {
+        NEW_PRODUCT: { bg: 'rgba(59,130,246,0.15)', fg: '#60a5fa', icon: <Package size={14} /> },
+        PRICE_DROP: { bg: 'rgba(34,197,94,0.15)', fg: '#22c55e', icon: <TrendingUp size={14} /> },
+        PROMOTION: { bg: 'rgba(234,179,8,0.15)', fg: '#eab308', icon: <Gift size={14} /> },
+        RESTOCK: { bg: 'rgba(168,85,247,0.15)', fg: '#a855f7', icon: <ShoppingCart size={14} /> },
+        SYSTEM: { bg: 'rgba(255,255,255,0.08)', fg: 'var(--text-tertiary)', icon: <Shield size={14} /> },
+        ANNOUNCEMENT: { bg: 'rgba(59,130,246,0.15)', fg: '#60a5fa', icon: <Bell size={14} /> },
+        MAINTENANCE: { bg: 'rgba(239,68,68,0.15)', fg: '#ef4444', icon: <Clock size={14} /> },
+    };
+
+    if (loading) return <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-tertiary)' }}><Loader size={20} className="animate-spin" /></div>;
+
+    return (
+        <div>
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <h4 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
+                        Inbox {unreadCount > 0 && (
+                            <span style={{
+                                marginLeft: 6, padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700,
+                                background: 'rgba(239,68,68,0.2)', color: '#ef4444',
+                            }}>{unreadCount}</span>
+                        )}
+                    </h4>
+                    <button onClick={() => setShowUnreadOnly(!showUnreadOnly)} style={{
+                        padding: '4px 10px', borderRadius: 6, fontSize: 11, cursor: 'pointer', border: 'none',
+                        background: showUnreadOnly ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.05)',
+                        color: showUnreadOnly ? '#60a5fa' : 'var(--text-tertiary)',
+                    }}>{showUnreadOnly ? 'Unread Only' : 'All'}</button>
+                </div>
+                {unreadCount > 0 && (
+                    <button onClick={markAllRead} style={{
+                        padding: '4px 12px', borderRadius: 6, fontSize: 11, cursor: 'pointer', border: 'none',
+                        background: 'rgba(34,197,94,0.1)', color: '#22c55e',
+                    }}>Mark All Read</button>
+                )}
+            </div>
+
+            {/* List */}
+            {notifications.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-tertiary)' }}>
+                    <Bell size={32} style={{ marginBottom: 12, opacity: 0.3 }} />
+                    <p style={{ fontSize: 14 }}>{showUnreadOnly ? 'No unread notifications' : 'No notifications yet'}</p>
+                </div>
+            ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {notifications.map((n: any) => {
+                        const style = ntypeColors[n.ntype] || ntypeColors.SYSTEM;
+                        return (
+                            <div key={n.id} style={{
+                                display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 16px',
+                                background: n.is_unread ? 'rgba(59,130,246,0.04)' : 'rgba(255,255,255,0.02)',
+                                border: `1px solid ${n.is_unread ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.06)'}`,
+                                borderRadius: 10, cursor: n.is_unread ? 'pointer' : 'default',
+                            }} onClick={() => n.is_unread && markRead(n.id)}>
+                                <div style={{
+                                    width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    background: style.bg, color: style.fg, flexShrink: 0,
+                                }}>
+                                    {style.icon}
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <span style={{
+                                                fontSize: 10, padding: '1px 6px', borderRadius: 4,
+                                                background: style.bg, color: style.fg, fontWeight: 600,
+                                            }}>{n.ntype}</span>
+                                            {n.is_unread && (
+                                                <span style={{ width: 6, height: 6, borderRadius: 3, background: '#3b82f6' }} />
+                                            )}
+                                        </div>
+                                        <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>
+                                            {new Date(n.created_at).toLocaleDateString()}
+                                        </span>
+                                    </div>
+                                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginTop: 4 }}>{n.title}</div>
+                                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{n.message}</div>
+                                    {n.data && Object.keys(n.data).length > 0 && (
+                                        <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 4, fontFamily: 'monospace' }}>
+                                            {JSON.stringify(n.data).slice(0, 100)}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+};
+
 /* ━━━ Main Agent Portal ━━━ */
 export const AgentPortal: React.FC = () => {
     const { t } = useLanguage();
@@ -734,6 +865,7 @@ export const AgentPortal: React.FC = () => {
                 {/* Tabs */}
                 <div style={{ display: 'flex', gap: 4, marginBottom: 20, overflowX: 'auto', paddingBottom: 4 }}>
                     <TabBtn active={activeTab === 'profile'} icon={<User size={14} />} label="Profile" onClick={() => setActiveTab('profile')} />
+                    <TabBtn active={activeTab === 'notifications'} icon={<Bell size={14} />} label="Inbox" onClick={() => setActiveTab('notifications')} />
                     <TabBtn active={activeTab === 'orders'} icon={<ShoppingCart size={14} />} label="Orders" onClick={() => setActiveTab('orders')} />
                     <TabBtn active={activeTab === 'wallet'} icon={<Wallet size={14} />} label="Wallet" onClick={() => setActiveTab('wallet')} />
                     <TabBtn active={activeTab === 'reviews'} icon={<Star size={14} />} label="Reviews" onClick={() => setActiveTab('reviews')} />
@@ -782,6 +914,7 @@ export const AgentPortal: React.FC = () => {
                     {activeTab === 'activity' && <ActivityTab agentId={agentInfo.agent_id} />}
                     {activeTab === 'rewards' && <RewardsTab apiKey={apiKey} />}
                     {activeTab === 'webhooks' && <WebhooksTab agentId={agentInfo.agent_id} />}
+                    {activeTab === 'notifications' && <NotificationsTab apiKey={apiKey} agentId={agentInfo.agent_id} />}
                 </div>
             </div>
         </div>

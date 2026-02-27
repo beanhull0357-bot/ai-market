@@ -444,8 +444,33 @@ serve(async (req: Request) => {
                 });
             }
 
+            case 'get_notifications': {
+                const apiKey = req.headers.get('x-api-key');
+                if (!apiKey) return json({ error: 'x-api-key header required' }, 401);
+                const { data, error } = await supabase.rpc('get_agent_notifications', {
+                    p_api_key: apiKey,
+                    p_unread: args.unread_only || false,
+                    p_ntype: args.type || null,
+                    p_limit: args.limit || 20,
+                });
+                if (error) return json({ error: error.message }, 500);
+                return json(data);
+            }
+
+            case 'mark_notification_read': {
+                const apiKey = req.headers.get('x-api-key');
+                if (!apiKey) return json({ error: 'x-api-key header required' }, 401);
+                if (!args.notification_id) return json({ error: 'notification_id required' }, 400);
+                const { data, error } = await supabase.rpc('mark_notification_read', {
+                    p_api_key: apiKey,
+                    p_notification_id: args.notification_id,
+                });
+                if (error) return json({ error: error.message }, 500);
+                return json(data);
+            }
+
             default:
-                return json({ error: `Unknown action: "${action}". Available: search_products | get_product | compare_products | list_promotions | create_order | check_order` }, 400);
+                return json({ error: `Unknown action: "${action}". Available: search_products | get_product | compare_products | list_promotions | create_order | check_order | get_notifications | mark_notification_read` }, 400);
         }
     } catch (err: any) {
         return json({ error: 'Internal server error', detail: err.message }, 500);

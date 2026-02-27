@@ -26,6 +26,7 @@ import { ProductCompare } from './pages/ProductCompare';
 import { AutoReorder } from './pages/AutoReorder';
 import { AgentReputation } from './pages/AgentReputation';
 import { AdminDashboard } from './pages/AdminDashboard';
+import { AdminNotifications } from './pages/AdminNotifications';
 import { CustomerManagement } from './pages/CustomerManagement';
 import { AgentActivityLog } from './pages/AgentActivityLog';
 import { DataExport } from './pages/DataExport';
@@ -471,6 +472,7 @@ export default function App() {
                     <Route path="/activity-log" element={<AdminRoute><AgentActivityLog /></AdminRoute>} />
                     <Route path="/export" element={<AdminRoute><DataExport /></AdminRoute>} />
                     <Route path="/webhooks" element={<AdminRoute><WebhookConfig /></AdminRoute>} />
+                    <Route path="/notifications" element={<AdminRoute><AdminNotifications /></AdminRoute>} />
                     <Route path="/wallet" element={<AgentWallet />} />
                     <Route path="/predictions" element={<PredictiveProcurement />} />
                     <Route path="/conformance" element={<ConformanceTest />} />
