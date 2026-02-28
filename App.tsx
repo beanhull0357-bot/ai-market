@@ -23,7 +23,6 @@ import { MCPIntegration } from './pages/MCPIntegration';
 import { Promotions } from './pages/Promotions';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { AdminNotifications } from './pages/AdminNotifications';
-import { CustomerManagement } from './pages/CustomerManagement';
 import { AgentActivityLog } from './pages/AgentActivityLog';
 import { DataExport } from './pages/DataExport';
 import { WebhookConfig } from './pages/WebhookConfig';
@@ -297,7 +296,6 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       { to: '/admin-queue', icon: <Shield size={13} />, label: t('nav.adminQueue') },
       { to: '/domeggook', icon: <Store size={13} />, label: t('nav.domeggook') },
       { to: '/orders', icon: <Truck size={13} />, label: t('nav.orders') },
-      { to: '/customers', icon: <Users size={13} />, label: t('nav.customers') },
       { to: '/export', icon: <Download size={13} />, label: 'Export' },
       { to: '/seller-registry', icon: <Shield size={13} />, label: 'Seller 관리' },
     ] : []),
@@ -429,7 +427,6 @@ export default function App() {
                     <Route path="/sla" element={<SLADashboard />} />
                     <Route path="/domeggook" element={<AdminRoute><DomeggookSync /></AdminRoute>} />
                     <Route path="/orders" element={<AdminRoute><OrderManager /></AdminRoute>} />
-                    <Route path="/customers" element={<AdminRoute><CustomerManagement /></AdminRoute>} />
                     <Route path="/agent-qa" element={<AdminRoute><AgentQA /></AdminRoute>} />
                     <Route path="/analytics" element={<AdminRoute><AgentAnalytics /></AdminRoute>} />
                     <Route path="/mcp" element={<MCPIntegration />} />
