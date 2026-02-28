@@ -314,9 +314,9 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     { to: '/agent/docs', icon: <BookOpen size={13} />, label: t('nav.docs') },
     { to: '/swagger', icon: <FileJson size={13} />, label: 'API Docs' },
     { to: '/wallet', icon: <Zap size={13} />, label: 'Wallet' },
-    { to: '/conformance', icon: <Shield size={13} />, label: 'Conformance' },
     ...(isAdmin ? [
       { to: '/agent-qa', icon: <MessageSquare size={13} />, label: 'Q&A' },
+      { to: '/conformance', icon: <Shield size={13} />, label: 'Conformance' },
     ] : []),
     { to: '/negotiate', icon: <Handshake size={13} />, label: 'Negotiate' },
     { to: '/negotiate-settings', icon: <Shield size={13} />, label: '협상 위임' },
@@ -444,7 +444,7 @@ export default function App() {
                     <Route path="/webhooks" element={<AdminRoute><WebhookConfig /></AdminRoute>} />
                     <Route path="/notifications" element={<AdminRoute><AdminNotifications /></AdminRoute>} />
                     <Route path="/wallet" element={<AgentWallet />} />
-                    <Route path="/conformance" element={<ConformanceTest />} />
+                    <Route path="/conformance" element={<AdminRoute><ConformanceTest /></AdminRoute>} />
                     <Route path="/negotiate" element={<NegotiationCenter />} />
                     <Route path="/a2a-market" element={<A2AMarket />} />
                     <Route path="/negotiate-settings" element={<SellerNegotiationSettings />} />
