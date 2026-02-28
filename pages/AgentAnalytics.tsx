@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { BarChart3, TrendingUp, DollarSign, ShoppingCart, Package, AlertTriangle, Loader2, Bot, Globe, Users, Star, Radio, Store, Layers, RefreshCw } from 'lucide-react';
+import { BarChart3, TrendingUp, DollarSign, ShoppingCart, Package, AlertTriangle, Loader2, Bot, Globe, Users, Star, Radio, Store, Layers, RefreshCw, Shield, ThumbsUp, CheckCircle2 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
-import { useAgents, getPublicAnalytics } from '../hooks';
+import { useAgents, getPublicAnalytics, useReviews } from '../hooks';
 import { useLanguage } from '../context/LanguageContext';
 
 /* ━━━ Types ━━━ */
@@ -150,7 +150,7 @@ function AgentRow({ stat }: { key?: string; stat: AgentStats }) {
 
 /* ━━━ Main Page ━━━ */
 export const AgentAnalytics: React.FC = () => {
-    const [tab, setTab] = useState<'agents' | 'platform'>('agents');
+    const [tab, setTab] = useState<'agents' | 'platform' | 'reputation'>('agents');
     const { agents, loading: agentsLoading } = useAgents();
     const [stats, setStats] = useState<AgentStats[]>([]);
     const [loading, setLoading] = useState(true);
@@ -202,9 +202,33 @@ export const AgentAnalytics: React.FC = () => {
 
     const tierColorMap: Record<string, string> = { FREE: '#6b7280', STARTER: '#0ea5e9', PRO: '#a855f7', ENTERPRISE: '#f59e0b' };
 
+    // Reputation data
+    const { reviews } = useReviews();
+    const reputationData = React.useMemo(() => {
+        const reviewMap: Record<string, { total: number; endorse: number; specSum: number }> = {};
+        reviews.forEach((r: any) => {
+            const id = r.agentId || r.agent_id;
+            if (!id) return;
+            if (!reviewMap[id]) reviewMap[id] = { total: 0, endorse: 0, specSum: 0 };
+            reviewMap[id].total++;
+            if (r.verdict === 'ENDORSE') reviewMap[id].endorse++;
+            if (r.specMatch != null) reviewMap[id].specSum += Number(r.specMatch);
+        });
+        return agents.map(a => {
+            const rv = reviewMap[a.agentId];
+            const fromReal = !!rv && rv.total > 0;
+            const endorseRate = fromReal ? Math.round((rv.endorse / rv.total) * 100) : Math.min(100, Math.round(a.trustScore || 70));
+            const specCompliance = fromReal && rv.total > 0 ? +(rv.specSum / rv.total).toFixed(2) : +((a.trustScore || 70) / 100).toFixed(2);
+            const score = Math.round(endorseRate * 0.4 + specCompliance * 100 * 0.35 + Math.max(0, 100 - 150 / 5) * 0.25);
+            const trustLevel = score >= 80 ? 'TRUSTED' : score >= 60 ? 'NEUTRAL' : 'SUSPICIOUS';
+            return { agentId: a.agentId, name: a.name, endorseRate, specCompliance, score, trustLevel, totalReviews: fromReal ? rv.total : 0, fromReal };
+        }).sort((a, b) => b.score - a.score);
+    }, [agents, reviews]);
+
     const tabs = [
         { key: 'agents' as const, label: '에이전트 성과', icon: <Bot size={13} /> },
         { key: 'platform' as const, label: '플랫폼 통계', icon: <Globe size={13} /> },
+        { key: 'reputation' as const, label: '평판 네트워크', icon: <Shield size={13} /> },
     ];
 
     return (
@@ -321,6 +345,62 @@ export const AgentAnalytics: React.FC = () => {
                             </div>
                         </>
                     )}
+                </>
+            )}
+
+            {/* ━━━ Tab 3: Reputation Network ━━━ */}
+            {tab === 'reputation' && (
+                <>
+                    {/* Summary */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 16 }}>
+                        <StatCard label="평균 평판 점수" value={String(reputationData.length ? Math.round(reputationData.reduce((s, r) => s + r.score, 0) / reputationData.length) : 0)}
+                            icon={<Shield size={18} />} color="var(--accent-green)" />
+                        <StatCard label="신뢰 에이전트" value={`${reputationData.filter(r => r.trustLevel === 'TRUSTED').length}/${reputationData.length}`}
+                            icon={<CheckCircle2 size={18} />} color="var(--accent-cyan)" />
+                        <StatCard label="총 리뷰" value={String(reviews.length)}
+                            icon={<Star size={18} />} color="var(--accent-purple)" sub="실 데이터 기반" />
+                    </div>
+
+                    <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 12, fontFamily: 'var(--font-mono)' }}>
+                        평판 점수 = (지지율 × 0.4) + (스펙 일치도 × 0.35) + (속도 × 0.25)
+                    </div>
+
+                    {/* Agent List */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {reputationData.map(rep => {
+                            const lvConfig = rep.trustLevel === 'TRUSTED'
+                                ? { label: '신뢰', color: 'var(--accent-green)', bg: 'rgba(52,211,153,0.1)' }
+                                : rep.trustLevel === 'SUSPICIOUS'
+                                    ? { label: '주의', color: 'var(--accent-red)', bg: 'rgba(239,68,68,0.1)' }
+                                    : { label: '보통', color: 'var(--accent-amber)', bg: 'rgba(251,191,36,0.1)' };
+                            return (
+                                <div key={rep.agentId} className="glass-card" style={{ padding: 16 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                        <div style={{ width: 40, height: 40, borderRadius: '50%', background: lvConfig.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                            <span style={{ fontSize: 16, fontWeight: 900, color: lvConfig.color }}>{rep.score}</span>
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{rep.name}</span>
+                                                <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 'var(--radius-full)', background: lvConfig.bg, color: lvConfig.color, fontWeight: 700 }}>{lvConfig.label}</span>
+                                                {rep.fromReal && (
+                                                    <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 'var(--radius-full)', background: 'rgba(34,211,238,0.1)', color: 'var(--accent-cyan)', fontWeight: 700 }}>REAL DATA</span>
+                                                )}
+                                            </div>
+                                            <div style={{ display: 'flex', gap: 16, fontSize: 11, color: 'var(--text-muted)', flexWrap: 'wrap' }}>
+                                                <span><ThumbsUp size={10} style={{ display: 'inline', verticalAlign: 'middle' }} /> 지지율 {rep.endorseRate}%</span>
+                                                <span><CheckCircle2 size={10} style={{ display: 'inline', verticalAlign: 'middle' }} /> 일치도 {(rep.specCompliance * 100).toFixed(0)}%</span>
+                                                <span>📝 {rep.totalReviews}건</span>
+                                            </div>
+                                        </div>
+                                        <div style={{ width: 100, height: 6, background: 'var(--bg-surface)', borderRadius: 3, overflow: 'hidden', flexShrink: 0 }}>
+                                            <div style={{ width: `${rep.score}%`, height: '100%', background: `linear-gradient(90deg, ${lvConfig.color}, color-mix(in srgb, ${lvConfig.color} 60%, transparent))`, borderRadius: 3 }} />
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
                 </>
             )}
         </div>

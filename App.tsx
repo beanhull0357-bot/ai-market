@@ -22,7 +22,6 @@ import { AgentAnalytics } from './pages/AgentAnalytics';
 import { MCPIntegration } from './pages/MCPIntegration';
 import { Promotions } from './pages/Promotions';
 import { AgentSandbox } from './pages/AgentSandbox';
-import { AgentReputation } from './pages/AgentReputation';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { AdminNotifications } from './pages/AdminNotifications';
 import { CustomerManagement } from './pages/CustomerManagement';
@@ -239,7 +238,6 @@ function MobileMenu({ onClose }: { onClose: () => void }) {
         { to: '/agent/docs', icon: <BookOpen size={15} />, label: t('nav.docs') },
         ...(isAdmin ? [
           { to: '/agent-qa', icon: <MessageSquare size={15} />, label: 'Agent Q&A' },
-          { to: '/agent-reputation', icon: <Shield size={15} />, label: 'Reputation' },
         ] : []),
       ],
     },
@@ -330,7 +328,6 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     { to: '/conformance', icon: <Shield size={13} />, label: 'Conformance' },
     ...(isAdmin ? [
       { to: '/agent-qa', icon: <MessageSquare size={13} />, label: 'Q&A' },
-      { to: '/agent-reputation', icon: <Shield size={13} />, label: 'Reputation' },
     ] : []),
     { to: '/negotiate', icon: <Handshake size={13} />, label: 'Negotiate' },
     { to: '/negotiate-settings', icon: <Shield size={13} />, label: '협상 위임' },
@@ -456,7 +453,6 @@ export default function App() {
                     <Route path="/seller" element={<SellerCenter />} />
                     <Route path="/seller-registry" element={<AdminRoute><SellerRegistry /></AdminRoute>} />
                     <Route path="/portal" element={<AgentPortal />} />
-                    <Route path="/agent-reputation" element={<AdminRoute><AgentReputation /></AdminRoute>} />
                     <Route path="/dashboard" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
                     <Route path="/activity-log" element={<AdminRoute><AgentActivityLog /></AdminRoute>} />
                     <Route path="/export" element={<AdminRoute><DataExport /></AdminRoute>} />
