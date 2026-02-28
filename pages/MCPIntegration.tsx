@@ -240,6 +240,22 @@ export const MCPIntegration: React.FC = () => {
 }`,
             response: `{ "count": 1523 }`,
         },
+        {
+            name: 'list_promotions', desc: '현재 활성 프로모션 목록 조회. 카테고리별 필터 가능',
+            params: ['category?'], color: 'var(--accent-purple)',
+            request: `{
+  "tool": "list_promotions",
+  "arguments": { "category": "FOOD" }
+}`,
+            response: `{
+  "promotions": [{
+    "id": "PROMO-001",
+    "name": "신규 에이전트 할인",
+    "type": "PERCENT",
+    "value": 10
+  }]
+}`,
+        },
     ];
 
     // ── Negotiation & Payment Tools ──
