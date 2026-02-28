@@ -34,11 +34,9 @@ import { A2ANetwork } from './pages/A2ANetwork';
 import { SellerCenter } from './pages/SellerCenter';
 import { SellerRegistry } from './pages/SellerRegistry';
 import { AgentWallet } from './pages/AgentWallet';
-import { PredictiveProcurement } from './pages/PredictiveProcurement';
 import { ConformanceTest } from './pages/ConformanceTest';
 import EcosystemMap from './pages/EcosystemMap';
 import NegotiationCenter from './pages/NegotiationCenter';
-import { DecisionReplay } from './pages/DecisionReplay';
 import { A2AMarket } from './pages/A2AMarket';
 import SellerNegotiationSettings from './pages/SellerNegotiationSettings';
 import { NotificationBell } from './components/NotificationBell';
@@ -324,7 +322,6 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     { to: '/a2a', icon: <Radio size={13} />, label: 'A2A Network' },
     { to: '/wallet', icon: <Zap size={13} />, label: 'Wallet' },
     { to: '/tiers', icon: <BarChart3 size={13} />, label: 'Tiers' },
-    { to: '/predictions', icon: <Bot size={13} />, label: 'Predictions' },
     { to: '/conformance', icon: <Shield size={13} />, label: 'Conformance' },
     ...(isAdmin ? [
       { to: '/agent-qa', icon: <MessageSquare size={13} />, label: 'Q&A' },
@@ -346,7 +343,6 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       { to: '/webhooks', icon: <Webhook size={13} />, label: 'Webhooks' },
     ] : []),
     { to: '/ecosystem', icon: <Globe size={13} />, label: 'Ecosystem' },
-    { to: '/decision-replay', icon: <Brain size={13} />, label: 'Decision Replay' },
     { to: '/a2a-market', icon: <Radio size={13} />, label: 'A2A Market' },
   ];
 
@@ -459,11 +455,9 @@ export default function App() {
                     <Route path="/webhooks" element={<AdminRoute><WebhookConfig /></AdminRoute>} />
                     <Route path="/notifications" element={<AdminRoute><AdminNotifications /></AdminRoute>} />
                     <Route path="/wallet" element={<AgentWallet />} />
-                    <Route path="/predictions" element={<PredictiveProcurement />} />
                     <Route path="/conformance" element={<ConformanceTest />} />
                     <Route path="/ecosystem" element={<EcosystemMap />} />
                     <Route path="/negotiate" element={<NegotiationCenter />} />
-                    <Route path="/decision-replay" element={<DecisionReplay />} />
                     <Route path="/a2a-market" element={<A2AMarket />} />
                     <Route path="/negotiate-settings" element={<SellerNegotiationSettings />} />
                     <Route path="*" element={<Landing />} />
