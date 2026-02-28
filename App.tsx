@@ -29,7 +29,6 @@ import { DataExport } from './pages/DataExport';
 import { WebhookConfig } from './pages/WebhookConfig';
 import { SwaggerUI } from './pages/SwaggerUI';
 import { AgentPortal } from './pages/AgentPortal';
-import { A2ANetwork } from './pages/A2ANetwork';
 import { SellerCenter } from './pages/SellerCenter';
 import { SellerRegistry } from './pages/SellerRegistry';
 import { AgentWallet } from './pages/AgentWallet';
@@ -316,7 +315,6 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     { to: '/portal', icon: <User size={13} />, label: 'Portal' },
     { to: '/agent/docs', icon: <BookOpen size={13} />, label: t('nav.docs') },
     { to: '/swagger', icon: <FileJson size={13} />, label: 'API Docs' },
-    { to: '/a2a', icon: <Radio size={13} />, label: 'A2A Network' },
     { to: '/wallet', icon: <Zap size={13} />, label: 'Wallet' },
     { to: '/conformance', icon: <Shield size={13} />, label: 'Conformance' },
     ...(isAdmin ? [
@@ -339,7 +337,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       { to: '/webhooks', icon: <Webhook size={13} />, label: 'Webhooks' },
     ] : []),
     { to: '/ecosystem', icon: <Globe size={13} />, label: 'Ecosystem' },
-    { to: '/a2a-market', icon: <Radio size={13} />, label: 'A2A Market' },
+    { to: '/a2a-market', icon: <Radio size={13} />, label: 'A2A Network' },
   ];
 
   return (
@@ -440,7 +438,6 @@ export default function App() {
                     <Route path="/mcp" element={<MCPIntegration />} />
                     <Route path="/promotions" element={<AdminRoute><Promotions /></AdminRoute>} />
                     <Route path="/swagger" element={<SwaggerUI />} />
-                    <Route path="/a2a" element={<A2ANetwork />} />
                     <Route path="/seller" element={<SellerCenter />} />
                     <Route path="/seller-registry" element={<AdminRoute><SellerRegistry /></AdminRoute>} />
                     <Route path="/portal" element={<AgentPortal />} />
