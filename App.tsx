@@ -33,7 +33,6 @@ import { SellerCenter } from './pages/SellerCenter';
 import { SellerRegistry } from './pages/SellerRegistry';
 import { AgentWallet } from './pages/AgentWallet';
 import { ConformanceTest } from './pages/ConformanceTest';
-import EcosystemMap from './pages/EcosystemMap';
 import NegotiationCenter from './pages/NegotiationCenter';
 import { A2AMarket } from './pages/A2AMarket';
 import SellerNegotiationSettings from './pages/SellerNegotiationSettings';
@@ -248,7 +247,6 @@ function MobileMenu({ onClose }: { onClose: () => void }) {
         ...(isAdmin ? [
           { to: '/promotions', icon: <Tag size={15} />, label: 'Promotions' },
         ] : []),
-        { to: '/ecosystem', icon: <Globe size={15} />, label: 'Ecosystem' },
       ],
     },
   ];
@@ -336,7 +334,6 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       { to: '/activity-log', icon: <Activity size={13} />, label: 'Log' },
       { to: '/webhooks', icon: <Webhook size={13} />, label: 'Webhooks' },
     ] : []),
-    { to: '/ecosystem', icon: <Globe size={13} />, label: 'Ecosystem' },
     { to: '/a2a-market', icon: <Radio size={13} />, label: 'A2A Network' },
   ];
 
@@ -448,7 +445,6 @@ export default function App() {
                     <Route path="/notifications" element={<AdminRoute><AdminNotifications /></AdminRoute>} />
                     <Route path="/wallet" element={<AgentWallet />} />
                     <Route path="/conformance" element={<ConformanceTest />} />
-                    <Route path="/ecosystem" element={<EcosystemMap />} />
                     <Route path="/negotiate" element={<NegotiationCenter />} />
                     <Route path="/a2a-market" element={<A2AMarket />} />
                     <Route path="/negotiate-settings" element={<SellerNegotiationSettings />} />
