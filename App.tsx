@@ -20,7 +20,6 @@ import { SLADashboard } from './pages/SLADashboard';
 import { AgentQA } from './pages/AgentQA';
 import { AgentAnalytics } from './pages/AgentAnalytics';
 import { MCPIntegration } from './pages/MCPIntegration';
-import { OrderTracking } from './pages/OrderTracking';
 import { Promotions } from './pages/Promotions';
 import { AgentSandbox } from './pages/AgentSandbox';
 import { AgentReputation } from './pages/AgentReputation';
@@ -258,7 +257,6 @@ function MobileMenu({ onClose }: { onClose: () => void }) {
         { to: '/mcp', icon: <Cpu size={15} />, label: 'MCP' },
         ...(isAdmin ? [
           { to: '/promotions', icon: <Tag size={15} />, label: 'Promotions' },
-          { to: '/tracking', icon: <Truck size={15} />, label: 'Tracking' },
         ] : []),
         { to: '/ecosystem', icon: <Globe size={15} />, label: 'Ecosystem' },
       ],
@@ -350,7 +348,6 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     { to: '/mcp', icon: <Cpu size={13} />, label: 'MCP' },
     ...(isAdmin ? [
       { to: '/promotions', icon: <Tag size={13} />, label: 'Promotions' },
-      { to: '/tracking', icon: <Truck size={13} />, label: 'Tracking' },
       { to: '/activity-log', icon: <Activity size={13} />, label: 'Log' },
       { to: '/webhooks', icon: <Webhook size={13} />, label: 'Webhooks' },
     ] : []),
@@ -458,7 +455,6 @@ export default function App() {
                     <Route path="/agent-qa" element={<AdminRoute><AgentQA /></AdminRoute>} />
                     <Route path="/analytics" element={<AdminRoute><AgentAnalytics /></AdminRoute>} />
                     <Route path="/mcp" element={<MCPIntegration />} />
-                    <Route path="/tracking" element={<AdminRoute><OrderTracking /></AdminRoute>} />
                     <Route path="/promotions" element={<AdminRoute><Promotions /></AdminRoute>} />
                     <Route path="/sandbox" element={<AgentSandbox />} />
                     <Route path="/swagger" element={<SwaggerUI />} />
