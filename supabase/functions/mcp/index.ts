@@ -117,6 +117,143 @@ const TOOLS = [
             },
         },
     },
+    {
+        name: 'negotiate_price',
+        description: '대량 구매 가격 협상. 시스템이 자동으로 수락/역제안/거절 응답.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                sku: { type: 'string', description: '협상할 상품 SKU' },
+                qty: { type: 'number', description: '희망 수량' },
+                unit_price: { type: 'number', description: '제안 단가 (원)' },
+            },
+            required: ['sku', 'qty', 'unit_price'],
+        },
+    },
+    {
+        name: 'sandbox_order',
+        description: '테스트 주문 생성. 실제 재고 차감 없음, 결제 없음.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                sku: { type: 'string', description: '상품 SKU' },
+                qty: { type: 'number', description: '수량 (기본 1)' },
+            },
+            required: ['sku'],
+        },
+    },
+    {
+        name: 'get_sla',
+        description: 'JSONMart SLA 성능 지표 조회. 재고 정확도, 배송율, 웹훅 신뢰도 등.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                days: { type: 'number', description: '조회 기간 (기본 30일)' },
+            },
+        },
+    },
+    {
+        name: 'get_rewards',
+        description: '에이전트 로열티 보상 및 티어 상태 조회.',
+        inputSchema: {
+            type: 'object',
+            properties: {},
+        },
+    },
+    {
+        name: 'submit_review',
+        description: '구매 상품 리뷰 제출. KPI 기반 (배송, 정확도, 포장).',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                sku: { type: 'string', description: '상품 SKU' },
+                review_text: { type: 'string', description: '리뷰 내용' },
+                delivery_score: { type: 'number', description: '배송 평점 0-5' },
+                accuracy_score: { type: 'number', description: '정확도 평점 0-5' },
+            },
+            required: ['sku', 'review_text', 'delivery_score', 'accuracy_score'],
+        },
+    },
+    {
+        name: 'wallet_check',
+        description: '에이전트 지갑 잔액, 티어, 포인트, 최근 거래 조회.',
+        inputSchema: {
+            type: 'object',
+            properties: {},
+        },
+    },
+    {
+        name: 'apply_coupon',
+        description: '쿠폰 적용. 티어 제한, 유효기간, 사용 횟수 검증 후 할인 금액 반환.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                coupon_code: { type: 'string', description: '쿠폰 코드' },
+                order_amount: { type: 'number', description: '주문 금액 (원)' },
+            },
+            required: ['coupon_code', 'order_amount'],
+        },
+    },
+    {
+        name: 'predict_reorder',
+        description: '구매 이력 분석 후 재주문 시기 예측.',
+        inputSchema: {
+            type: 'object',
+            properties: {},
+        },
+    },
+    {
+        name: 'get_notifications',
+        description: '에이전트 수신함 확인. 신상품, 가격 변동, 프로모션 등.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                unread_only: { type: 'boolean', description: '읽지 않은 알림만' },
+                type: { type: 'string', description: 'NEW_PRODUCT | PRICE_DROP | PROMOTION | RESTOCK | SYSTEM' },
+                limit: { type: 'number', description: '최대 결과 수 (기본 20)' },
+            },
+        },
+    },
+    {
+        name: 'a2a_broadcast',
+        description: '에이전트 네트워크에 질의 전송. 다른 에이전트의 상품 경험, 공급사 평가 등.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                query_type: { type: 'string', description: 'PRODUCT_EXPERIENCE | SUPPLIER_RATING | PRICE_CHECK | GENERAL' },
+                sku: { type: 'string', description: '대상 상품 SKU (선택)' },
+                question: { type: 'string', description: '질문 내용' },
+                ttl_hours: { type: 'number', description: '질의 만료 시간 (기본 24)' },
+            },
+            required: ['question'],
+        },
+    },
+    {
+        name: 'a2a_respond',
+        description: '다른 에이전트의 A2A 질의에 응답.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                query_id: { type: 'string', description: 'A2A 질의 ID' },
+                verdict: { type: 'string', description: 'ENDORSE | WARN | BLOCKLIST | NEUTRAL' },
+                confidence: { type: 'number', description: '확신도 0.0-1.0' },
+                message: { type: 'string', description: '코멘트 (선택)' },
+            },
+            required: ['query_id', 'verdict'],
+        },
+    },
+    {
+        name: 'a2a_get_queries',
+        description: '에이전트 네트워크의 활성 질의 목록 조회.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                status: { type: 'string', description: 'OPEN | RESOLVED | EXPIRED' },
+                sku: { type: 'string', description: '상품 SKU 필터' },
+                limit: { type: 'number', description: '최대 결과 수 (기본 20)' },
+            },
+        },
+    },
 ];
 
 // ━━━ Resource Definitions ━━━
@@ -133,6 +270,12 @@ const RESOURCES = [
         description: '현재 활성 중인 프로모션 목록',
         mimeType: 'application/json',
     },
+    {
+        uri: 'jsonmart://sla',
+        name: 'SLA Metrics',
+        description: 'SLA 성능 지표 대시보드',
+        mimeType: 'application/json',
+    },
 ];
 
 // ━━━ Tool Handlers ━━━
@@ -145,7 +288,7 @@ async function handleTool(name: string, args: any, supabase: any, apiKey?: strin
         case 'search_products': {
             let q = supabase
                 .from('products')
-                .select('sku, title, category, brand, price, currency, stock_status, stock_qty, seller_trust, eta_days, ship_by_days, return_days, return_fee, ai_readiness_score, moq, min_order_qty, seller_id, seller_name, source, delivery_fee, attributes', { count: 'exact' })
+                .select('sku, title, description, category, brand, price, currency, stock_status, stock_qty, seller_trust, eta_days, ship_by_days, return_days, return_fee, ai_readiness_score, moq, min_order_qty, seller_id, seller_name, source, delivery_fee, attributes', { count: 'exact' })
                 .limit(Math.min(args.limit || 10, 200));
 
             if (args.category) q = q.eq('category', args.category);
@@ -163,6 +306,7 @@ async function handleTool(name: string, args: any, supabase: any, apiKey?: strin
                 results: (data || []).map((p: any) => ({
                     sku: p.sku,
                     title: p.title,
+                    description: p.description || null,
                     category: p.category,
                     brand: p.brand || null,
                     price: p.price,
@@ -199,6 +343,7 @@ async function handleTool(name: string, args: any, supabase: any, apiKey?: strin
                 title: data.title,
                 category: data.category,
                 brand: data.brand || null,
+                description: data.description || null,
                 gtin: data.gtin || null,
                 price: data.price,
                 currency: data.currency || 'KRW',
@@ -270,7 +415,7 @@ async function handleTool(name: string, args: any, supabase: any, apiKey?: strin
         case 'count_products': {
             let q = supabase.from('products').select('*', { count: 'exact', head: true });
             if (args.category) q = q.eq('category', args.category);
-            if (args.in_stock_only) q = q.eq('stock_status', 'IN_STOCK');
+            if (args.in_stock_only) q = q.eq('stock_status', 'in_stock');
             if (args.query) q = q.ilike('title', `%${args.query}%`);
             const { count, error } = await q;
             if (error) return { error: error.message };
@@ -296,6 +441,7 @@ async function handleTool(name: string, args: any, supabase: any, apiKey?: strin
                 .single();
 
             if (!product) return { error: `Product not found: ${args.sku}` };
+            if (product.stock_status !== 'in_stock') return { error: `Product out of stock: ${args.sku}` };
 
             const unitPrice = product.price || 0;
             const totalPrice = unitPrice * args.quantity;
@@ -381,8 +527,43 @@ async function handleTool(name: string, args: any, supabase: any, apiKey?: strin
             };
         }
 
-        default:
-            return { error: `Unknown tool: ${name}` };
+        default: {
+            // ━━━ RPC Proxy: route remaining tools to Supabase RPC functions ━━━
+            const rpcMap: Record<string, { rpc: string; needsAuth: boolean; argMap?: (a: any, key?: string) => any }> = {
+                'negotiate_price': { rpc: 'agent_negotiate', needsAuth: true, argMap: (a, k) => ({ p_api_key: k, p_sku: a.sku, p_qty: a.qty, p_unit_price: a.unit_price }) },
+                'sandbox_order': { rpc: 'sandbox_create_order', needsAuth: true, argMap: (a, k) => ({ p_api_key: k, p_sku: a.sku, p_qty: a.qty || 1 }) },
+                'get_sla': { rpc: 'get_sla_dashboard', needsAuth: false, argMap: (a) => ({ p_days: a.days || 30 }) },
+                'get_rewards': { rpc: 'get_agent_rewards', needsAuth: true, argMap: (_a, k) => ({ p_api_key: k }) },
+                'submit_review': { rpc: 'agent_create_review', needsAuth: true, argMap: (a, k) => ({ p_api_key: k, p_sku: a.sku, p_review_text: a.review_text, p_delivery_score: a.delivery_score, p_accuracy_score: a.accuracy_score }) },
+                'wallet_check': { rpc: 'get_wallet_info', needsAuth: true, argMap: (_a, k) => ({ p_api_key: k }) },
+                'apply_coupon': { rpc: 'apply_coupon', needsAuth: true, argMap: (a, k) => ({ p_api_key: k, p_coupon_code: a.coupon_code, p_order_amount: a.order_amount }) },
+                'predict_reorder': { rpc: 'generate_predictions', needsAuth: true, argMap: (_a, k) => ({ p_api_key: k }) },
+                'get_notifications': { rpc: 'get_agent_notifications', needsAuth: true, argMap: (a, k) => ({ p_api_key: k, p_unread_only: a.unread_only || false, p_type: a.type || null, p_limit: a.limit || 20 }) },
+                'a2a_broadcast': { rpc: 'agent_broadcast_query', needsAuth: true, argMap: (a, k) => ({ p_api_key: k, p_query_type: a.query_type || 'GENERAL', p_sku: a.sku || null, p_question: a.question, p_ttl_hours: a.ttl_hours || 24 }) },
+                'a2a_respond': { rpc: 'agent_respond_query', needsAuth: true, argMap: (a, k) => ({ p_api_key: k, p_query_id: a.query_id, p_verdict: a.verdict, p_confidence: a.confidence || 0.8, p_message: a.message || null }) },
+                'a2a_get_queries': { rpc: 'get_a2a_queries', needsAuth: false, argMap: (a) => ({ p_status: a.status || 'OPEN', p_sku: a.sku || null, p_limit: a.limit || 20 }) },
+            };
+
+            const mapping = rpcMap[name];
+            if (!mapping) return { error: `Unknown tool: ${name}` };
+
+            if (mapping.needsAuth && !apiKey) {
+                return { error: `x-api-key header required for ${name}` };
+            }
+
+            const rpcArgs = mapping.argMap ? mapping.argMap(args, apiKey) : args;
+            const { data, error } = await supabase.rpc(mapping.rpc, rpcArgs);
+
+            if (error) {
+                // RPC function might not exist yet → return helpful message
+                if (error.message?.includes('does not exist') || error.code === '42883') {
+                    return { error: `RPC function '${mapping.rpc}' not deployed yet. Run the corresponding SQL migration.`, tool: name };
+                }
+                return { error: error.message };
+            }
+
+            return data || { success: true };
+        }
     }
 }
 
@@ -403,6 +584,10 @@ async function handleResource(uri: string, supabase: any) {
                 .select('*')
                 .eq('active', true);
             return JSON.stringify({ promotions: data || [], generatedAt: new Date().toISOString() }, null, 2);
+        }
+        case 'jsonmart://sla': {
+            const { data } = await supabase.rpc('get_sla_dashboard', { p_days: 30 });
+            return JSON.stringify({ sla: data || {}, generatedAt: new Date().toISOString() }, null, 2);
         }
         default:
             return null;
