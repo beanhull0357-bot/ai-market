@@ -21,7 +21,6 @@ import { AgentQA } from './pages/AgentQA';
 import { AgentAnalytics } from './pages/AgentAnalytics';
 import { MCPIntegration } from './pages/MCPIntegration';
 import { Promotions } from './pages/Promotions';
-import { AgentSandbox } from './pages/AgentSandbox';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { AdminNotifications } from './pages/AdminNotifications';
 import { CustomerManagement } from './pages/CustomerManagement';
@@ -230,7 +229,6 @@ function MobileMenu({ onClose }: { onClose: () => void }) {
           { to: '/policies', icon: <FileCheck size={15} />, label: t('nav.policies') },
         ] : []),
         { to: '/playground', icon: <Zap size={15} />, label: t('nav.playground') },
-        { to: '/sandbox', icon: <FlaskConical size={15} />, label: 'Sandbox' },
         { to: '/negotiate', icon: <Handshake size={15} />, label: 'Negotiate' },
         { to: '/negotiate-settings', icon: <Shield size={15} />, label: '협상 위임' },
         { to: '/agent/docs', icon: <BookOpen size={15} />, label: t('nav.docs') },
@@ -315,7 +313,6 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       { to: '/policies', icon: <FileCheck size={13} />, label: t('policies.title') },
     ] : []),
     { to: '/playground', icon: <Zap size={13} />, label: t('playground.navTitle') },
-    { to: '/sandbox', icon: <FlaskConical size={13} />, label: 'Sandbox' },
     { to: '/portal', icon: <User size={13} />, label: 'Portal' },
     { to: '/agent/docs', icon: <BookOpen size={13} />, label: t('nav.docs') },
     { to: '/swagger', icon: <FileJson size={13} />, label: 'API Docs' },
@@ -443,7 +440,6 @@ export default function App() {
                     <Route path="/analytics" element={<AdminRoute><AgentAnalytics /></AdminRoute>} />
                     <Route path="/mcp" element={<MCPIntegration />} />
                     <Route path="/promotions" element={<AdminRoute><Promotions /></AdminRoute>} />
-                    <Route path="/sandbox" element={<AgentSandbox />} />
                     <Route path="/swagger" element={<SwaggerUI />} />
                     <Route path="/a2a" element={<A2ANetwork />} />
                     <Route path="/seller" element={<SellerCenter />} />
