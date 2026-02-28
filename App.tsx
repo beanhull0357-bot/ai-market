@@ -23,7 +23,6 @@ import { MCPIntegration } from './pages/MCPIntegration';
 import { OrderTracking } from './pages/OrderTracking';
 import { Promotions } from './pages/Promotions';
 import { AgentSandbox } from './pages/AgentSandbox';
-import { AutoReorder } from './pages/AutoReorder';
 import { AgentReputation } from './pages/AgentReputation';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { AdminNotifications } from './pages/AdminNotifications';
@@ -259,7 +258,6 @@ function MobileMenu({ onClose }: { onClose: () => void }) {
         { to: '/mcp', icon: <Cpu size={15} />, label: 'MCP' },
         ...(isAdmin ? [
           { to: '/promotions', icon: <Tag size={15} />, label: 'Promotions' },
-          { to: '/auto-reorder', icon: <RefreshCw size={15} />, label: 'Auto Reorder' },
           { to: '/tracking', icon: <Truck size={15} />, label: 'Tracking' },
         ] : []),
         { to: '/ecosystem', icon: <Globe size={15} />, label: 'Ecosystem' },
@@ -352,7 +350,6 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     { to: '/mcp', icon: <Cpu size={13} />, label: 'MCP' },
     ...(isAdmin ? [
       { to: '/promotions', icon: <Tag size={13} />, label: 'Promotions' },
-      { to: '/auto-reorder', icon: <RefreshCw size={13} />, label: 'Reorder' },
       { to: '/tracking', icon: <Truck size={13} />, label: 'Tracking' },
       { to: '/activity-log', icon: <Activity size={13} />, label: 'Log' },
       { to: '/webhooks', icon: <Webhook size={13} />, label: 'Webhooks' },
@@ -469,7 +466,6 @@ export default function App() {
                     <Route path="/seller" element={<SellerCenter />} />
                     <Route path="/seller-registry" element={<AdminRoute><SellerRegistry /></AdminRoute>} />
                     <Route path="/portal" element={<AgentPortal />} />
-                    <Route path="/auto-reorder" element={<AdminRoute><AutoReorder /></AdminRoute>} />
                     <Route path="/agent-reputation" element={<AdminRoute><AgentReputation /></AdminRoute>} />
                     <Route path="/dashboard" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
                     <Route path="/activity-log" element={<AdminRoute><AgentActivityLog /></AdminRoute>} />
