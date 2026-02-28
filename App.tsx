@@ -318,7 +318,6 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     { to: '/swagger', icon: <FileJson size={13} />, label: 'API Docs' },
     { to: '/a2a', icon: <Radio size={13} />, label: 'A2A Network' },
     { to: '/wallet', icon: <Zap size={13} />, label: 'Wallet' },
-    { to: '/tiers', icon: <BarChart3 size={13} />, label: 'Tiers' },
     { to: '/conformance', icon: <Shield size={13} />, label: 'Conformance' },
     ...(isAdmin ? [
       { to: '/agent-qa', icon: <MessageSquare size={13} />, label: 'Q&A' },
