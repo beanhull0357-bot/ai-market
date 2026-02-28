@@ -5,6 +5,7 @@ import { AgentConsole } from './pages/AgentConsole';
 import { AdminQueue } from './pages/AdminQueue';
 import { Receipt } from './pages/Receipt';
 import { Inventory } from './pages/Inventory';
+import { Catalog } from './pages/Catalog';
 import { Auth } from './pages/Auth';
 import { AgentManager } from './pages/AgentManager';
 import { PolicyManager } from './pages/PolicyManager';
@@ -46,10 +47,11 @@ import { DecisionReplay } from './pages/DecisionReplay';
 import { A2AMarket } from './pages/A2AMarket';
 import { WorkflowBuilder } from './pages/WorkflowBuilder';
 import SellerAgentStorefront from './pages/SellerAgentStorefront';
+import SellerNegotiationSettings from './pages/SellerNegotiationSettings';
 import { NotificationBell } from './components/NotificationBell';
 import { GuidePopup } from './components/GuidePopup';
 import { GUIDE_CONTENT } from './data/guideContent';
-import { Terminal, Shield, Cpu, Globe, Package, LogIn, LogOut, User, Key, FileCheck, Zap, BookOpen, Bot, Radio, BarChart3, ChevronDown, Menu, X, Store, Truck, MessageSquare, Tag, Users, FlaskConical, GitCompare, RefreshCw, Activity, Download, Webhook, LayoutDashboard, FileJson, Handshake, Brain, Workflow } from 'lucide-react';
+import { Terminal, Shield, Cpu, Globe, Package, LogIn, LogOut, User, Key, FileCheck, Zap, BookOpen, Bot, Radio, BarChart3, ChevronDown, Menu, X, Store, Truck, MessageSquare, Tag, Users, FlaskConical, GitCompare, RefreshCw, Activity, Download, Webhook, LayoutDashboard, FileJson, Handshake, Brain, Workflow, Code2 } from 'lucide-react';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -221,6 +223,7 @@ function MobileMenu({ onClose }: { onClose: () => void }) {
     {
       label: t('nav.commerce'), items: [
         { to: '/', icon: <Terminal size={15} />, label: t('nav.home') },
+        { to: '/catalog', icon: <Code2 size={15} />, label: t('nav.catalog') },
         ...(isAdmin ? [
           { to: '/inventory', icon: <Package size={15} />, label: t('nav.inventory') },
           { to: '/admin-queue', icon: <Shield size={15} />, label: t('nav.adminQueue') },
@@ -238,6 +241,7 @@ function MobileMenu({ onClose }: { onClose: () => void }) {
         { to: '/playground', icon: <Zap size={15} />, label: t('nav.playground') },
         { to: '/sandbox', icon: <FlaskConical size={15} />, label: 'Sandbox' },
         { to: '/negotiate', icon: <Handshake size={15} />, label: 'Negotiate' },
+        { to: '/negotiate-settings', icon: <Shield size={15} />, label: '협상 위임' },
         { to: '/agent/docs', icon: <BookOpen size={15} />, label: t('nav.docs') },
         ...(isAdmin ? [
           { to: '/agent-qa', icon: <MessageSquare size={15} />, label: 'Agent Q&A' },
@@ -304,6 +308,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   const commerceItems: NavItem[] = [
     { to: '/', icon: <Terminal size={13} />, label: t('nav.humanMode') },
+    { to: '/catalog', icon: <Code2 size={13} />, label: t('nav.catalog') },
     ...(isAdmin ? [
       { to: '/dashboard', icon: <LayoutDashboard size={13} />, label: 'Dashboard' },
       { to: '/inventory', icon: <Package size={13} />, label: t('nav.inventory') },
@@ -337,6 +342,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       { to: '/agent-reputation', icon: <Shield size={13} />, label: 'Reputation' },
     ] : []),
     { to: '/negotiate', icon: <Handshake size={13} />, label: 'Negotiate' },
+    { to: '/negotiate-settings', icon: <Shield size={13} />, label: '협상 위임' },
   ];
   const aiItems: NavItem[] = [
     ...(isAdmin ? [
@@ -439,6 +445,7 @@ export default function App() {
                   <Routes>
                     <Route path="/" element={<Landing />} />
                     <Route path="/agent-console" element={<AgentConsole />} />
+                    <Route path="/catalog" element={<Catalog />} />
                     <Route path="/admin-queue" element={<AdminRoute><AdminQueue /></AdminRoute>} />
                     <Route path="/inventory" element={<AdminRoute><Inventory /></AdminRoute>} />
                     <Route path="/receipt" element={<Receipt />} />
@@ -483,6 +490,7 @@ export default function App() {
                     <Route path="/a2a-market" element={<A2AMarket />} />
                     <Route path="/workflow-builder" element={<WorkflowBuilder />} />
                     <Route path="/agent-storefront" element={<SellerAgentStorefront />} />
+                    <Route path="/negotiate-settings" element={<SellerNegotiationSettings />} />
                     <Route path="*" element={<Landing />} />
                   </Routes>
                 </Layout>

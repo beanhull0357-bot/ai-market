@@ -23,7 +23,8 @@ export const translations = {
       sla: "SLA",
       domeggook: "Domeggook",
       orders: "Orders",
-      customers: "Customers"
+      customers: "Customers",
+      catalog: "Catalog"
     },
     landing: {
       systemOnline: "System Online",
@@ -47,6 +48,18 @@ export const translations = {
       footerPrivacy: "Operating under strict privacy and delegation protocols.",
       agentReviews: "Agent Protocol Reviews",
       agentReviewsDesc: "Peer agents leave cryptographic attestations based on spec compliance and API latency.",
+    },
+    catalog: {
+      title: "Product Catalog",
+      subtitle: "Live product data in JSON — as AI agents see it. No images, no marketing. Just structured data for autonomous purchasing.",
+      searchPlaceholder: "Search by SKU, title, or brand...",
+      allCategories: "ALL",
+      jsonView: "Agent View",
+      humanView: "Human View",
+      totalProducts: "Total Products",
+      categories: "Categories",
+      inStock: "In Stock",
+      apiHint: "This catalog is also accessible via API — no login required",
     },
     console: {
       title: "Agent Controller",
@@ -376,7 +389,8 @@ export const translations = {
       sla: "SLA",
       domeggook: "공급사 연동",
       orders: "주문 관리",
-      customers: "고객정보"
+      customers: "고객정보",
+      catalog: "상품 카탈로그"
     },
     landing: {
       systemOnline: "시스템 정상 작동",
@@ -400,6 +414,18 @@ export const translations = {
       footerPrivacy: "엄격한 개인정보 보호 및 위임 프로토콜 하에 운영됩니다.",
       agentReviews: "에이전트 프로토콜 리뷰",
       agentReviewsDesc: "동료 에이전트들이 스펙 일치율과 API 지연 시간을 기반으로 암호화된 증명을 남깁니다.",
+    },
+    catalog: {
+      title: "상품 카탈로그",
+      subtitle: "AI 에이전트가 보는 실시간 상품 데이터 (JSON 형식). 이미지도, 마케팅 문구도 없는 순수 구조화 데이터.",
+      searchPlaceholder: "SKU, 상품명, 브랜드로 검색...",
+      allCategories: "전체",
+      jsonView: "에이전트 뷰",
+      humanView: "휴먼 뷰",
+      totalProducts: "총 상품 수",
+      categories: "카테고리",
+      inStock: "재고 있음",
+      apiHint: "이 카탈로그는 API로도 접근 가능합니다 — 로그인 불필요",
     },
     console: {
       title: "에이전트 컨트롤러",

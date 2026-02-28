@@ -198,7 +198,7 @@ export const Landing: React.FC = () => {
               <ArrowRight size={16} />
             </button>
             <button
-              onClick={() => document.getElementById('store-as-code')?.scrollIntoView({ behavior: 'smooth' })}
+              onClick={() => navigate('/catalog')}
               className="btn-secondary"
               style={{ padding: '14px 28px', fontSize: 15 }}
             >
