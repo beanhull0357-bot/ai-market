@@ -83,6 +83,58 @@ interface DomeDetailResponse {
     };
 }
 
+// ─── AI Readiness Score Calculation (#1) ───
+function calculateAiReadiness(detail: any, sellerTrust: number): number {
+    let score = 50; // 기본점수
+    if (detail?.country) score += 8;
+    if (detail?.manufacturer) score += 8;
+    if (detail?.weight) score += 5;
+    if (detail?.size) score += 3;
+    const keywords = detail?.keywords?.kw || [];
+    if (keywords.length >= 3) score += 5;
+    if (detail?.stockQty && detail.stockQty > 0) score += 5;
+    if (sellerTrust >= 80) score += 8;
+    if (detail?.deliComplete) score += 5; // 배송정보 완전
+    if (detail?.returnFee !== undefined) score += 3;
+    return Math.min(score, 100);
+}
+
+// ─── Description Generation (#4) ───
+function generateDescription(title: string, keywords?: string[]): string {
+    // Extract bracketed info from title: "상품명 [부가정보1 부가정보2...]" → "부가정보1 부가정보2..."
+    const bracketMatch = title.match(/\[([^\]]+)\]/);
+    const bracketInfo = bracketMatch ? bracketMatch[1].trim() : '';
+
+    // Clean title (remove brackets)
+    const cleanTitle = title.replace(/\[.*?\]/g, '').trim();
+
+    // Combine keywords if available
+    const kwText = (keywords && keywords.length > 0) ? keywords.slice(0, 5).join(', ') : '';
+
+    const parts = [cleanTitle];
+    if (bracketInfo) parts.push(bracketInfo);
+    if (kwText) parts.push(`키워드: ${kwText}`);
+
+    return parts.join(' | ');
+}
+
+// ─── Option Parsing (#7) ───
+function parseOptions(selectOpt?: string): { name: string; values: string[] }[] | null {
+    if (!selectOpt) return null;
+    try {
+        // selectOpt can be: "색상:블랙,화이트,레드|사이즈:S,M,L,XL"
+        // or pipe-delimited option groups
+        const groups = selectOpt.split('|').filter(Boolean);
+        return groups.map(g => {
+            const [name, ...vals] = g.split(':');
+            const values = vals.join(':').split(',').map(v => v.trim()).filter(Boolean);
+            return { name: name.trim(), values };
+        }).filter(o => o.values.length > 0);
+    } catch {
+        return null;
+    }
+}
+
 // ─── Margin Calculation ───
 function calculateSellingPrice(costPrice: number, resale?: { minimum?: number; Recommand?: number }): {
     sellingPrice: number; marginRate: number; marginAmount: number;
@@ -464,11 +516,31 @@ export function DomeggookSync() {
                     send_avg: d.deli?.sendAvg || 0,
                 };
 
+                // Dynamic AI readiness score (#1)
+                const aiScore = calculateAiReadiness({
+                    country: d.detail?.country,
+                    manufacturer: d.detail?.manufacturer,
+                    weight: d.detail?.weight,
+                    size: d.detail?.size,
+                    keywords: d.basis.keywords,
+                    stockQty: parseInt(d.qty.inventory) || 0,
+                    deliComplete: !!(d.deli?.method && d.deli?.dome?.fee !== undefined),
+                    returnFee: d.return?.deliAmt,
+                }, sellerTrust);
+
+                // Generate description from title + keywords (#4)
+                const description = generateDescription(d.basis.title, d.basis.keywords?.kw);
+
+                // Parse options (#7)
+                const options = parseOptions(d.selectOpt);
+
                 const productData = {
                     sku: `DOME-${d.basis.no}`,
                     category,
                     title: d.basis.title,
-                    brand: d.seller?.nick || '',
+                    description,
+                    brand: d.detail?.manufacturer || '',  // #3: Use actual manufacturer
+                    seller_name: d.seller?.nick || '',     // #3: Seller nick → seller_name
                     cost_price: costPrice,
                     price: sellingPrice,
                     margin_rate: marginRate,
@@ -482,7 +554,7 @@ export function DomeggookSync() {
                     eta_days: (d.deli?.sendAvg ? Math.ceil(d.deli.sendAvg) : (parseInt(d.deli.periodDeli) || 1)) + 2,
                     return_days: 7,
                     return_fee: d.return?.deliAmt || 0,
-                    ai_readiness_score: 70,
+                    ai_readiness_score: aiScore,           // #1: Dynamic score
                     seller_trust: sellerTrust,
                     delivery_fee: deliveryFee,
                     purchase_unit: d.qty.domeUnit || 1,
@@ -505,6 +577,7 @@ export function DomeggookSync() {
                         seller_good: d.seller?.good || false,
                         seller_global: d.seller?.global || false,
                         nego_enabled: d.basis?.nego === 'enable',
+                        ...(options ? { options } : {}),   // #7: Option details
                     },
                     sourcing_type: 'HUMAN',
                     source: 'domeggook',
@@ -579,11 +652,31 @@ export function DomeggookSync() {
                 send_avg: d.deli?.sendAvg || 0,
             };
 
+            // Dynamic AI readiness score (#1)
+            const aiScore = calculateAiReadiness({
+                country: d.detail?.country,
+                manufacturer: d.detail?.manufacturer,
+                weight: d.detail?.weight,
+                size: d.detail?.size,
+                keywords: d.basis.keywords,
+                stockQty: parseInt(d.qty.inventory) || 0,
+                deliComplete: !!(d.deli?.method && d.deli?.dome?.fee !== undefined),
+                returnFee: d.return?.deliAmt,
+            }, sellerTrust);
+
+            // Generate description from title + keywords (#4)
+            const description = generateDescription(d.basis.title, d.basis.keywords?.kw);
+
+            // Parse options (#7)
+            const options = parseOptions(d.selectOpt);
+
             const productData = {
                 sku: `DOME-${d.basis.no}`,
                 category,
                 title: d.basis.title,
-                brand: d.seller?.nick || '',
+                description,
+                brand: d.detail?.manufacturer || '',  // #3: Use actual manufacturer
+                seller_name: d.seller?.nick || '',     // #3: Seller nick → seller_name
                 cost_price: costPrice,
                 price: sellingPrice,
                 margin_rate: marginRate,
@@ -597,7 +690,7 @@ export function DomeggookSync() {
                 eta_days: (d.deli?.sendAvg ? Math.ceil(d.deli.sendAvg) : (parseInt(d.deli.periodDeli) || 1)) + 2,
                 return_days: 7,
                 return_fee: d.return?.deliAmt || 0,
-                ai_readiness_score: 70,
+                ai_readiness_score: aiScore,           // #1: Dynamic score
                 seller_trust: sellerTrust,
                 delivery_fee: deliveryFee,
                 purchase_unit: d.qty.domeUnit || 1,
@@ -620,6 +713,7 @@ export function DomeggookSync() {
                     seller_good: d.seller?.good || false,
                     seller_global: d.seller?.global || false,
                     nego_enabled: d.basis?.nego === 'enable',
+                    ...(options ? { options } : {}),   // #7: Option details
                 },
                 sourcing_type: 'HUMAN',
                 source: 'domeggook',

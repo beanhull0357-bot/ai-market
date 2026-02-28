@@ -71,19 +71,24 @@ function SyntaxHighlight({ json, compact = false }: { json: string; compact?: bo
 
 /* ━━━ Product to Agent JSON ━━━ */
 function productToAgentJson(p: ProductPack): object {
+    const attrs = (p as any).attributes || {};
     return {
         sku: p.sku,
         title: p.title,
+        description: (p as any).description || null,
         category: p.category,
         brand: p.identifiers?.brand || null,
+        source: (p as any).source || 'direct',
         offer: {
             price: p.offer.price,
             currency: p.offer.currency || 'KRW',
             stock_status: p.offer.stockStatus,
             stock_qty: p.offer.stockQty ?? null,
+            moq: (p as any).moq || attrs.min_qty || 1,
             ship_by_days: p.offer.shipByDays,
             eta_days: p.offer.etaDays,
         },
+        delivery: (p as any).deliveryFee || null,
         policies: {
             return_days: p.policies.returnDays,
             return_fee: p.policies.returnFee,
@@ -91,6 +96,13 @@ function productToAgentJson(p: ProductPack): object {
         quality_signals: {
             ai_readiness_score: p.qualitySignals.aiReadinessScore,
             seller_trust: p.qualitySignals.sellerTrust,
+        },
+        attributes: {
+            country: attrs.country || null,
+            manufacturer: attrs.manufacturer || null,
+            weight: attrs.weight || null,
+            keywords: attrs.keywords || [],
+            options: attrs.options || null,
         },
         seller: p.sellerId ? { id: p.sellerId, name: p.sellerName || null } : null,
     };

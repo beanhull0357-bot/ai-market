@@ -170,6 +170,7 @@ async function handleTool(name: string, args: any, supabase: any, apiKey?: strin
                     stock_status: p.stock_status,
                     stock_qty: p.stock_qty,
                     trust_score: p.seller_trust,
+                    ai_readiness_score: p.ai_readiness_score || 70,
                     eta_days: p.eta_days,
                     ship_by_days: p.ship_by_days,
                     return_days: p.return_days,
