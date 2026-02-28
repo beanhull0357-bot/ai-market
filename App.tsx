@@ -3,7 +3,6 @@ import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate } from 're
 import { Landing } from './pages/Landing';
 import { AgentConsole } from './pages/AgentConsole';
 import { AdminQueue } from './pages/AdminQueue';
-import { Receipt } from './pages/Receipt';
 import { Inventory } from './pages/Inventory';
 import { Catalog } from './pages/Catalog';
 import { Auth } from './pages/Auth';
@@ -415,7 +414,6 @@ export default function App() {
                     <Route path="/catalog" element={<Catalog />} />
                     <Route path="/admin-queue" element={<AdminRoute><AdminQueue /></AdminRoute>} />
                     <Route path="/inventory" element={<AdminRoute><Inventory /></AdminRoute>} />
-                    <Route path="/receipt" element={<Receipt />} />
                     <Route path="/agents" element={<AdminRoute><AgentManager /></AdminRoute>} />
                     <Route path="/policies" element={<AdminRoute><PolicyManager /></AdminRoute>} />
                     <Route path="/playground" element={<AgentPlayground />} />
