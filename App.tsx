@@ -23,7 +23,6 @@ import { MCPIntegration } from './pages/MCPIntegration';
 import { OrderTracking } from './pages/OrderTracking';
 import { Promotions } from './pages/Promotions';
 import { AgentSandbox } from './pages/AgentSandbox';
-import { ProductCompare } from './pages/ProductCompare';
 import { AutoReorder } from './pages/AutoReorder';
 import { AgentReputation } from './pages/AgentReputation';
 import { AdminDashboard } from './pages/AdminDashboard';
@@ -258,7 +257,6 @@ function MobileMenu({ onClose }: { onClose: () => void }) {
         { to: '/live', icon: <Radio size={15} />, label: t('nav.live') },
         { to: '/sla', icon: <BarChart3 size={15} />, label: t('nav.sla') },
         { to: '/mcp', icon: <Cpu size={15} />, label: 'MCP' },
-        { to: '/compare', icon: <GitCompare size={15} />, label: 'Compare' },
         ...(isAdmin ? [
           { to: '/promotions', icon: <Tag size={15} />, label: 'Promotions' },
           { to: '/auto-reorder', icon: <RefreshCw size={15} />, label: 'Auto Reorder' },
@@ -352,7 +350,6 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     { to: '/live', icon: <Radio size={13} />, label: t('nav.live') },
     { to: '/sla', icon: <BarChart3 size={13} />, label: t('nav.sla') },
     { to: '/mcp', icon: <Cpu size={13} />, label: 'MCP' },
-    { to: '/compare', icon: <GitCompare size={13} />, label: 'Compare' },
     ...(isAdmin ? [
       { to: '/promotions', icon: <Tag size={13} />, label: 'Promotions' },
       { to: '/auto-reorder', icon: <RefreshCw size={13} />, label: 'Reorder' },
@@ -472,7 +469,6 @@ export default function App() {
                     <Route path="/seller" element={<SellerCenter />} />
                     <Route path="/seller-registry" element={<AdminRoute><SellerRegistry /></AdminRoute>} />
                     <Route path="/portal" element={<AgentPortal />} />
-                    <Route path="/compare" element={<ProductCompare />} />
                     <Route path="/auto-reorder" element={<AdminRoute><AutoReorder /></AdminRoute>} />
                     <Route path="/agent-reputation" element={<AdminRoute><AgentReputation /></AdminRoute>} />
                     <Route path="/dashboard" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
