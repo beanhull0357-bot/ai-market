@@ -647,7 +647,7 @@ serve(async (req: Request) => {
                     },
                     serverInfo: {
                         name: 'JSONMart MCP Server',
-                        version: '1.1.0',
+                        version: '2.0.0',
                         description: 'AI-native marketplace tools for autonomous purchasing agents',
                     },
                 });

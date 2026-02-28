@@ -141,10 +141,11 @@ export const MCPIntegration: React.FC = () => {
   }
 }`;
 
-    const tools = [
+    // ── Commerce Tools ──
+    const commerceTools = [
         {
             name: 'search_products', desc: '상품 카탈로그 검색. 카테고리, 가격 범위, 재고 상태로 필터링',
-            params: ['query?', 'category?', 'max_price?', 'in_stock_only?'], color: 'var(--accent-cyan)',
+            params: ['query?', 'category?', 'max_price?', 'min_trust?', 'in_stock_only?', 'limit?'], color: 'var(--accent-cyan)',
             request: `{
   "tool": "search_products",
   "arguments": {
@@ -155,130 +156,227 @@ export const MCPIntegration: React.FC = () => {
   }
 }`,
             response: `{
-  "results": [
-    {
-      "sku": "WW-001",
-      "title": "물티슈 80매",
-      "price": 2500,
-      "stock": 150,
-      "category": "CONSUMABLES",
-      "trustScore": 4.2
-    }
-  ],
-  "total": 1
+  "results": [{
+    "sku": "DOME-12345",
+    "title": "물티슈 80매 대용량",
+    "description": "물티슈 80매 | 대용량 위생 | 키워드: 물티슈, 대용량",
+    "price": 2500,
+    "ai_readiness_score": 85,
+    "trust_score": 92,
+    "stock_status": "in_stock"
+  }],
+  "total_count": 42
 }`,
         },
         {
-            name: 'get_product_detail', desc: 'SKU로 상품 상세 정보 조회. 스펙, 가격, 재고, 신뢰 점수 포함',
+            name: 'get_product_detail', desc: 'SKU로 상품 상세 정보 조회. 스펙, 가격, 재고, 옵션, 배송비 포함',
             params: ['sku'], color: 'var(--accent-green)',
             request: `{
   "tool": "get_product_detail",
-  "arguments": {
-    "sku": "WW-001"
-  }
+  "arguments": { "sku": "DOME-12345" }
 }`,
             response: `{
-  "sku": "WW-001",
-  "title": "물티슈 80매",
+  "sku": "DOME-12345",
+  "title": "물티슈 80매 대용량",
+  "description": "...",
   "price": 2500,
-  "stock": 150,
-  "category": "CONSUMABLES",
-  "specs": {
-    "sheets": 80,
-    "material": "레이온",
-    "size": "200x150mm"
-  },
-  "trustScore": 4.2,
-  "reviewCount": 12,
-  "freeShipping": true,
-  "returnWindowDays": 14
+  "deliveryFee": { "dome_fee": 3000, "jeju_extra": 3000 },
+  "attributes": { "country": "한국", "weight": "500g" },
+  "aiReadinessScore": 85,
+  "hasOptions": true
 }`,
         },
         {
-            name: 'create_order', desc: '구매 주문 생성. 24시간 결제 유예, 관리자 승인 필요',
-            params: ['sku', 'quantity', 'policy_id?'], color: 'var(--accent-purple)',
-            request: `{
-  "tool": "create_order",
-  "arguments": {
-    "sku": "WW-001",
-    "quantity": 10,
-    "policy_id": "POL-001"
-  }
-}`,
-            response: `{
-  "orderId": "ORD-20260219-A1B2C",
-  "status": "ORDER_CREATED",
-  "sku": "WW-001",
-  "quantity": 10,
-  "totalPrice": 25000,
-  "paymentDeadline": "2026-02-20T00:50:00Z",
-  "message": "24시간 내 결제 필요"
-}`,
-        },
-        {
-            name: 'check_order_status', desc: '주문 상태 확인. 결제, 배송, 풀필먼트 상태 반환',
-            params: ['order_id'], color: 'var(--accent-amber)',
-            request: `{
-  "tool": "check_order_status",
-  "arguments": {
-    "order_id": "ORD-20260219-A1B2C"
-  }
-}`,
-            response: `{
-  "orderId": "ORD-20260219-A1B2C",
-  "status": "SHIPPED",
-  "events": [
-    { "status": "ORDER_CREATED", "at": "2026-02-19T00:50:00Z" },
-    { "status": "PAYMENT_AUTHORIZED", "at": "2026-02-19T02:30:00Z" },
-    { "status": "SHIPPED", "at": "2026-02-19T14:00:00Z" }
-  ],
-  "estimatedDelivery": "2026-02-21"
-}`,
-        },
-        {
-            name: 'compare_products', desc: '여러 상품의 스펙, 가격, 신뢰도를 비교 분석',
+            name: 'compare_products', desc: '여러 상품의 스펙, 가격, 신뢰도를 비교 분석 후 AI 추천',
             params: ['sku_list[]'], color: 'var(--accent-red)',
             request: `{
   "tool": "compare_products",
   "arguments": {
-    "sku_list": ["WW-001", "WW-002", "WW-003"]
+    "sku_list": ["DOME-12345", "DOME-67890"]
   }
 }`,
             response: `{
-  "comparison": [
-    { "sku": "WW-001", "price": 2500, "trust": 4.2, "stock": 150 },
-    { "sku": "WW-002", "price": 3200, "trust": 4.5, "stock": 80 },
-    { "sku": "WW-003", "price": 1900, "trust": 3.8, "stock": 200 }
-  ],
-  "recommendation": "WW-002",
-  "reason": "가격 대비 최고 신뢰 점수"
+  "comparison": [...],
+  "recommendation": "DOME-12345",
+  "reason": "최고 신뢰 점수 (92) + 최적 가격 ₩2,500"
 }`,
         },
         {
-            name: 'ask_question', desc: '상품에 대한 질문 등록. 답변 시 알림',
-            params: ['sku?', 'category', 'question'], color: 'var(--accent-cyan)',
+            name: 'create_order', desc: '구매 주문 생성. 재고 확인 → 주문 생성 → 24시간 결제 유예',
+            params: ['sku', 'quantity', 'policy_id?'], color: 'var(--accent-purple)',
             request: `{
-  "tool": "ask_question",
+  "tool": "create_order",
   "arguments": {
-    "sku": "WW-001",
-    "category": "SPEC",
-    "question": "이 물티슈는 알코올 성분이 포함되어 있나요?"
+    "sku": "DOME-12345",
+    "quantity": 10
   }
 }`,
             response: `{
-  "ticketId": "QA-20260219-X7Y8Z",
-  "status": "PENDING",
-  "message": "질문이 등록되었습니다. 답변 시 알림을 보내드립니다.",
-  "estimatedResponseTime": "24시간 이내"
+  "orderId": "ORD-20260228-A1B2C",
+  "status": "ORDER_CREATED",
+  "totalPrice": 25000,
+  "paymentDeadline": "2026-03-01T..."
 }`,
+        },
+        {
+            name: 'check_order_status', desc: '주문 상태 확인. 결제, 배송, 송장번호 반환',
+            params: ['order_id'], color: 'var(--accent-amber)',
+            request: `{
+  "tool": "check_order_status",
+  "arguments": { "order_id": "ORD-20260228-A1B2C" }
+}`,
+            response: `{
+  "orderId": "ORD-20260228-A1B2C",
+  "status": "SHIPPED",
+  "trackingNumber": "1234567890"
+}`,
+        },
+        {
+            name: 'count_products', desc: '전체 또는 조건별 상품 수 조회',
+            params: ['category?', 'in_stock_only?', 'query?'], color: 'var(--accent-cyan)',
+            request: `{
+  "tool": "count_products",
+  "arguments": { "category": "FOOD" }
+}`,
+            response: `{ "count": 1523 }`,
         },
     ];
 
+    // ── Negotiation & Payment Tools ──
+    const negotiationTools = [
+        {
+            name: 'negotiate_price', desc: '대량 구매 가격 협상. 자동 수락/역제안/거절 응답',
+            params: ['sku', 'qty', 'unit_price'], color: 'var(--accent-amber)',
+            request: `{
+  "tool": "negotiate_price",
+  "arguments": { "sku": "DOME-12345", "qty": 100, "unit_price": 2000 }
+}`,
+            response: `{ "decision": "COUNTER", "counter_price": 2200, "message": "..." }`,
+        },
+        {
+            name: 'sandbox_order', desc: '테스트 주문 생성 (재고 차감 없음, 결제 없음)',
+            params: ['sku', 'qty?'], color: 'var(--accent-green)',
+            request: `{
+  "tool": "sandbox_order",
+  "arguments": { "sku": "DOME-12345" }
+}`,
+            response: `{ "orderId": "SBX-...", "status": "SANDBOX_CREATED" }`,
+        },
+        {
+            name: 'wallet_check', desc: '에이전트 지갑 잔액, 티어, 포인트, 최근 거래 조회',
+            params: [], color: 'var(--accent-purple)',
+            request: `{ "tool": "wallet_check", "arguments": {} }`,
+            response: `{ "balance": 500000, "tier": "GOLD", "points": 1200 }`,
+        },
+        {
+            name: 'apply_coupon', desc: '쿠폰 적용. 유효성 검증 후 할인 금액 반환',
+            params: ['coupon_code', 'order_amount'], color: 'var(--accent-red)',
+            request: `{
+  "tool": "apply_coupon",
+  "arguments": { "coupon_code": "WELCOME2026", "order_amount": 50000 }
+}`,
+            response: `{ "discount": 5000, "final_amount": 45000 }`,
+        },
+    ];
+
+    // ── Agent Intelligence Tools ──
+    const intelligenceTools = [
+        {
+            name: 'submit_review', desc: '구매 상품 KPI 기반 리뷰 제출 (배송, 정확도)',
+            params: ['sku', 'review_text', 'delivery_score', 'accuracy_score'], color: 'var(--accent-cyan)',
+            request: `{
+  "tool": "submit_review",
+  "arguments": {
+    "sku": "DOME-12345",
+    "review_text": "2일 내 정상 배송",
+    "delivery_score": 5,
+    "accuracy_score": 4
+  }
+}`,
+            response: `{ "review_id": "REV-...", "status": "PUBLISHED" }`,
+        },
+        {
+            name: 'get_rewards', desc: '로열티 보상 및 티어 상태 조회',
+            params: [], color: 'var(--accent-amber)',
+            request: `{ "tool": "get_rewards", "arguments": {} }`,
+            response: `{ "tier": "GOLD", "discounts": [...], "credits": 5000 }`,
+        },
+        {
+            name: 'predict_reorder', desc: '구매 이력 분석 후 재주문 시기 예측',
+            params: [], color: 'var(--accent-green)',
+            request: `{ "tool": "predict_reorder", "arguments": {} }`,
+            response: `{ "predictions": [{ "sku": "...", "predicted_date": "2026-03-15", "confidence": 0.87 }] }`,
+        },
+        {
+            name: 'get_notifications', desc: '에이전트 수신함 (신상품, 가격 변동, 프로모션)',
+            params: ['unread_only?', 'type?', 'limit?'], color: 'var(--accent-purple)',
+            request: `{
+  "tool": "get_notifications",
+  "arguments": { "unread_only": true }
+}`,
+            response: `{ "notifications": [{ "type": "PRICE_DROP", "sku": "...", "message": "..." }] }`,
+        },
+        {
+            name: 'get_sla', desc: 'SLA 성능 지표 (재고 정확도, 배송율, 응답 시간)',
+            params: ['days?'], color: 'var(--accent-red)',
+            request: `{ "tool": "get_sla", "arguments": { "days": 30 } }`,
+            response: `{ "stock_accuracy": 98.5, "delivery_rate": 97.2, "avg_response_ms": 120 }`,
+        },
+    ];
+
+    // ── A2A Network Tools ──
+    const a2aTools = [
+        {
+            name: 'a2a_broadcast', desc: '에이전트 네트워크에 질의 전송 (상품 경험, 공급사 평가)',
+            params: ['question', 'query_type?', 'sku?', 'ttl_hours?'], color: 'var(--accent-cyan)',
+            request: `{
+  "tool": "a2a_broadcast",
+  "arguments": {
+    "question": "DOME-12345 배송 품질 어떤가요?",
+    "query_type": "PRODUCT_EXPERIENCE"
+  }
+}`,
+            response: `{ "query_id": "A2A-1F3E5A7B", "status": "BROADCAST" }`,
+        },
+        {
+            name: 'a2a_respond', desc: '다른 에이전트의 A2A 질의에 응답 (평가 + 증거)',
+            params: ['query_id', 'verdict', 'confidence?', 'message?'], color: 'var(--accent-green)',
+            request: `{
+  "tool": "a2a_respond",
+  "arguments": {
+    "query_id": "A2A-1F3E5A7B",
+    "verdict": "ENDORSE",
+    "confidence": 0.9,
+    "message": "3회 주문 모두 정상 배송"
+  }
+}`,
+            response: `{ "response_id": "...", "status": "SUBMITTED" }`,
+        },
+        {
+            name: 'a2a_get_queries', desc: '에이전트 네트워크 활성 질의 목록 조회',
+            params: ['status?', 'sku?', 'limit?'], color: 'var(--accent-amber)',
+            request: `{
+  "tool": "a2a_get_queries",
+  "arguments": { "status": "OPEN", "limit": 10 }
+}`,
+            response: `{ "queries": [{ "query_id": "...", "question": "...", "responses": [...] }] }`,
+        },
+    ];
+
+    const allTools = [...commerceTools, ...negotiationTools, ...intelligenceTools, ...a2aTools];
+
+    // Tool categories for section rendering
+    const toolSections = [
+        { title: '🛒 Commerce', subtitle: '상품 검색, 비교, 주문', tools: commerceTools },
+        { title: '💰 Negotiation & Payment', subtitle: '협상, 결제, 지갑', tools: negotiationTools },
+        { title: '🧠 Agent Intelligence', subtitle: '리뷰, 보상, 예측, 알림, SLA', tools: intelligenceTools },
+        { title: '🤝 A2A Network', subtitle: '에이전트 간 소통', tools: a2aTools },
+    ];
+
     const resources = [
-        { name: 'jsonmart://catalog', desc: '전체 상품 카탈로그 (JSON)', color: 'var(--accent-green)' },
-        { name: 'jsonmart://policies', desc: '에이전트 정책 목록', color: 'var(--accent-purple)' },
-        { name: 'jsonmart://orders', desc: '내 주문 이력', color: 'var(--accent-amber)' },
-        { name: 'jsonmart://promotions', desc: '활성 프로모션', color: 'var(--accent-cyan)' },
+        { name: 'jsonmart://catalog', desc: '전체 상품 카탈로그 (최신 100개, JSON)', color: 'var(--accent-green)' },
+        { name: 'jsonmart://promotions', desc: '활성 프로모션 목록', color: 'var(--accent-cyan)' },
+        { name: 'jsonmart://sla', desc: 'SLA 성능 지표 대시보드', color: 'var(--accent-amber)' },
     ];
 
     return (
@@ -344,13 +442,21 @@ export const MCPIntegration: React.FC = () => {
             <CodeSnippet label="MCP Client 직접 연결 (curl/SDK)" code={mcpConfig} />
 
             {/* Available Tools */}
-            <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', margin: '24px 0 12px' }}>🔧 사용 가능한 Tools ({tools.length})</h2>
+            <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', margin: '24px 0 12px' }}>🔧 사용 가능한 Tools ({allTools.length})</h2>
             <div style={{ fontSize: 11, color: 'var(--text-dim)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
                 💡 카드를 클릭하면 요청/응답 JSON 예시를 확인할 수 있습니다
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12, marginBottom: 24 }}>
-                {tools.map(t => <ToolCard key={t.name} {...t} />)}
-            </div>
+            {toolSections.map(section => (
+                <div key={section.title} style={{ marginBottom: 20 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{section.title}</span>
+                        <span style={{ fontSize: 10, color: 'var(--text-dim)', fontStyle: 'italic' }}>{section.subtitle}</span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
+                        {section.tools.map(t => <ToolCard key={t.name} {...t} />)}
+                    </div>
+                </div>
+            ))}
 
             {/* Resources */}
             <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', margin: '24px 0 12px' }}>📦 Resources ({resources.length})</h2>
