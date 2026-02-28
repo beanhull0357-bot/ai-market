@@ -1510,3 +1510,156 @@ export async function saveDecisionReplay(session: {
     return data;
 }
 
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// SELLER NEGOTIATION POLICY HOOKS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+export function useSellerNegotiationPolicy(apiKey: string | null) {
+    const [policy, setPolicy] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+
+    const fetchPolicy = useCallback(async () => {
+        if (!apiKey) { setLoading(false); return; }
+        setLoading(true);
+        try {
+            const { data, error } = await supabase.rpc('get_seller_negotiation_policy', { p_api_key: apiKey });
+            if (!error && data?.success) setPolicy(data.policy);
+        } catch (err) {
+            console.error('Failed to fetch negotiation policy:', err);
+        } finally {
+            setLoading(false);
+        }
+    }, [apiKey]);
+
+    useEffect(() => { fetchPolicy(); }, [fetchPolicy]);
+    return { policy, loading, refetch: fetchPolicy };
+}
+
+export async function updateSellerNegotiationPolicy(apiKey: string, updates: {
+    minAcceptMargin?: number;
+    autoAcceptAbove?: number;
+    autoRejectBelow?: number;
+    maxAutoRounds?: number;
+    concessionStyle?: string;
+    initialCounterPct?: number;
+    bulkDiscountTiers?: any[];
+    categoryOverrides?: Record<string, any>;
+    manualReviewAbove?: number;
+    notifyOnStart?: boolean;
+    notifyOnPending?: boolean;
+    isActive?: boolean;
+}) {
+    const { data, error } = await supabase.rpc('update_seller_negotiation_policy', {
+        p_api_key: apiKey,
+        p_min_accept_margin: updates.minAcceptMargin ?? null,
+        p_auto_accept_above: updates.autoAcceptAbove ?? null,
+        p_auto_reject_below: updates.autoRejectBelow ?? null,
+        p_max_auto_rounds: updates.maxAutoRounds ?? null,
+        p_concession_style: updates.concessionStyle ?? null,
+        p_initial_counter_pct: updates.initialCounterPct ?? null,
+        p_bulk_discount_tiers: updates.bulkDiscountTiers ?? null,
+        p_category_overrides: updates.categoryOverrides ?? null,
+        p_manual_review_above: updates.manualReviewAbove ?? null,
+        p_notify_on_start: updates.notifyOnStart ?? null,
+        p_notify_on_pending: updates.notifyOnPending ?? null,
+        p_is_active: updates.isActive ?? null,
+    });
+    if (error) throw error;
+    return data;
+}
+
+export function useSellerNegotiations(apiKey: string | null, status?: string) {
+    const [negotiations, setNegotiations] = useState<any[]>([]);
+    const [pendingCount, setPendingCount] = useState(0);
+    const [loading, setLoading] = useState(true);
+
+    const fetchNegotiations = useCallback(async () => {
+        if (!apiKey) { setLoading(false); return; }
+        setLoading(true);
+        try {
+            const { data, error } = await supabase.rpc('get_seller_negotiations', {
+                p_api_key: apiKey,
+                p_status: status || null,
+                p_limit: 50,
+            });
+            if (!error && data?.success) {
+                setNegotiations(data.negotiations || []);
+                setPendingCount(data.pending_count || 0);
+            }
+        } catch (err) {
+            console.error('Failed to fetch seller negotiations:', err);
+        } finally {
+            setLoading(false);
+        }
+    }, [apiKey, status]);
+
+    useEffect(() => { fetchNegotiations(); }, [fetchNegotiations]);
+    return { negotiations, pendingCount, loading, refetch: fetchNegotiations };
+}
+
+export async function sellerRespondNegotiation(
+    apiKey: string, negotiationId: string, action: 'ACCEPT' | 'REJECT' | 'COUNTER',
+    counterPrice?: number, message?: string
+) {
+    const { data, error } = await supabase.rpc('seller_respond_negotiation', {
+        p_api_key: apiKey,
+        p_negotiation_id: negotiationId,
+        p_action: action,
+        p_counter_price: counterPrice || null,
+        p_message: message ? sanitizeString(message, 500) : null,
+    });
+    if (error) throw error;
+    return data;
+}
+
+export async function policyBasedNegotiate(
+    apiKey: string, sku: string, qty: number, unitPrice: number
+) {
+    const { data, error } = await supabase.rpc('policy_based_negotiate', {
+        p_api_key: apiKey,
+        p_sku: sku,
+        p_qty: qty,
+        p_unit_price: unitPrice,
+    });
+    if (error) throw error;
+    return data;
+}
+
+export function useSellerNegotiationStats(apiKey: string | null) {
+    const [stats, setStats] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+
+    const fetchStats = useCallback(async () => {
+        if (!apiKey) { setLoading(false); return; }
+        setLoading(true);
+        try {
+            const { data, error } = await supabase.rpc('get_seller_negotiations', {
+                p_api_key: apiKey, p_status: null, p_limit: 200,
+            });
+            if (!error && data?.success) {
+                const negs = data.negotiations || [];
+                const agreed = negs.filter((n: any) => n.status === 'AGREED');
+                const avgDiscount = agreed.length > 0
+                    ? agreed.reduce((s: number, n: any) => s + (n.savings_pct || 0), 0) / agreed.length
+                    : 0;
+                setStats({
+                    total: negs.length,
+                    agreed: agreed.length,
+                    rejected: negs.filter((n: any) => n.status === 'REJECTED').length,
+                    pending: negs.filter((n: any) => n.status === 'PENDING_SELLER').length,
+                    counter: negs.filter((n: any) => n.status === 'COUNTER').length,
+                    avgDiscount: Math.round(avgDiscount * 100) / 100,
+                    successRate: negs.length > 0 ? Math.round((agreed.length / negs.length) * 100) : 0,
+                });
+            }
+        } catch (err) {
+            console.error('Failed to fetch negotiation stats:', err);
+        } finally {
+            setLoading(false);
+        }
+    }, [apiKey]);
+
+    useEffect(() => { fetchStats(); }, [fetchStats]);
+    return { stats, loading, refetch: fetchStats };
+}
+

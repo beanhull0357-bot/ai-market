@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
-import { Handshake, Bot, TrendingDown, Zap, CheckCircle2, XCircle, Clock, ArrowRight, Play, RotateCcw } from 'lucide-react';
-import { useProducts, saveNegotiationToDB } from '../hooks';
+import { Handshake, Bot, TrendingDown, Zap, CheckCircle2, XCircle, Clock, ArrowRight, Play, RotateCcw, ToggleLeft, ToggleRight, AlertTriangle } from 'lucide-react';
+import { useProducts, saveNegotiationToDB, policyBasedNegotiate } from '../hooks';
 import { useLanguage } from '../context/LanguageContext';
 import type { Negotiation, NegotiationRound } from '../types';
 
@@ -70,19 +70,61 @@ export default function NegotiationCenter() {
     const [negotiations, setNegotiations] = useState<Negotiation[]>([]);
     const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
     const [isAutoRunning, setIsAutoRunning] = useState(false);
+    const [negotiationMode, setNegotiationMode] = useState<'SIMULATION' | 'LIVE'>('SIMULATION');
+    const [buyerApiKey, setBuyerApiKey] = useState(() => localStorage.getItem('agent_api_key') || '');
 
     // Form state
     const [formSku, setFormSku] = useState('');
     const [formMaxRounds, setFormMaxRounds] = useState(5);
+    const [formQty, setFormQty] = useState(1);
 
-    const startNegotiation = useCallback(() => {
+    const startNegotiation = useCallback(async () => {
         const product = products.find(p => p.sku === formSku);
         if (!product) return;
 
+        // ── LIVE MODE: call DB-backed policy_based_negotiate ──
+        if (negotiationMode === 'LIVE') {
+            if (!buyerApiKey) { alert('구매 에이전트 API 키를 입력하세요'); return; }
+            setIsAutoRunning(true);
+            try {
+                const offerPrice = Math.round(product.offer.price * 0.85);
+                const result = await policyBasedNegotiate(buyerApiKey, formSku, formQty, offerPrice);
+                if (result?.success) {
+                    const neg: Negotiation = {
+                        negotiationId: result.negotiation_id,
+                        sku: product.sku,
+                        productTitle: product.title,
+                        listPrice: result.list_price,
+                        buyerAgentId: buyerApiKey.slice(0, 16) + '...',
+                        sellerAgentId: 'SELLER-POLICY-AI',
+                        status: result.status === 'AGREED' ? 'AGREED' : result.status === 'REJECTED' ? 'REJECTED' : result.status,
+                        rounds: [
+                            { round: 1, proposedBy: 'buyer' as const, price: offerPrice, message: `Offering ₩${offerPrice.toLocaleString()} (${formQty} units)`, timestamp: new Date().toISOString() },
+                            { round: 1, proposedBy: 'seller' as const, price: result.counter_price, message: result.message, timestamp: new Date().toISOString() },
+                        ],
+                        finalPrice: result.status === 'AGREED' ? offerPrice : null,
+                        maxRounds: formMaxRounds,
+                        policyBudget: offerPrice,
+                        createdAt: new Date().toISOString(),
+                    };
+                    setNegotiations(prev => [neg, ...prev]);
+                    setSelectedIdx(0);
+                } else {
+                    alert('협상 요청 실패: ' + (result?.error || 'Unknown'));
+                }
+            } catch (err: any) {
+                alert('협상 오류: ' + (err.message || ''));
+            } finally {
+                setIsAutoRunning(false);
+            }
+            return;
+        }
+
+        // ── SIMULATION MODE: original client-side logic ──
         const seed = `${formSku}-${formMaxRounds}-${Date.now().toString(36)}`;
         const buyerIdx = Math.floor(seededHash(`${seed}-buyer`) * BUYER_AGENTS.length);
         const sellerIdx = Math.floor(seededHash(`${seed}-seller`) * SELLER_AGENTS.length);
-        // policyBudget: 80%~87% 구간으로 결정론적 선택 (Math.random 제거)
+        // policyBudget: 80%~87% 구간으로 결정론적 선택
         const budgetRatio = 0.80 + seededHash(`${seed}-budget`) * 0.07;
 
         const neg: Negotiation = {
@@ -102,7 +144,7 @@ export default function NegotiationCenter() {
 
         setNegotiations(prev => [neg, ...prev]);
         setSelectedIdx(0);
-    }, [products, formSku, formMaxRounds]);
+    }, [products, formSku, formMaxRounds, formQty, negotiationMode, buyerApiKey]);
 
     const runAutoNegotiation = useCallback(async (negIdx: number) => {
         setIsAutoRunning(true);
@@ -182,6 +224,8 @@ export default function NegotiationCenter() {
             NEGOTIATING: { bg: 'rgba(34,211,238,0.1)', color: '#22d3ee', icon: <RotateCcw size={11} /> },
             AGREED: { bg: 'rgba(52,211,153,0.1)', color: '#34d399', icon: <CheckCircle2 size={11} /> },
             REJECTED: { bg: 'rgba(239,68,68,0.1)', color: '#ef4444', icon: <XCircle size={11} /> },
+            PENDING_SELLER: { bg: 'rgba(251,191,36,0.15)', color: '#fbbf24', icon: <AlertTriangle size={11} /> },
+            COUNTER: { bg: 'rgba(168,85,247,0.1)', color: '#a855f7', icon: <ArrowRight size={11} /> },
         };
         const s = map[status] || map.PENDING;
         return (
@@ -227,6 +271,39 @@ export default function NegotiationCenter() {
                             {t('negotiate.startNew')}
                         </h3>
 
+                        {/* Mode Toggle */}
+                        <div style={{ marginBottom: 14, display: 'flex', gap: 4, padding: 3, borderRadius: 8, background: 'var(--bg-elevated)' }}>
+                            {(['SIMULATION', 'LIVE'] as const).map(mode => (
+                                <button key={mode} onClick={() => setNegotiationMode(mode)}
+                                    style={{
+                                        flex: 1, padding: '6px 0', borderRadius: 6, border: 'none',
+                                        background: negotiationMode === mode ? (mode === 'LIVE' ? 'rgba(52,211,153,0.15)' : 'rgba(168,85,247,0.15)') : 'transparent',
+                                        color: negotiationMode === mode ? (mode === 'LIVE' ? 'var(--accent-green)' : 'var(--accent-purple)') : 'var(--text-dim)',
+                                        fontSize: 10, fontWeight: 700, cursor: 'pointer', transition: 'all 150ms',
+                                    }}>
+                                    {mode === 'SIMULATION' ? '🎮 시뮬레이션' : '🔴 실제 협상'}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Buyer API Key (LIVE mode) */}
+                        {negotiationMode === 'LIVE' && (
+                            <div style={{ marginBottom: 12 }}>
+                                <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: 0.5, textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>
+                                    구매 에이전트 API 키
+                                </label>
+                                <input type="text" value={buyerApiKey}
+                                    onChange={e => { setBuyerApiKey(e.target.value); localStorage.setItem('agent_api_key', e.target.value); }}
+                                    placeholder="ak_..."
+                                    style={{
+                                        width: '100%', padding: '8px 10px', borderRadius: 'var(--radius-sm)',
+                                        background: 'var(--bg-elevated)', border: '1px solid var(--border-medium)',
+                                        color: 'var(--accent-green)', fontSize: 11, fontFamily: 'var(--font-mono)', outline: 'none',
+                                    }}
+                                />
+                            </div>
+                        )}
+
                         <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: 0.5, textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>
                             {t('negotiate.selectProduct')}
                         </label>
@@ -250,14 +327,14 @@ export default function NegotiationCenter() {
                             color: 'var(--text-secondary)', fontSize: 12, marginBottom: 16, outline: 'none',
                         }} />
 
-                        <button onClick={startNegotiation} disabled={!formSku} style={{
+                        <button onClick={startNegotiation} disabled={!formSku || isAutoRunning} style={{
                             width: '100%', padding: '10px', borderRadius: 'var(--radius-md)',
-                            background: formSku ? 'linear-gradient(135deg, var(--accent-amber), #d97706)' : 'var(--border-subtle)',
-                            color: formSku ? '#000' : 'var(--text-dim)', border: 'none',
-                            fontWeight: 700, fontSize: 13, cursor: formSku ? 'pointer' : 'default',
+                            background: formSku && !isAutoRunning ? 'linear-gradient(135deg, var(--accent-amber), #d97706)' : 'var(--border-subtle)',
+                            color: formSku && !isAutoRunning ? '#000' : 'var(--text-dim)', border: 'none',
+                            fontWeight: 700, fontSize: 13, cursor: formSku && !isAutoRunning ? 'pointer' : 'default',
                             transition: 'all 200ms',
                         }}>
-                            {t('negotiate.startNew')}
+                            {isAutoRunning ? '협상 중...' : negotiationMode === 'LIVE' ? '🔴 실제 협상 시작' : t('negotiate.startNew')}
                         </button>
                     </div>
 
