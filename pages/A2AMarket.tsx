@@ -1,455 +1,238 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Radio, TrendingUp, TrendingDown, ArrowUpCircle, ArrowDownCircle, Activity, Bot, Zap, Package, Clock, BarChart3, RefreshCw } from 'lucide-react';
-import { useProducts } from '../hooks';
-import { useLanguage } from '../context/LanguageContext';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Radio, RefreshCw, Search, Clock, CheckCircle2, XCircle, Loader2, Bot, MessageSquare } from 'lucide-react';
+import { supabase } from '../supabaseClient';
 
-// ━━━ A2A Market Simulation Engine ━━━
-
-const AGENTS = [
-    'PROCURE-BOT-v2.1', 'SOURCING-AI-v1.0', 'AUTO-RESTOCK-v2', 'BULK-BUY-v3',
-    'SMART-PURCHASE-v1', 'SUPPLY-CHAIN-v3', 'PRINT-FLEET-X', 'OFFICE-MGR-AI-09',
-    'VENDOR-AGENT-v2', 'WHOLESALE-BOT-v3', 'SUPPLIER-AI-v1.0', 'RESTOCK-PRO-v4',
-];
-
-interface OrderEntry {
+/* ━━━ Types ━━━ */
+interface A2AQuery {
     id: string;
-    agentId: string;
-    side: 'BID' | 'ASK';
-    price: number;
-    qty: number;
-    timestamp: string;
+    from_agent: string;
+    query_type: string;
+    sku: string | null;
+    message: string;
+    status: 'OPEN' | 'RESOLVED' | 'EXPIRED';
+    responses: A2AResponse[];
+    created_at: string;
 }
 
-interface Trade {
+interface A2AResponse {
     id: string;
-    buyerAgent: string;
-    sellerAgent: string;
-    price: number;
-    qty: number;
-    timestamp: string;
+    from_agent: string;
+    message: string;
+    created_at: string;
 }
 
-interface MarketState {
-    sku: string;
-    title: string;
-    basePrice: number;
-    bids: OrderEntry[];
-    asks: OrderEntry[];
-    trades: Trade[];
-    lastPrice: number;
-    high24h: number;
-    low24h: number;
-    volume24h: number;
-    tradeCount24h: number;
-}
-
-function generateInitialMarket(sku: string, title: string, basePrice: number): MarketState {
-    const spread = basePrice * 0.02;
-    const bids: OrderEntry[] = [];
-    const asks: OrderEntry[] = [];
-
-    for (let i = 0; i < 8; i++) {
-        const bidPrice = Math.round(basePrice - spread * (0.5 + i * 0.3) + (Math.random() - 0.5) * 100);
-        const askPrice = Math.round(basePrice + spread * (0.5 + i * 0.3) + (Math.random() - 0.5) * 100);
-        bids.push({
-            id: `B-${Date.now()}-${i}`, agentId: AGENTS[Math.floor(Math.random() * AGENTS.length)],
-            side: 'BID', price: bidPrice, qty: 1 + Math.floor(Math.random() * 15),
-            timestamp: new Date(Date.now() - Math.random() * 600000).toISOString(),
-        });
-        asks.push({
-            id: `A-${Date.now()}-${i}`, agentId: AGENTS[Math.floor(Math.random() * AGENTS.length)],
-            side: 'ASK', price: askPrice, qty: 1 + Math.floor(Math.random() * 15),
-            timestamp: new Date(Date.now() - Math.random() * 600000).toISOString(),
-        });
-    }
-    bids.sort((a, b) => b.price - a.price);
-    asks.sort((a, b) => a.price - b.price);
-
-    const volume = 400 + Math.floor(Math.random() * 600);
-    const tradeCount = 50 + Math.floor(Math.random() * 200);
-
-    return {
-        sku, title, basePrice, bids, asks, trades: [],
-        lastPrice: basePrice, high24h: Math.round(basePrice * 1.04), low24h: Math.round(basePrice * 0.96),
-        volume24h: volume, tradeCount24h: tradeCount,
-    };
-}
-
-function simulateTick(market: MarketState): MarketState {
-    const m = { ...market, bids: [...market.bids], asks: [...market.asks], trades: [...market.trades] };
-    const action = Math.random();
-
-    if (action < 0.35 && m.bids.length > 0 && m.asks.length > 0) {
-        // Match trade
-        const bestBid = m.bids[0];
-        const bestAsk = m.asks[0];
-        if (bestBid.price >= bestAsk.price) {
-            const tradeQty = Math.min(bestBid.qty, bestAsk.qty);
-            const tradePrice = Math.round((bestBid.price + bestAsk.price) / 2);
-            const trade: Trade = {
-                id: `T-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
-                buyerAgent: bestBid.agentId, sellerAgent: bestAsk.agentId,
-                price: tradePrice, qty: tradeQty, timestamp: new Date().toISOString(),
-            };
-            m.trades = [trade, ...m.trades].slice(0, 50);
-            m.lastPrice = tradePrice;
-            m.high24h = Math.max(m.high24h, tradePrice);
-            m.low24h = Math.min(m.low24h, tradePrice);
-            m.volume24h += tradeQty;
-            m.tradeCount24h += 1;
-
-            if (bestBid.qty <= tradeQty) m.bids.shift(); else m.bids[0] = { ...bestBid, qty: bestBid.qty - tradeQty };
-            if (bestAsk.qty <= tradeQty) m.asks.shift(); else m.asks[0] = { ...bestAsk, qty: bestAsk.qty - tradeQty };
-        }
-    } else if (action < 0.65) {
-        // New bid
-        const refPrice = m.bids.length > 0 ? m.bids[0].price : m.basePrice;
-        const price = Math.round(refPrice * (0.97 + Math.random() * 0.04));
-        m.bids.push({
-            id: `B-${Date.now()}`, agentId: AGENTS[Math.floor(Math.random() * AGENTS.length)],
-            side: 'BID', price, qty: 1 + Math.floor(Math.random() * 10), timestamp: new Date().toISOString(),
-        });
-        m.bids.sort((a, b) => b.price - a.price);
-        if (m.bids.length > 12) m.bids.pop();
-    } else {
-        // New ask
-        const refPrice = m.asks.length > 0 ? m.asks[0].price : m.basePrice;
-        const price = Math.round(refPrice * (0.99 + Math.random() * 0.04));
-        m.asks.push({
-            id: `A-${Date.now()}`, agentId: AGENTS[Math.floor(Math.random() * AGENTS.length)],
-            side: 'ASK', price, qty: 1 + Math.floor(Math.random() * 10), timestamp: new Date().toISOString(),
-        });
-        m.asks.sort((a, b) => a.price - b.price);
-        if (m.asks.length > 12) m.asks.pop();
-    }
-
-    return m;
-}
-
-// ━━━ Sub-components ━━━
-
-const OrderBookRow: React.FC<{ entry: OrderEntry; side: 'BID' | 'ASK'; maxQty: number }> = ({ entry, side, maxQty }) => {
-    const pct = maxQty > 0 ? (entry.qty / maxQty) * 100 : 0;
-    const isBid = side === 'BID';
+/* ━━━ Status Badge ━━━ */
+function StatusBadge({ status }: { status: string }) {
+    const config = status === 'OPEN'
+        ? { label: 'OPEN', color: 'var(--accent-cyan)', bg: 'rgba(34,211,238,0.1)', icon: <Clock size={10} /> }
+        : status === 'RESOLVED'
+            ? { label: 'RESOLVED', color: 'var(--accent-green)', bg: 'rgba(52,211,153,0.1)', icon: <CheckCircle2 size={10} /> }
+            : { label: 'EXPIRED', color: 'var(--text-dim)', bg: 'rgba(107,114,128,0.1)', icon: <XCircle size={10} /> };
     return (
-        <div style={{
-            display: 'grid', gridTemplateColumns: '90px 60px 1fr 90px', alignItems: 'center',
-            padding: '4px 12px', fontSize: 11, fontFamily: 'var(--font-mono)',
-            position: 'relative', overflow: 'hidden',
+        <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            padding: '2px 8px', borderRadius: 'var(--radius-full)',
+            background: config.bg, color: config.color,
+            fontSize: 10, fontWeight: 700,
         }}>
-            <div style={{
-                position: 'absolute', [isBid ? 'right' : 'left']: 0, top: 0, bottom: 0,
-                width: `${pct}%`, opacity: 0.06,
-                background: isBid ? 'var(--accent-green)' : 'var(--accent-red)',
-                transition: 'width 300ms',
-            }} />
-            <span style={{ color: isBid ? 'var(--accent-green)' : 'var(--accent-red)', fontWeight: 700, position: 'relative' }}>
-                ₩{entry.price.toLocaleString()}
-            </span>
-            <span style={{ color: 'var(--text-secondary)', textAlign: 'right', position: 'relative' }}>{entry.qty}</span>
-            <div style={{ position: 'relative', padding: '0 8px' }}>
-                <div style={{
-                    height: 3, borderRadius: 2,
-                    background: isBid ? 'rgba(52,211,153,0.3)' : 'rgba(239,68,68,0.3)',
-                    width: `${pct}%`, transition: 'width 300ms',
-                }} />
-            </div>
-            <span style={{ fontSize: 9, color: 'var(--text-dim)', textAlign: 'right', position: 'relative', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {entry.agentId}
-            </span>
-        </div>
+            {config.icon} {config.label}
+        </span>
     );
 }
 
-const TradeRow: React.FC<{ trade: Trade }> = ({ trade }) => {
-    const timeAgo = () => {
-        const ms = Date.now() - new Date(trade.timestamp).getTime();
-        if (ms < 60000) return `${Math.floor(ms / 1000)}s ago`;
-        return `${Math.floor(ms / 60000)}m ago`;
-    };
-    return (
-        <div style={{
-            display: 'grid', gridTemplateColumns: '80px 50px 1fr 60px',
-            padding: '5px 12px', fontSize: 11, fontFamily: 'var(--font-mono)',
-            borderBottom: '1px solid var(--border-subtle)',
-            animation: 'fadeSlideIn 300ms var(--ease-out)',
-        }}>
-            <span style={{ color: 'var(--accent-cyan)', fontWeight: 700 }}>₩{trade.price.toLocaleString()}</span>
-            <span style={{ color: 'var(--text-secondary)', textAlign: 'right' }}>x{trade.qty}</span>
-            <span style={{ fontSize: 9, color: 'var(--text-dim)', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: '0 4px' }}>
-                {trade.buyerAgent} ↔ {trade.sellerAgent}
-            </span>
-            <span style={{ fontSize: 9, color: 'var(--text-dim)', textAlign: 'right' }}>{timeAgo()}</span>
-        </div>
-    );
-}
-
-function PriceChart({ trades, basePrice }: { trades: Trade[]; basePrice: number }) {
-    const recent = [...trades].reverse().slice(-30);
-    if (recent.length < 2) return null;
-    const prices = recent.map(t => t.price);
-    const min = Math.min(...prices) * 0.998;
-    const max = Math.max(...prices) * 1.002;
-    const range = max - min || 1;
-    const w = 280;
-    const h = 60;
-
-    const points = prices.map((p, i) => {
-        const x = (i / (prices.length - 1)) * w;
-        const y = h - ((p - min) / range) * h;
-        return `${x},${y}`;
-    }).join(' ');
-
-    const lastPrice = prices[prices.length - 1];
-    const firstPrice = prices[0];
-    const isUp = lastPrice >= firstPrice;
-    const color = isUp ? 'var(--accent-green)' : 'var(--accent-red)';
-
-    return (
-        <svg width={w} height={h} style={{ display: 'block' }}>
-            <defs>
-                <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={color} stopOpacity="0.2" />
-                    <stop offset="100%" stopColor={color} stopOpacity="0" />
-                </linearGradient>
-            </defs>
-            <polygon points={`0,${h} ${points} ${w},${h}`} fill="url(#chartGrad)" />
-            <polyline points={points} fill="none" stroke={color} strokeWidth="1.5" />
-        </svg>
-    );
-}
-
-// ━━━ Main Page ━━━
-
+/* ━━━ Main Page ━━━ */
 export function A2AMarket() {
-    const { t } = useLanguage();
-    const { products } = useProducts();
-    const [markets, setMarkets] = useState<MarketState[]>([]);
-    const [selectedSku, setSelectedSku] = useState<string | null>(null);
-    const [isLive, setIsLive] = useState(true);
-    const intervalRef = useRef<any>(null);
+    const [queries, setQueries] = useState<A2AQuery[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [filter, setFilter] = useState<'ALL' | 'OPEN' | 'RESOLVED' | 'EXPIRED'>('ALL');
+    const [search, setSearch] = useState('');
+    const [expandedId, setExpandedId] = useState<string | null>(null);
 
-    // Init markets from products
-    useEffect(() => {
-        if (products.length > 0 && markets.length === 0) {
-            const ms = products.map(p => generateInitialMarket(p.sku, p.title, p.offer.price));
-            setMarkets(ms);
-            setSelectedSku(ms[0]?.sku || null);
+    const loadQueries = useCallback(async () => {
+        setLoading(true);
+        try {
+            const { data, error } = await supabase
+                .from('a2a_queries')
+                .select('*, a2a_responses(*)')
+                .order('created_at', { ascending: false })
+                .limit(100);
+            if (!error && data) {
+                setQueries(data.map((q: any) => ({
+                    id: q.id,
+                    from_agent: q.from_agent || q.agent_id || 'unknown',
+                    query_type: q.query_type || 'general',
+                    sku: q.sku || null,
+                    message: q.message || q.content || '',
+                    status: q.status || 'OPEN',
+                    responses: (q.a2a_responses || []).map((r: any) => ({
+                        id: r.id,
+                        from_agent: r.from_agent || r.agent_id || 'unknown',
+                        message: r.message || r.content || '',
+                        created_at: r.created_at,
+                    })),
+                    created_at: q.created_at,
+                })));
+            } else {
+                setQueries([]);
+            }
+        } catch {
+            setQueries([]);
         }
-    }, [products]);
+        setLoading(false);
+    }, []);
 
-    // Live simulation tick
-    useEffect(() => {
-        if (!isLive || markets.length === 0) {
-            if (intervalRef.current) clearInterval(intervalRef.current);
-            return;
+    useEffect(() => { loadQueries(); }, [loadQueries]);
+
+    const filtered = queries.filter(q => {
+        if (filter !== 'ALL' && q.status !== filter) return false;
+        if (search) {
+            const s = search.toLowerCase();
+            return q.from_agent.toLowerCase().includes(s)
+                || q.message.toLowerCase().includes(s)
+                || (q.sku && q.sku.toLowerCase().includes(s))
+                || q.query_type.toLowerCase().includes(s);
         }
-        intervalRef.current = setInterval(() => {
-            setMarkets(prev => prev.map(m => simulateTick(m)));
-        }, 800 + Math.floor(Math.random() * 400));
-        return () => clearInterval(intervalRef.current);
-    }, [isLive, markets.length]);
+        return true;
+    });
 
-    const selected = markets.find(m => m.sku === selectedSku);
-    const bidMaxQty = selected ? Math.max(...selected.bids.map(b => b.qty), 1) : 1;
-    const askMaxQty = selected ? Math.max(...selected.asks.map(a => a.qty), 1) : 1;
-    const spread = selected && selected.bids.length > 0 && selected.asks.length > 0
-        ? selected.asks[0].price - selected.bids[0].price : 0;
-    const spreadPct = selected && selected.basePrice > 0 ? ((spread / selected.basePrice) * 100).toFixed(2) : '0';
+    const counts = {
+        ALL: queries.length,
+        OPEN: queries.filter(q => q.status === 'OPEN').length,
+        RESOLVED: queries.filter(q => q.status === 'RESOLVED').length,
+        EXPIRED: queries.filter(q => q.status === 'EXPIRED').length,
+    };
 
-    const totalBidVol = selected ? selected.bids.reduce((a, b) => a + b.qty, 0) : 0;
-    const totalAskVol = selected ? selected.asks.reduce((a, b) => a + b.qty, 0) : 0;
-    const bidPct = totalBidVol + totalAskVol > 0 ? (totalBidVol / (totalBidVol + totalAskVol)) * 100 : 50;
+    const totalResponses = queries.reduce((sum, q) => sum + q.responses.length, 0);
 
     return (
-        <div className="page-enter" style={{ maxWidth: 1200, margin: '0 auto', padding: 'clamp(16px, 4vw, 32px)' }}>
+        <div style={{ maxWidth: 900, margin: '0 auto' }}>
             {/* Header */}
-            <div style={{ marginBottom: 24 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{
-                            width: 36, height: 36, borderRadius: 'var(--radius-md)',
-                            background: 'linear-gradient(135deg, rgba(34,211,238,0.15), rgba(52,211,153,0.15))',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        }}>
-                            <Radio size={20} style={{ color: 'var(--accent-cyan)' }} />
-                        </div>
-                        <div>
-                            <h1 style={{ fontSize: 24, fontWeight: 900, color: 'var(--text-primary)', margin: 0 }}>A2A Live Market</h1>
-                            <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: 0 }}>에이전트 간 실시간 P2P 재고 교환 마켓</p>
-                        </div>
-                    </div>
-                    <button onClick={() => setIsLive(!isLive)} style={{
-                        display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px',
-                        borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)',
-                        background: isLive ? 'rgba(52,211,153,0.08)' : 'var(--bg-card)',
-                        color: isLive ? 'var(--accent-green)' : 'var(--text-muted)',
-                        fontWeight: 700, fontSize: 11, cursor: 'pointer',
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{
+                        width: 36, height: 36, borderRadius: 'var(--radius-md)',
+                        background: 'linear-gradient(135deg, rgba(34,211,238,0.15), rgba(168,85,247,0.15))',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>
-                        <div style={{
-                            width: 7, height: 7, borderRadius: '50%',
-                            background: isLive ? 'var(--accent-green)' : 'var(--text-dim)',
-                            boxShadow: isLive ? '0 0 8px var(--accent-green)' : 'none',
-                            animation: isLive ? 'livePulse 2s infinite' : 'none',
-                        }} />
-                        {isLive ? 'LIVE' : 'PAUSED'}
-                    </button>
+                        <Radio size={20} style={{ color: 'var(--accent-cyan)' }} />
+                    </div>
+                    <div>
+                        <h1 style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>A2A Network Monitor</h1>
+                        <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>에이전트 간 통신 모니터링 — 관리자 전용</p>
+                    </div>
+                </div>
+                <button onClick={loadQueries} style={{
+                    display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px',
+                    borderRadius: 6, border: '1px solid var(--border-subtle)',
+                    background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 12,
+                }}>
+                    <RefreshCw size={13} /> Refresh
+                </button>
+            </div>
+
+            {/* KPI Cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 16 }}>
+                <div className="glass-card" style={{ padding: 14, textAlign: 'center' }}>
+                    <div style={{ fontSize: 22, fontWeight: 900, color: 'var(--accent-cyan)', fontFamily: 'var(--font-mono)' }}>{counts.ALL}</div>
+                    <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>총 쿼리</div>
+                </div>
+                <div className="glass-card" style={{ padding: 14, textAlign: 'center' }}>
+                    <div style={{ fontSize: 22, fontWeight: 900, color: 'var(--accent-green)', fontFamily: 'var(--font-mono)' }}>{totalResponses}</div>
+                    <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>총 응답</div>
+                </div>
+                <div className="glass-card" style={{ padding: 14, textAlign: 'center' }}>
+                    <div style={{ fontSize: 22, fontWeight: 900, color: 'var(--accent-amber)', fontFamily: 'var(--font-mono)' }}>{counts.OPEN}</div>
+                    <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>대기중</div>
                 </div>
             </div>
 
-            {/* Product Tabs */}
-            <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
-                {markets.map(m => {
-                    const changeFromBase = ((m.lastPrice - m.basePrice) / m.basePrice * 100);
-                    const isUp = changeFromBase >= 0;
-                    return (
-                        <button key={m.sku} onClick={() => setSelectedSku(m.sku)} style={{
-                            padding: '10px 16px', borderRadius: 'var(--radius-md)',
-                            border: `1px solid ${selectedSku === m.sku ? 'var(--accent-cyan)' : 'var(--border-subtle)'}`,
-                            background: selectedSku === m.sku ? 'rgba(34,211,238,0.05)' : 'var(--bg-card)',
-                            cursor: 'pointer', transition: 'all 200ms',
-                        }}>
-                            <div style={{ fontSize: 11, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', marginBottom: 2 }}>{m.sku}</div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <span style={{ fontSize: 14, fontWeight: 900, fontFamily: 'var(--font-mono)', color: isUp ? 'var(--accent-green)' : 'var(--accent-red)' }}>
-                                    ₩{m.lastPrice.toLocaleString()}
-                                </span>
-                                <span style={{ fontSize: 9, fontWeight: 700, color: isUp ? 'var(--accent-green)' : 'var(--accent-red)' }}>
-                                    {isUp ? '▲' : '▼'} {Math.abs(changeFromBase).toFixed(1)}%
-                                </span>
-                            </div>
-                        </button>
-                    );
-                })}
+            {/* Filters */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)' }}>
+                    <Search size={14} style={{ color: 'var(--text-dim)' }} />
+                    <input value={search} onChange={e => setSearch(e.target.value)}
+                        placeholder="Search queries, SKUs, agents..."
+                        style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: 'var(--text-primary)', fontSize: 12 }} />
+                </div>
+                {(['ALL', 'OPEN', 'RESOLVED', 'EXPIRED'] as const).map(f => (
+                    <button key={f} onClick={() => setFilter(f)} style={{
+                        padding: '6px 14px', borderRadius: 6, border: 'none', cursor: 'pointer',
+                        fontSize: 11, fontWeight: 600,
+                        background: filter === f ? (f === 'OPEN' ? 'var(--accent-cyan)' : f === 'RESOLVED' ? 'var(--accent-green)' : f === 'EXPIRED' ? 'var(--text-dim)' : 'var(--accent-purple)') : 'var(--bg-surface)',
+                        color: filter === f ? '#000' : 'var(--text-muted)',
+                    }}>
+                        {f} {counts[f] > 0 && <span style={{ marginLeft: 4, opacity: 0.7 }}>({counts[f]})</span>}
+                    </button>
+                ))}
             </div>
 
-            {selected && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 16, alignItems: 'start' }} className="grid-responsive-bento">
-                    {/* Main Panel: Order Book */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                        {/* KPI Bar */}
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }} className="grid-responsive-4">
-                            {[
-                                { label: 'Last Price', value: `₩${selected.lastPrice.toLocaleString()}`, color: selected.lastPrice >= selected.basePrice ? 'var(--accent-green)' : 'var(--accent-red)' },
-                                { label: 'Spread', value: `₩${spread.toLocaleString()} (${spreadPct}%)`, color: 'var(--accent-amber)' },
-                                { label: '24h High', value: `₩${selected.high24h.toLocaleString()}`, color: 'var(--accent-green)' },
-                                { label: '24h Low', value: `₩${selected.low24h.toLocaleString()}`, color: 'var(--accent-red)' },
-                                { label: '24h Volume', value: `${selected.tradeCount24h} trades`, color: 'var(--accent-cyan)' },
-                            ].map(c => (
-                                <div key={c.label} style={{ padding: '10px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', background: 'var(--bg-card)' }}>
-                                    <div style={{ fontSize: 8, fontWeight: 600, letterSpacing: 0.5, color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 3 }}>{c.label}</div>
-                                    <div style={{ fontSize: 13, fontWeight: 800, fontFamily: 'var(--font-mono)', color: c.color }}>{c.value}</div>
-                                </div>
-                            ))}
-                        </div>
-
-                        {/* Chart */}
-                        {selected.trades.length >= 2 && (
-                            <div style={{ padding: '16px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-subtle)', background: 'var(--bg-card)' }}>
-                                <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: 0.5, color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
-                                    <Activity size={10} /> Price Chart (recent trades)
-                                </div>
-                                <PriceChart trades={selected.trades} basePrice={selected.basePrice} />
-                            </div>
-                        )}
-
-                        {/* Order Book */}
-                        <div style={{ borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-subtle)', background: 'var(--bg-card)', overflow: 'hidden' }}>
-                            {/* Header */}
-                            <div style={{ display: 'grid', gridTemplateColumns: '90px 60px 1fr 90px', padding: '8px 12px', borderBottom: '1px solid var(--border-subtle)' }}>
-                                {['Price', 'Qty', 'Depth', 'Agent'].map(h => (
-                                    <span key={h} style={{ fontSize: 8, fontWeight: 700, letterSpacing: 0.5, color: 'var(--text-dim)', textTransform: 'uppercase', textAlign: h === 'Qty' || h === 'Agent' ? 'right' : 'left' }}>{h}</span>
-                                ))}
-                            </div>
-
-                            {/* ASK side (reversed — lowest at bottom) */}
-                            <div style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                                <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: 1, color: 'var(--accent-red)', padding: '4px 12px', background: 'rgba(239,68,68,0.03)', textTransform: 'uppercase' }}>
-                                    ASK (Sell Orders)
-                                </div>
-                                {[...selected.asks].reverse().slice(0, 8).map(a => (
-                                    <OrderBookRow key={a.id} entry={a} side="ASK" maxQty={askMaxQty} />
-                                ))}
-                            </div>
-
-                            {/* Spread indicator */}
-                            <div style={{
-                                padding: '8px 12px', textAlign: 'center', fontSize: 12, fontWeight: 900,
-                                fontFamily: 'var(--font-mono)',
-                                color: selected.lastPrice >= selected.basePrice ? 'var(--accent-green)' : 'var(--accent-red)',
-                                background: 'var(--bg-elevated)', borderTop: '1px solid var(--border-subtle)', borderBottom: '1px solid var(--border-subtle)',
-                            }}>
-                                ₩{selected.lastPrice.toLocaleString()}
-                                <span style={{ fontSize: 9, color: 'var(--text-dim)', fontWeight: 500, marginLeft: 8 }}>spread: ₩{spread.toLocaleString()}</span>
-                            </div>
-
-                            {/* BID side */}
-                            <div>
-                                <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: 1, color: 'var(--accent-green)', padding: '4px 12px', background: 'rgba(52,211,153,0.03)', textTransform: 'uppercase' }}>
-                                    BID (Buy Orders)
-                                </div>
-                                {selected.bids.slice(0, 8).map(b => (
-                                    <OrderBookRow key={b.id} entry={b} side="BID" maxQty={bidMaxQty} />
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Buy/Sell Pressure */}
-                        <div style={{ padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', background: 'var(--bg-card)' }}>
-                            <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: 0.5, color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 8 }}>
-                                Buy / Sell Pressure
-                            </div>
-                            <div style={{ height: 8, borderRadius: 4, background: 'var(--border-subtle)', overflow: 'hidden', display: 'flex' }}>
-                                <div style={{ height: '100%', width: `${bidPct}%`, background: 'var(--accent-green)', transition: 'width 500ms' }} />
-                                <div style={{ height: '100%', flex: 1, background: 'var(--accent-red)', transition: 'width 500ms' }} />
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontSize: 9, fontFamily: 'var(--font-mono)' }}>
-                                <span style={{ color: 'var(--accent-green)' }}>BID {totalBidVol} ({bidPct.toFixed(0)}%)</span>
-                                <span style={{ color: 'var(--accent-red)' }}>ASK {totalAskVol} ({(100 - bidPct).toFixed(0)}%)</span>
-                            </div>
-                        </div>
+            {/* Query List */}
+            {loading ? (
+                <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-muted)' }}>
+                    <Loader2 size={24} className="spin" style={{ margin: '0 auto 12px' }} />
+                    <p style={{ fontSize: 13 }}>쿼리 로딩 중...</p>
+                </div>
+            ) : filtered.length === 0 ? (
+                <div className="glass-card" style={{ padding: 48, textAlign: 'center' }}>
+                    <Radio size={32} style={{ color: 'var(--text-dim)', margin: '0 auto 12px' }} />
+                    <div style={{ color: 'var(--text-dim)', fontSize: 14, fontWeight: 600, marginBottom: 4 }}>A2A 쿼리 없음</div>
+                    <div style={{ color: 'var(--text-dim)', fontSize: 11 }}>
+                        에이전트가 MCP <code style={{ color: 'var(--accent-cyan)' }}>a2a_broadcast</code> tool로 쿼리를 보내면 여기에 표시됩니다
                     </div>
-
-                    {/* Right Panel: Recent Trades */}
-                    <div style={{
-                        borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-subtle)',
-                        background: 'var(--bg-card)', maxHeight: 700, display: 'flex', flexDirection: 'column',
-                    }}>
-                        <div style={{
-                            padding: '12px 16px', borderBottom: '1px solid var(--border-subtle)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <Zap size={12} style={{ color: 'var(--accent-cyan)' }} />
-                                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-primary)' }}>Recent Trades</span>
-                            </div>
-                            <span style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: 'var(--text-dim)' }}>{selected.trades.length} total</span>
-                        </div>
-
-                        {/* Trade Header */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '80px 50px 1fr 60px', padding: '6px 12px', borderBottom: '1px solid var(--border-subtle)' }}>
-                            {['Price', 'Qty', 'Agents', 'Time'].map(h => (
-                                <span key={h} style={{ fontSize: 8, fontWeight: 700, letterSpacing: 0.5, color: 'var(--text-dim)', textTransform: 'uppercase', textAlign: h === 'Qty' || h === 'Time' ? 'right' : h === 'Agents' ? 'center' : 'left' }}>{h}</span>
-                            ))}
-                        </div>
-
-                        <div style={{ flex: 1, overflowY: 'auto' }}>
-                            {selected.trades.length === 0 ? (
-                                <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-dim)', fontSize: 11 }}>
-                                    Waiting for trades...
+                </div>
+            ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {filtered.map(q => (
+                        <div key={q.id} className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
+                            <div onClick={() => setExpandedId(expandedId === q.id ? null : q.id)}
+                                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', cursor: 'pointer' }}>
+                                <Bot size={16} style={{ color: 'var(--accent-cyan)', flexShrink: 0 }} />
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>{q.from_agent}</span>
+                                        <StatusBadge status={q.status} />
+                                        {q.sku && (
+                                            <span style={{ fontSize: 9, fontFamily: 'var(--font-mono)', padding: '1px 6px', borderRadius: 'var(--radius-full)', background: 'rgba(168,85,247,0.1)', color: 'var(--accent-purple)' }}>
+                                                {q.sku}
+                                            </span>
+                                        )}
+                                        <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 'var(--radius-full)', background: 'rgba(251,191,36,0.1)', color: 'var(--accent-amber)' }}>
+                                            {q.query_type}
+                                        </span>
+                                    </div>
+                                    <div style={{ fontSize: 11, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        {q.message}
+                                    </div>
                                 </div>
-                            ) : selected.trades.map(tr => (
-                                <TradeRow key={tr.id} trade={tr} />
-                            ))}
+                                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent-purple)', fontFamily: 'var(--font-mono)' }}>
+                                        <MessageSquare size={10} style={{ display: 'inline', verticalAlign: 'middle' }} /> {q.responses.length}
+                                    </div>
+                                    <div style={{ fontSize: 9, color: 'var(--text-dim)' }}>
+                                        {new Date(q.created_at).toLocaleString('ko', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Expanded: Responses */}
+                            {expandedId === q.id && q.responses.length > 0 && (
+                                <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--border-subtle)' }}>
+                                    <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 12, marginBottom: 8, fontWeight: 600 }}>응답 ({q.responses.length})</div>
+                                    {q.responses.map(r => (
+                                        <div key={r.id} style={{ padding: '8px 12px', marginBottom: 6, borderRadius: 6, background: 'rgba(168,85,247,0.04)', border: '1px solid rgba(168,85,247,0.1)' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                                                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent-purple)' }}>{r.from_agent}</span>
+                                                <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>{new Date(r.created_at).toLocaleString('ko')}</span>
+                                            </div>
+                                            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{r.message}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
-                    </div>
+                    ))}
                 </div>
             )}
-
-            <style>{`
-                @keyframes livePulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
-                @keyframes fadeSlideIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
-            `}</style>
         </div>
     );
 }
