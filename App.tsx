@@ -41,7 +41,6 @@ import EcosystemMap from './pages/EcosystemMap';
 import NegotiationCenter from './pages/NegotiationCenter';
 import { DecisionReplay } from './pages/DecisionReplay';
 import { A2AMarket } from './pages/A2AMarket';
-import { WorkflowBuilder } from './pages/WorkflowBuilder';
 import SellerNegotiationSettings from './pages/SellerNegotiationSettings';
 import { NotificationBell } from './components/NotificationBell';
 import { GuidePopup } from './components/GuidePopup';
@@ -352,7 +351,6 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     { to: '/ecosystem', icon: <Globe size={13} />, label: 'Ecosystem' },
     { to: '/decision-replay', icon: <Brain size={13} />, label: 'Decision Replay' },
     { to: '/a2a-market', icon: <Radio size={13} />, label: 'A2A Market' },
-    { to: '/workflow-builder', icon: <Workflow size={13} />, label: 'Workflow' },
   ];
 
   return (
@@ -471,7 +469,6 @@ export default function App() {
                     <Route path="/negotiate" element={<NegotiationCenter />} />
                     <Route path="/decision-replay" element={<DecisionReplay />} />
                     <Route path="/a2a-market" element={<A2AMarket />} />
-                    <Route path="/workflow-builder" element={<WorkflowBuilder />} />
                     <Route path="/negotiate-settings" element={<SellerNegotiationSettings />} />
                     <Route path="*" element={<Landing />} />
                   </Routes>
