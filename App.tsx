@@ -37,7 +37,6 @@ import { SellerRegistry } from './pages/SellerRegistry';
 import { AgentWallet } from './pages/AgentWallet';
 import { PredictiveProcurement } from './pages/PredictiveProcurement';
 import { ConformanceTest } from './pages/ConformanceTest';
-import { PublicAnalytics } from './pages/PublicAnalytics';
 import EcosystemMap from './pages/EcosystemMap';
 import NegotiationCenter from './pages/NegotiationCenter';
 import { DecisionReplay } from './pages/DecisionReplay';
@@ -351,7 +350,6 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       { to: '/activity-log', icon: <Activity size={13} />, label: 'Log' },
       { to: '/webhooks', icon: <Webhook size={13} />, label: 'Webhooks' },
     ] : []),
-    { to: '/public-analytics', icon: <Globe size={13} />, label: 'Analytics' },
     { to: '/ecosystem', icon: <Globe size={13} />, label: 'Ecosystem' },
     { to: '/decision-replay', icon: <Brain size={13} />, label: 'Decision Replay' },
     { to: '/a2a-market', icon: <Radio size={13} />, label: 'A2A Market' },
@@ -471,7 +469,6 @@ export default function App() {
                     <Route path="/wallet" element={<AgentWallet />} />
                     <Route path="/predictions" element={<PredictiveProcurement />} />
                     <Route path="/conformance" element={<ConformanceTest />} />
-                    <Route path="/public-analytics" element={<PublicAnalytics />} />
                     <Route path="/ecosystem" element={<EcosystemMap />} />
                     <Route path="/negotiate" element={<NegotiationCenter />} />
                     <Route path="/decision-replay" element={<DecisionReplay />} />
